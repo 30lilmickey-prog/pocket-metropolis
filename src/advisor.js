@@ -2,6 +2,7 @@
 // residents would like) or a happy note, with a tile to point the camera at. Read-only: nothing is changed.
 
 import { STRUCTURES } from './config.js';
+import { roadPlanFor } from './roadPlanner.js';
 
 const MAX_THOUGHTS = 5;
 const MAX_TILES = 240;
@@ -31,8 +32,9 @@ function hasWaterNear(city, tile, r = 2) {
 export function computeThoughts(city, milestones) {
   const out = [];
   // `tile` is where the camera goes; `area` lists every tile the thought is about, for highlighting.
-  const add = (id, severity, priority, text, hint, tile, area = tile ? [tile] : []) =>
+  const add = (id, severity, priority, text, hint, tile, area = tile ? [tile] : [], extra = {}) =>
     out.push({
+      ...extra,
       id,
       kind: severity === 'good' ? 'happy' : 'wish',
       severity,
@@ -66,10 +68,32 @@ export function computeThoughts(city, milestones) {
     if (far.length) add('school', 'caution', 3, 'Our kids have no school nearby.', 'Build a school', worstOf(far), far);
   }
 
-  const jammed = city.tiles.filter((t) => t.roadMask && t.congestion >= 0.85);
-  let jam = null;
-  for (const t of jammed) if (!jam || t.congestion > jam.congestion) jam = t;
-  if (jam) add('traffic', jam.congestion >= 0.99 ? 'bad' : 'caution', 3, 'The roads are jammed at rush hour.', 'Add another route or put jobs closer to homes', jam, jammed);
+  // Traffic: only raised where a new or longer road would really help. Jams count through traffic
+  // only, so a street that is busy because of the buildings along it isn't blamed on the road.
+  const roadPlan = roadPlanFor(city);
+  if (roadPlan?.best) {
+    const { jam, best } = roadPlan;
+    const n = best.tiles.length;
+    const street = jam.street || 'This road';
+    const less = Math.round(best.gain * 100);
+    const how = {
+      extend: `Extend the dead end by ${n} tile${n > 1 ? 's' : ''} to make a shortcut`,
+      link: `A ${n}-tile link road would give drivers another way`,
+      bypass: `A ${n}-tile road alongside it would share the traffic`,
+      around: `A ${n}-tile road around it would share the traffic`,
+    }[best.kind];
+    const mid = best.tiles[Math.floor(n / 2)];
+    add(
+      'traffic',
+      jam.tile.congestion >= 0.99 ? 'bad' : 'caution',
+      3,
+      `${street} is jammed with through traffic.`,
+      `${how} (about ${less}% less delay)${best.trees ? `, clearing ${best.trees} tree${best.trees > 1 ? 's' : ''}` : ''}.`,
+      mid,
+      jam.segment,
+      { plan: best.tiles.map(spot), planKind: best.kind },
+    );
+  }
 
   if (unlocked('clinic')) {
     const far = lived.filter((h) => (h.coverage.health || 0) < 0.1);
