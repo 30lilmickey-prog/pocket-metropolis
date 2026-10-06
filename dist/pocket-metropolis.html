@@ -821,6 +821,60 @@ button:focus-visible {
   border-radius: 14px;
   background: var(--meter-track);
 }
+.thoughts li {
+  border-left: 5px solid transparent;
+}
+.thoughts .sev-bad {
+  background: rgba(239, 100, 97, 0.16);
+  border-left-color: #ef6461;
+}
+.thoughts .sev-caution {
+  background: rgba(242, 178, 48, 0.17);
+  border-left-color: #f2b230;
+}
+.thoughts .sev-good {
+  background: rgba(92, 191, 136, 0.16);
+  border-left-color: #5cbf88;
+}
+.thoughts .focused {
+  box-shadow: 0 0 0 2px currentColor inset;
+}
+.thoughts .sev-bad.focused { color: #c94a47; }
+.thoughts .sev-caution.focused { color: #b9821a; }
+.thoughts .sev-good.focused { color: #3f9a68; }
+.thoughts .focused .th-text { color: var(--ink); }
+.sev-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.sev-bad .sev-label { color: #d14f4c; }
+.sev-caution .sev-label { color: #b9821a; }
+.sev-good .sev-label { color: #3f9a68; }
+.sev-legend {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 12px !important;
+  line-height: 1.6;
+}
+.sev-legend small {
+  font-weight: 700;
+}
+.sev-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin: 0 4px 0 2px;
+  border-radius: 50%;
+  vertical-align: -1px;
+}
+.sev-dot.bad { background: #ef6461; }
+.sev-dot.caution { background: #f2b230; }
+.sev-dot.good { background: #5cbf88; }
+.tier .badge.caution {
+  background: #f2b230;
+}
 .th-icon {
   display: grid;
   place-items: center;
@@ -832,8 +886,14 @@ button:focus-visible {
   font-weight: 800;
   font-size: 13px;
 }
-.thoughts .happy .th-icon {
-  background: #ff8fa3;
+.thoughts .sev-bad .th-icon {
+  background: #ef6461;
+}
+.thoughts .sev-caution .th-icon {
+  background: #f2b230;
+}
+.thoughts .sev-good .th-icon {
+  background: #5cbf88;
 }
 .th-text {
   display: grid;
@@ -1872,6 +1932,9 @@ const MILESTONES = [
   { id: 'metropolis', label: 'Metropolis', pop: 900, unlocks: [] },
 ];
 
+// Resident thoughts: red needs fixing, yellow is worth a look, green is going well.
+const SEVERITY_COLORS = { bad: '#ef6461', caution: '#f2b230', good: '#5cbf88' };
+
 // Toolbar: each group is one button; groups with several tools open a small tray.
 const TOOL_GROUPS = [
   { id: 'inspect', label: 'Inspect', tools: [{ id: 'inspect', label: 'Inspect', key: 'i' }] },
@@ -1926,7 +1989,7 @@ const CAR_COLORS = ['#ff9f8f', '#8fd0bd', '#b49ad1', '#ffd98f', '#9cc4ea', '#f7f
 const SHIRT_COLORS = ['#ff8f7e', '#7fc4ad', '#a98bd0', '#ffcf6e', '#86b5e6', '#f49ab8', '#ffffff'];
 const SKIN_TONES = ['#f6d5bd', '#e8b896', '#c98e6a', '#8d5a3f', '#f1c7a5'];
 
-return { TILE_W, TILE_H, DEFAULT_MAP_SIZE, SAVE_VERSION, DAY_LENGTH_SECONDS, SIM_STEP, PALETTE, BUILDING_VARIANTS, VARIANT_KEYS, STRUCTURES, WORKER_SHARE, ROAD_CAPACITY, SERVICES, COVERAGE_IDS, MILESTONES, TOOL_GROUPS, TOOLS, VIEWS, CAR_COLORS, SHIRT_COLORS, SKIN_TONES };
+return { TILE_W, TILE_H, DEFAULT_MAP_SIZE, SAVE_VERSION, DAY_LENGTH_SECONDS, SIM_STEP, PALETTE, BUILDING_VARIANTS, VARIANT_KEYS, STRUCTURES, WORKER_SHARE, ROAD_CAPACITY, SERVICES, COVERAGE_IDS, MILESTONES, SEVERITY_COLORS, TOOL_GROUPS, TOOLS, VIEWS, CAR_COLORS, SHIRT_COLORS, SKIN_TONES };
 })();
 
 // ---- state.js ----
@@ -4268,6 +4331,11 @@ const __mod_advisor = (() => {
 
 const { STRUCTURES } = __mod_config;
 const MAX_THOUGHTS = 5;
+const MAX_TILES = 240;
+// How urgent a thought is: 'bad' (red, fix soon), 'caution' (yellow, worth a look) or 'good' (green).
+const SEVERITY_RANK = { bad: 0, caution: 1, good: 2 };
+
+const spot = (t) => ({ x: t.x, y: t.y });
 
 function isHome(t) {
   return !!t.structure && STRUCTURES[t.structure.type].capacity > 0;
@@ -4289,8 +4357,19 @@ function hasWaterNear(city, tile, r = 2) {
 
 function computeThoughts(city, milestones) {
   const out = [];
-  const add = (id, kind, priority, text, hint, tile) =>
-    out.push({ id, kind, priority, text, hint, x: tile ? tile.x : null, y: tile ? tile.y : null });
+  // `tile` is where the camera goes; `area` lists every tile the thought is about, for highlighting.
+  const add = (id, severity, priority, text, hint, tile, area = tile ? [tile] : []) =>
+    out.push({
+      id,
+      kind: severity === 'good' ? 'happy' : 'wish',
+      severity,
+      priority,
+      text,
+      hint,
+      x: tile ? tile.x : null,
+      y: tile ? tile.y : null,
+      tiles: area.slice(0, MAX_TILES).map(spot),
+    });
   const unlocked = (tool) => !milestones || milestones.isUnlocked(tool);
 
   const homes = city.tiles.filter(isHome);
@@ -4298,41 +4377,43 @@ function computeThoughts(city, milestones) {
 
   const cutOff = homes.filter((h) => !city.accessRoad(h.x, h.y));
   if (cutOff.length) {
-    add('no-road', 'wish', 5, cutOff.length === 1 ? 'A home has no road. Nobody can get to work.' : `${cutOff.length} homes have no road. Nobody there can get to work.`, 'Connect them with a road', cutOff[0]);
+    add('no-road', 'bad', 5, cutOff.length === 1 ? 'A home has no road. Nobody can get to work.' : `${cutOff.length} homes have no road. Nobody there can get to work.`, 'Connect them with a road', cutOff[0], cutOff);
   }
 
   const labor = city.derived.labor;
   const workers = labor ? labor.employed + labor.unemployed : 0;
   if (workers >= 6 && labor.unemployed / workers > 0.15) {
     const jobless = lived.filter((h) => h.employment < 0.5);
-    add('jobs', 'wish', 4, `We need jobs! ${labor.unemployed} people are looking for work.`, 'Build shops or offices near homes', worstOf(jobless) || worstOf(lived));
+    const share = labor.unemployed / workers;
+    add('jobs', share > 0.3 ? 'bad' : 'caution', 4, `We need jobs! ${labor.unemployed} people are looking for work.`, 'Build shops or offices near homes', worstOf(jobless) || worstOf(lived), jobless);
   }
 
   if (unlocked('school')) {
     const far = lived.filter((h) => (h.coverage.school || 0) < 0.1);
-    if (far.length) add('school', 'wish', 3, 'Our kids have no school nearby.', 'Build a school', worstOf(far));
+    if (far.length) add('school', 'caution', 3, 'Our kids have no school nearby.', 'Build a school', worstOf(far), far);
   }
 
+  const jammed = city.tiles.filter((t) => t.roadMask && t.congestion >= 0.85);
   let jam = null;
-  for (const t of city.tiles) if (t.roadMask && t.congestion >= 0.85 && (!jam || t.congestion > jam.congestion)) jam = t;
-  if (jam) add('traffic', 'wish', 3, 'The roads are jammed at rush hour.', 'Add another route or put jobs closer to homes', jam);
+  for (const t of jammed) if (!jam || t.congestion > jam.congestion) jam = t;
+  if (jam) add('traffic', jam.congestion >= 0.99 ? 'bad' : 'caution', 3, 'The roads are jammed at rush hour.', 'Add another route or put jobs closer to homes', jam, jammed);
 
   if (unlocked('clinic')) {
     const far = lived.filter((h) => (h.coverage.health || 0) < 0.1);
-    if (far.length) add('health', 'wish', 2.5, "There's no clinic if someone gets sick.", 'Build a clinic', worstOf(far));
+    if (far.length) add('health', 'caution', 2.5, "There's no clinic if someone gets sick.", 'Build a clinic', worstOf(far), far);
   }
 
   const bare = lived.filter((h) => (h.factors.greenery || 0) < 0.02);
-  if (bare.length) add('green', 'wish', 2, "It's all concrete here. A few trees would be lovely.", 'Plant trees or a park', worstOf(bare));
+  if (bare.length) add('green', 'caution', 2, "It's all concrete here. A few trees would be lovely.", 'Plant trees or a park', worstOf(bare), bare);
 
   const quiet = city.tiles.filter(
     (t) => t.structure && STRUCTURES[t.structure.type].jobs >= 4 && t.workersFilled < STRUCTURES[t.structure.type].jobs * 0.5,
   );
-  if (quiet.length && homes.length) add('workers', 'wish', 2, 'Some workplaces are short of staff.', 'Build homes nearby, linked by road', quiet[0]);
+  if (quiet.length && homes.length) add('workers', 'caution', 2, 'Some workplaces are short of staff.', 'Build homes nearby, linked by road', quiet[0], quiet);
 
   if (unlocked('playground')) {
     const far = lived.filter((h) => (h.coverage.fun || 0) < 0.1);
-    if (far.length) add('fun', 'wish', 1.5, 'Nowhere to play around here!', 'Build a playground', worstOf(far));
+    if (far.length) add('fun', 'caution', 1.5, 'Nowhere to play around here!', 'Build a playground', worstOf(far), far);
   }
 
   // Always one happy note from the nicest occupied home.
@@ -4344,16 +4425,18 @@ function computeThoughts(city, milestones) {
       : (best.factors.greenery || 0) > 0.15
         ? 'So much green on our street. Love it here!'
         : 'This is a lovely little neighbourhood.';
-    add('happy', 'happy', 1, text, 'Your happiest home', best);
+    add('happy', 'good', 1, text, 'Your happiest home', best);
   }
 
-  // Keep the happy note even on a bad day: the top wishes first, then the happy one.
+  // Keep the happy note even on a bad day: red issues first, then yellow, then the happy one.
   const happy = out.filter((t) => t.kind === 'happy');
-  const wishes = out.filter((t) => t.kind !== 'happy').sort((a, b) => b.priority - a.priority);
+  const wishes = out
+    .filter((t) => t.kind !== 'happy')
+    .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] || b.priority - a.priority);
   return [...wishes.slice(0, MAX_THOUGHTS - happy.length), ...happy];
 }
 
-return { computeThoughts };
+return { SEVERITY_RANK, computeThoughts };
 })();
 
 // ---- time.js ----
@@ -4705,7 +4788,7 @@ return { lightingAt };
 const __mod_renderer = (() => {
 // Renderer: reads the city, agents and clock and draws the isometric diorama. It never changes city state.
 
-const { PALETTE, BUILDING_VARIANTS, STRUCTURES } = __mod_config;
+const { PALETTE, BUILDING_VARIANTS, STRUCTURES, SEVERITY_COLORS } = __mod_config;
 const { HALF_W, HALF_H, gridToWorld, worldToGrid } = __mod_iso;
 const { lightingAt } = __mod_lighting;
 const { lit, litA, rgba, mixHex } = __mod_color;
@@ -5042,6 +5125,7 @@ class Renderer {
       for (const t of tiles) this.drawGround(ctx, t, L);
     }
     if (view.overlay && view.overlay !== 'none') for (const t of tiles) this.drawOverlay(ctx, t, view.overlay);
+    if (view.issues?.length) this.drawIssues(ctx, view.issues);
     if (view.selected) this.drawSelected(ctx, view.selected);
     if (view.hover) this.drawHover(ctx, view.hover);
     if (view.plan) this.drawPlan(ctx, view.plan);
@@ -5075,6 +5159,7 @@ class Renderer {
     items.sort((a, b) => a.d - b.d);
     for (const it of items) this.drawItem(ctx, it, L);
     this.drawLifePins(ctx, L);
+    if (view.issues?.length) this.drawIssueMarkers(ctx, view.issues);
 
     this.drawParticles(ctx, dt, L);
     this.drawGlows(ctx, L);
@@ -5125,10 +5210,14 @@ class Renderer {
       ctx.beginPath();
       ctx.roundRect(x, y + 2, w, h, 12);
       ctx.fill();
+      const sev = SEVERITY_COLORS[th.severity] || SEVERITY_COLORS.caution;
       ctx.fillStyle = 'rgba(255,255,255,0.96)';
       ctx.beginPath();
       ctx.roundRect(x, y, w, h, 12);
       ctx.fill();
+      ctx.strokeStyle = sev;
+      ctx.lineWidth = 2;
+      ctx.stroke();
       // Tail pointing at the home.
       const tx = clamp(s.x, x + 14, x + w - 14);
       ctx.beginPath();
@@ -5136,7 +5225,7 @@ class Renderer {
       ctx.lineTo(tx, y + h + 6);
       ctx.lineTo(tx + 5, y + h - 1);
       ctx.fill();
-      ctx.fillStyle = th.kind === 'happy' ? '#ff8fa3' : '#ffb35c';
+      ctx.fillStyle = sev;
       ctx.beginPath();
       ctx.arc(x + 13, y + h / 2, 8, 0, Math.PI * 2);
       ctx.fill();
@@ -5835,6 +5924,57 @@ class Renderer {
     ctx.fillStyle = color;
     tilePoly(ctx, t.x, t.y);
     ctx.fill();
+  }
+
+  // The ground under each resident thought's area, tinted red, yellow or green. The one being
+  // looked at pulses and is drawn on top.
+  drawIssues(ctx, issues) {
+    const z = this.camera.zoom;
+    const pulse = this.reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(this.time * 4);
+    const ordered = [...issues].sort((a, b) => (a.focused ? 1 : 0) - (b.focused ? 1 : 0));
+    for (const it of ordered) {
+      const color = SEVERITY_COLORS[it.severity] || SEVERITY_COLORS.caution;
+      const fade = it.focused ? 1 : 0.6;
+      ctx.fillStyle = rgba(color, ((it.focused ? 0.32 + 0.22 * pulse : 0.24) * fade).toFixed(3));
+      ctx.strokeStyle = rgba(color, (0.95 * fade).toFixed(3));
+      ctx.lineWidth = (it.focused ? 2.2 : 1.4) / z;
+      for (const c of it.tiles) {
+        tilePoly(ctx, c.x, c.y, 0.04);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Buildings hide the ground, so the issue being looked at also gets a bobbing marker on each tile.
+  drawIssueMarkers(ctx, issues) {
+    const it = issues.find((i) => i.focused);
+    if (!it) return;
+    const color = SEVERITY_COLORS[it.severity] || SEVERITY_COLORS.caution;
+    const z = Math.max(0.7, 1 / Math.sqrt(this.camera.zoom));
+    const icon = it.severity === 'good' ? '♥' : '!';
+    ctx.save();
+    ctx.font = `800 ${(9 * z).toFixed(1)}px system-ui, -apple-system, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    it.tiles.slice(0, 80).forEach((c, i) => {
+      const t = this.city.getTile(c.x, c.y);
+      if (!t) return;
+      const f = t.structure ? this.footprint(t) : null;
+      const bob = this.reduceMotion ? 0 : Math.sin(this.time * 3 + i * 0.7) * 2;
+      const p = gridToWorld(c.x + 0.5, c.y + 0.5, (f?.h || 4) + 12 + bob);
+      const r = 6 * z;
+      ctx.fillStyle = color;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5 * z;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(icon, p.x, p.y + 0.5 * z);
+    });
+    ctx.restore();
   }
 
   // Tiles a drag stroke will change: tinted where the tool can go, faint red where it can't.
@@ -8263,6 +8403,8 @@ const __mod_cityUI = (() => {
 // are wishing for. Opened from the stats bubble. Reads state only; actions go through handlers.
 
 const { MILESTONES, STRUCTURES, TOOLS } = __mod_config;
+const SEVERITY_LABEL = { bad: 'Needs fixing', caution: 'Worth a look', good: 'Going well' };
+
 const labelOf = (id) => STRUCTURES[id]?.label || TOOLS.find((t) => t.id === id)?.label || id;
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const CLOSE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
@@ -8278,6 +8420,8 @@ class CityPanel {
     this.tierEl = document.getElementById('tier-name');
     this.meterEl = document.getElementById('tier-meter');
     this.open = false;
+    this.focusedId = null; // the thought being looked at: its tiles pulse on the map
+    this.focusUntil = 0; // with the panel closed, the highlight fades after this time (ms)
     this._key = '';
     this.btn.addEventListener('click', () => this.toggle());
     this.btn.addEventListener('keydown', (e) => {
@@ -8292,9 +8436,27 @@ class CityPanel {
       if (b.dataset.close != null) this.toggle(false);
       else if (b.dataset.show != null) {
         const th = this.thoughts[Number(b.dataset.show)];
-        if (th) this.onShow(th);
+        if (th) {
+          this.focus(th.id);
+          this.onShow(th);
+        }
       }
     });
+  }
+
+  focus(id) {
+    this.focusedId = id;
+    this.focusUntil = performance.now() + 10000;
+    this._key = '';
+  }
+
+  // Issues to tint on the map: all of them while the panel is open, else the one just shown, briefly.
+  issues() {
+    const list = this.thoughts || [];
+    const focused = this.focusedId && list.find((t) => t.id === this.focusedId);
+    if (this.open) return list.filter((t) => t.tiles?.length).map((t) => ({ ...t, focused: t === focused }));
+    if (focused && performance.now() < this.focusUntil) return [{ ...focused, focused: true }];
+    return [];
   }
 
   toggle(force) {
@@ -8314,10 +8476,11 @@ class CityPanel {
     this.tierEl.textContent = p.current.label;
     this.meterEl.style.width = `${Math.round((p.next ? p.fraction : 1) * 100)}%`;
     this.badge.hidden = !wishes || this.open;
+    this.badge.classList.toggle('caution', !this.thoughts.some((t) => t.severity === 'bad'));
     this.btn.setAttribute('aria-label', `${p.current.label}. ${wishes ? `${wishes} resident wish${wishes > 1 ? 'es' : ''}. ` : ''}Open city panel`);
     if (!this.open) return;
     // Rebuild only when the content changes shape, so buttons stay put under a finger.
-    const key = JSON.stringify([p.tier, this.thoughts.map((t) => [t.id, t.x, t.y, t.text])]);
+    const key = JSON.stringify([p.tier, this.focusedId, this.thoughts.map((t) => [t.id, t.x, t.y, t.text, t.severity])]);
     if (key !== this._key) {
       this._key = key;
       this.panel.innerHTML = this.html(city, m, p);
@@ -8340,8 +8503,8 @@ class CityPanel {
       ? `<ul class="thoughts">${this.thoughts
           .map(
             (t, i) =>
-              `<li class="${t.kind}"><span class="th-icon" aria-hidden="true">${t.kind === 'happy' ? '♥' : '!'}</span>` +
-              `<span class="th-text"><span>${esc(t.text)}</span><small>${esc(t.hint)}</small></span>` +
+              `<li class="sev-${t.severity}${t.id === this.focusedId ? ' focused' : ''}"><span class="th-icon" aria-hidden="true">${t.kind === 'happy' ? '♥' : '!'}</span>` +
+              `<span class="th-text"><span class="sev-label">${SEVERITY_LABEL[t.severity]}</span><span>${esc(t.text)}</span><small>${esc(t.hint)}</small></span>` +
               (t.x != null ? `<button type="button" class="ghost-btn small" data-show="${i}">Show me</button>` : '') +
               '</li>'
           )
@@ -8356,7 +8519,11 @@ class CityPanel {
       `<button type="button" class="insp-close" data-close aria-label="Close city panel">${CLOSE}</button></header>` +
       next +
       ladder +
-      `<h3>What residents are saying</h3>${thoughts}`
+      `<h3>What residents are saying</h3>` +
+      (this.thoughts.length
+        ? '<p class="sev-legend"><span class="sev-dot bad"></span>Needs fixing <span class="sev-dot caution"></span>Worth a look <span class="sev-dot good"></span>Going well<br><small>The areas are tinted on the map. Tap Show me to fly there.</small></p>'
+        : '') +
+      thoughts
     );
   }
 }
@@ -8919,8 +9086,11 @@ function start(hotData = {}) {
     camera.tzoom = Math.max(camera.tzoom, 1.2);
     camera.clampTarget();
     renderer.ring(x, y, '#ffffff');
-    selected = { x, y };
-    ui.inspect(city, selected);
+    // On phones the inspector would cover the highlighted area, so only open it on wider screens.
+    if (window.innerWidth >= 560) {
+      selected = { x, y };
+      ui.inspect(city, selected);
+    }
   }
   ui.onOpenMore = () => {
     cityPanel.toggle(false);
@@ -9107,7 +9277,8 @@ function start(hotData = {}) {
       const th = renderer.thoughtAt(sx, sy);
       if (th) {
         audio.play('click');
-        if (!cityPanel.open) cityPanel.toggle(true);
+        cityPanel.focus(th.id);
+        if (!cityPanel.open && window.innerWidth >= 560) cityPanel.toggle(true);
         return focusTile(th.x, th.y);
       }
       const t = tileAt(sx, sy);
@@ -9190,14 +9361,15 @@ function start(hotData = {}) {
 
   function viewState() {
     const plan = stroke ? { tool: stroke.tool, tiles: stroke.tiles.map((c) => ({ ...c, valid: city.canApply(stroke.tool, c.x, c.y) })) } : null;
-    if (!hover) return { overlay, selected, plan };
+    const issues = cityPanel.issues();
+    if (!hover) return { overlay, selected, plan, issues };
     const t = city.getTile(hover.x, hover.y);
     const valid = tool === 'inspect' || city.canApply(tool, hover.x, hover.y);
     const ghost =
       valid && STRUCTURES[tool] && !t.structure && t.terrain === 'grass'
         ? { x: hover.x, y: hover.y, structure: { type: tool, variant: 'blush', floors: tool === 'office' ? 4 : 5, shape: 0, residents: 0 } }
         : null;
-    return { hover: { ...hover, tool, valid }, ghost, overlay, selected, plan };
+    return { hover: { ...hover, tool, valid }, ghost, overlay, selected, plan, issues };
   }
 
   let last = performance.now();

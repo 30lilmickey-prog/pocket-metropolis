@@ -8,7 +8,7 @@ A relaxing isometric tiny-city builder. You plan the city; residents decide for 
 - Homes (house, tower), workplaces (shop, office), services (school, clinic), recreation (playground, sports field), nature (tree, park, water) and roads
 - Residents move into the most desirable homes. Desirability comes from parks and trees, water views, road access, school and clinic coverage, playgrounds and sport, jobs, and traffic
 - **Milestones:** your town grows from Hamlet to Village (60 residents), Town (200), City (450) and Metropolis (900). Each title unlocks buildings for good, with a small celebration. Tap the stats bubble to see your progress
-- **Resident thoughts:** residents say what they wish for ("Our kids have no school nearby") in bubbles over their homes and in the City panel, with a **Show me** button that flies to the spot
+- **Resident thoughts:** residents say what they wish for ("Our kids have no school nearby") in bubbles over their homes and in the City panel, with a **Show me** button that flies to the spot. Issues are colour-coded: **red** needs fixing, **yellow** is worth a look, **green** is going well. While the City panel is open the affected tiles are tinted on the map in the same colour, and the issue you're looking at pulses with a marker over each tile
 - Placing something shows how much nearby homes gained or lost (+6%), and a new home shows how appealing its lot is
 - A labor market matches workers to the nearest jobs they can reach by road. Commutes load the roads they use, and cars follow those routes at morning and evening rush hour
 - Inspect any tile to see its residents or jobs and a breakdown of its desirability

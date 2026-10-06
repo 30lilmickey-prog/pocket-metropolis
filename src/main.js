@@ -184,8 +184,11 @@ function start(hotData = {}) {
     camera.tzoom = Math.max(camera.tzoom, 1.2);
     camera.clampTarget();
     renderer.ring(x, y, '#ffffff');
-    selected = { x, y };
-    ui.inspect(city, selected);
+    // On phones the inspector would cover the highlighted area, so only open it on wider screens.
+    if (window.innerWidth >= 560) {
+      selected = { x, y };
+      ui.inspect(city, selected);
+    }
   }
   ui.onOpenMore = () => {
     cityPanel.toggle(false);
@@ -372,7 +375,8 @@ function start(hotData = {}) {
       const th = renderer.thoughtAt(sx, sy);
       if (th) {
         audio.play('click');
-        if (!cityPanel.open) cityPanel.toggle(true);
+        cityPanel.focus(th.id);
+        if (!cityPanel.open && window.innerWidth >= 560) cityPanel.toggle(true);
         return focusTile(th.x, th.y);
       }
       const t = tileAt(sx, sy);
@@ -455,14 +459,15 @@ function start(hotData = {}) {
 
   function viewState() {
     const plan = stroke ? { tool: stroke.tool, tiles: stroke.tiles.map((c) => ({ ...c, valid: city.canApply(stroke.tool, c.x, c.y) })) } : null;
-    if (!hover) return { overlay, selected, plan };
+    const issues = cityPanel.issues();
+    if (!hover) return { overlay, selected, plan, issues };
     const t = city.getTile(hover.x, hover.y);
     const valid = tool === 'inspect' || city.canApply(tool, hover.x, hover.y);
     const ghost =
       valid && STRUCTURES[tool] && !t.structure && t.terrain === 'grass'
         ? { x: hover.x, y: hover.y, structure: { type: tool, variant: 'blush', floors: tool === 'office' ? 4 : 5, shape: 0, residents: 0 } }
         : null;
-    return { hover: { ...hover, tool, valid }, ghost, overlay, selected, plan };
+    return { hover: { ...hover, tool, valid }, ghost, overlay, selected, plan, issues };
   }
 
   let last = performance.now();

@@ -82,6 +82,9 @@ export const MILESTONES = [
   { id: 'metropolis', label: 'Metropolis', pop: 900, unlocks: [] },
 ];
 
+// Resident thoughts: red needs fixing, yellow is worth a look, green is going well.
+export const SEVERITY_COLORS = { bad: '#ef6461', caution: '#f2b230', good: '#5cbf88' };
+
 // Toolbar: each group is one button; groups with several tools open a small tray.
 export const TOOL_GROUPS = [
   { id: 'inspect', label: 'Inspect', tools: [{ id: 'inspect', label: 'Inspect', key: 'i' }] },

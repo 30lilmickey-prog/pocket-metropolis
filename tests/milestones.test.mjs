@@ -97,6 +97,15 @@ test('residents wish for roads, jobs and services, with a happy note last', () =
   assert.equal(ids[ids.length - 1], 'happy');
   assert.ok(thoughts.length <= 5);
   for (const t of thoughts) assert.ok(t.text && t.hint);
+  // Colours: red for problems, yellow for nice-to-haves, green for the happy note; red sorts first.
+  assert.equal(thoughts[0].severity, 'bad');
+  assert.equal(thoughts.find((t) => t.id === 'school').severity, 'caution');
+  assert.equal(thoughts[thoughts.length - 1].severity, 'good');
+  const ranks = { bad: 0, caution: 1, good: 2 };
+  for (let i = 1; i < thoughts.length; i++) assert.ok(ranks[thoughts[i - 1].severity] <= ranks[thoughts[i].severity]);
+  // Each thought lists the tiles it is about, so the map can tint them.
+  assert.deepEqual(thoughts[0].tiles, [{ x: 10, y: 2 }]);
+  assert.equal(thoughts.find((t) => t.id === 'school').tiles.length, 3, 'all three lived-in homes are out of school range');
 });
 
 test('no thoughts in an empty town', () => {

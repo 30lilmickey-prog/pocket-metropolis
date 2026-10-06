@@ -1,6 +1,6 @@
 // Renderer: reads the city, agents and clock and draws the isometric diorama. It never changes city state.
 
-import { PALETTE, BUILDING_VARIANTS, STRUCTURES } from './config.js';
+import { PALETTE, BUILDING_VARIANTS, STRUCTURES, SEVERITY_COLORS } from './config.js';
 import { HALF_W, HALF_H, gridToWorld, worldToGrid } from './iso.js';
 import { lightingAt } from './lighting.js';
 import { lit, litA, rgba, mixHex } from './color.js';
@@ -338,6 +338,7 @@ export class Renderer {
       for (const t of tiles) this.drawGround(ctx, t, L);
     }
     if (view.overlay && view.overlay !== 'none') for (const t of tiles) this.drawOverlay(ctx, t, view.overlay);
+    if (view.issues?.length) this.drawIssues(ctx, view.issues);
     if (view.selected) this.drawSelected(ctx, view.selected);
     if (view.hover) this.drawHover(ctx, view.hover);
     if (view.plan) this.drawPlan(ctx, view.plan);
@@ -371,6 +372,7 @@ export class Renderer {
     items.sort((a, b) => a.d - b.d);
     for (const it of items) this.drawItem(ctx, it, L);
     this.drawLifePins(ctx, L);
+    if (view.issues?.length) this.drawIssueMarkers(ctx, view.issues);
 
     this.drawParticles(ctx, dt, L);
     this.drawGlows(ctx, L);
@@ -421,10 +423,14 @@ export class Renderer {
       ctx.beginPath();
       ctx.roundRect(x, y + 2, w, h, 12);
       ctx.fill();
+      const sev = SEVERITY_COLORS[th.severity] || SEVERITY_COLORS.caution;
       ctx.fillStyle = 'rgba(255,255,255,0.96)';
       ctx.beginPath();
       ctx.roundRect(x, y, w, h, 12);
       ctx.fill();
+      ctx.strokeStyle = sev;
+      ctx.lineWidth = 2;
+      ctx.stroke();
       // Tail pointing at the home.
       const tx = clamp(s.x, x + 14, x + w - 14);
       ctx.beginPath();
@@ -432,7 +438,7 @@ export class Renderer {
       ctx.lineTo(tx, y + h + 6);
       ctx.lineTo(tx + 5, y + h - 1);
       ctx.fill();
-      ctx.fillStyle = th.kind === 'happy' ? '#ff8fa3' : '#ffb35c';
+      ctx.fillStyle = sev;
       ctx.beginPath();
       ctx.arc(x + 13, y + h / 2, 8, 0, Math.PI * 2);
       ctx.fill();
@@ -1131,6 +1137,57 @@ export class Renderer {
     ctx.fillStyle = color;
     tilePoly(ctx, t.x, t.y);
     ctx.fill();
+  }
+
+  // The ground under each resident thought's area, tinted red, yellow or green. The one being
+  // looked at pulses and is drawn on top.
+  drawIssues(ctx, issues) {
+    const z = this.camera.zoom;
+    const pulse = this.reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(this.time * 4);
+    const ordered = [...issues].sort((a, b) => (a.focused ? 1 : 0) - (b.focused ? 1 : 0));
+    for (const it of ordered) {
+      const color = SEVERITY_COLORS[it.severity] || SEVERITY_COLORS.caution;
+      const fade = it.focused ? 1 : 0.6;
+      ctx.fillStyle = rgba(color, ((it.focused ? 0.32 + 0.22 * pulse : 0.24) * fade).toFixed(3));
+      ctx.strokeStyle = rgba(color, (0.95 * fade).toFixed(3));
+      ctx.lineWidth = (it.focused ? 2.2 : 1.4) / z;
+      for (const c of it.tiles) {
+        tilePoly(ctx, c.x, c.y, 0.04);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Buildings hide the ground, so the issue being looked at also gets a bobbing marker on each tile.
+  drawIssueMarkers(ctx, issues) {
+    const it = issues.find((i) => i.focused);
+    if (!it) return;
+    const color = SEVERITY_COLORS[it.severity] || SEVERITY_COLORS.caution;
+    const z = Math.max(0.7, 1 / Math.sqrt(this.camera.zoom));
+    const icon = it.severity === 'good' ? '♥' : '!';
+    ctx.save();
+    ctx.font = `800 ${(9 * z).toFixed(1)}px system-ui, -apple-system, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    it.tiles.slice(0, 80).forEach((c, i) => {
+      const t = this.city.getTile(c.x, c.y);
+      if (!t) return;
+      const f = t.structure ? this.footprint(t) : null;
+      const bob = this.reduceMotion ? 0 : Math.sin(this.time * 3 + i * 0.7) * 2;
+      const p = gridToWorld(c.x + 0.5, c.y + 0.5, (f?.h || 4) + 12 + bob);
+      const r = 6 * z;
+      ctx.fillStyle = color;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5 * z;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(icon, p.x, p.y + 0.5 * z);
+    });
+    ctx.restore();
   }
 
   // Tiles a drag stroke will change: tinted where the tool can go, faint red where it can't.

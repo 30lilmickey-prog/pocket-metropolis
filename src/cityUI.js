@@ -3,6 +3,8 @@
 
 import { MILESTONES, STRUCTURES, TOOLS } from './config.js';
 
+const SEVERITY_LABEL = { bad: 'Needs fixing', caution: 'Worth a look', good: 'Going well' };
+
 const labelOf = (id) => STRUCTURES[id]?.label || TOOLS.find((t) => t.id === id)?.label || id;
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const CLOSE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
@@ -18,6 +20,8 @@ export class CityPanel {
     this.tierEl = document.getElementById('tier-name');
     this.meterEl = document.getElementById('tier-meter');
     this.open = false;
+    this.focusedId = null; // the thought being looked at: its tiles pulse on the map
+    this.focusUntil = 0; // with the panel closed, the highlight fades after this time (ms)
     this._key = '';
     this.btn.addEventListener('click', () => this.toggle());
     this.btn.addEventListener('keydown', (e) => {
@@ -32,9 +36,27 @@ export class CityPanel {
       if (b.dataset.close != null) this.toggle(false);
       else if (b.dataset.show != null) {
         const th = this.thoughts[Number(b.dataset.show)];
-        if (th) this.onShow(th);
+        if (th) {
+          this.focus(th.id);
+          this.onShow(th);
+        }
       }
     });
+  }
+
+  focus(id) {
+    this.focusedId = id;
+    this.focusUntil = performance.now() + 10000;
+    this._key = '';
+  }
+
+  // Issues to tint on the map: all of them while the panel is open, else the one just shown, briefly.
+  issues() {
+    const list = this.thoughts || [];
+    const focused = this.focusedId && list.find((t) => t.id === this.focusedId);
+    if (this.open) return list.filter((t) => t.tiles?.length).map((t) => ({ ...t, focused: t === focused }));
+    if (focused && performance.now() < this.focusUntil) return [{ ...focused, focused: true }];
+    return [];
   }
 
   toggle(force) {
@@ -54,10 +76,11 @@ export class CityPanel {
     this.tierEl.textContent = p.current.label;
     this.meterEl.style.width = `${Math.round((p.next ? p.fraction : 1) * 100)}%`;
     this.badge.hidden = !wishes || this.open;
+    this.badge.classList.toggle('caution', !this.thoughts.some((t) => t.severity === 'bad'));
     this.btn.setAttribute('aria-label', `${p.current.label}. ${wishes ? `${wishes} resident wish${wishes > 1 ? 'es' : ''}. ` : ''}Open city panel`);
     if (!this.open) return;
     // Rebuild only when the content changes shape, so buttons stay put under a finger.
-    const key = JSON.stringify([p.tier, this.thoughts.map((t) => [t.id, t.x, t.y, t.text])]);
+    const key = JSON.stringify([p.tier, this.focusedId, this.thoughts.map((t) => [t.id, t.x, t.y, t.text, t.severity])]);
     if (key !== this._key) {
       this._key = key;
       this.panel.innerHTML = this.html(city, m, p);
@@ -80,8 +103,8 @@ export class CityPanel {
       ? `<ul class="thoughts">${this.thoughts
           .map(
             (t, i) =>
-              `<li class="${t.kind}"><span class="th-icon" aria-hidden="true">${t.kind === 'happy' ? '♥' : '!'}</span>` +
-              `<span class="th-text"><span>${esc(t.text)}</span><small>${esc(t.hint)}</small></span>` +
+              `<li class="sev-${t.severity}${t.id === this.focusedId ? ' focused' : ''}"><span class="th-icon" aria-hidden="true">${t.kind === 'happy' ? '♥' : '!'}</span>` +
+              `<span class="th-text"><span class="sev-label">${SEVERITY_LABEL[t.severity]}</span><span>${esc(t.text)}</span><small>${esc(t.hint)}</small></span>` +
               (t.x != null ? `<button type="button" class="ghost-btn small" data-show="${i}">Show me</button>` : '') +
               '</li>'
           )
@@ -96,7 +119,11 @@ export class CityPanel {
       `<button type="button" class="insp-close" data-close aria-label="Close city panel">${CLOSE}</button></header>` +
       next +
       ladder +
-      `<h3>What residents are saying</h3>${thoughts}`
+      `<h3>What residents are saying</h3>` +
+      (this.thoughts.length
+        ? '<p class="sev-legend"><span class="sev-dot bad"></span>Needs fixing <span class="sev-dot caution"></span>Worth a look <span class="sev-dot good"></span>Going well<br><small>The areas are tinted on the map. Tap Show me to fly there.</small></p>'
+        : '') +
+      thoughts
     );
   }
 }
