@@ -11,6 +11,10 @@ A relaxing isometric tiny-city builder. You plan the city; residents decide for 
 - Inspect any tile to see its residents or jobs and a breakdown of its desirability
 - Map views for desirability, traffic and services; pause and 1×–3× speed
 - A slow day/night cycle with lit windows, street lights and headlights
+- Seasons (two in-game days each) and weather: rain with umbrellas and ripples, winter snow, morning fog
+- Homes grow as people move in, towers and offices add floors as they fill, and roofs vary from house to house
+- Gentle synthesised sound effects and ambience (birds by day, crickets at night, rain), with a mute switch
+- Drag to build lines of road or paint trees, water and buildings; undo and redo every edit
 - Autosave with versioned saves; older 12×12 towns open centred on the larger map
 - **Life Story:** create a character who is born in your city and live their life through text events (see below)
 
@@ -42,9 +46,12 @@ Events are plain data in `src/lifeEvents.js`; see the comment at the top of that
 | Action | Desktop | Touch |
 | --- | --- | --- |
 | Build selected item | Click | Tap |
+| Build many at once | Drag (roads draw as an L) | Drag with one finger |
+| Undo / redo | Ctrl+Z / Ctrl+Shift+Z, or the buttons by the toolbar | Buttons by the toolbar |
+| Sound on / off | M, or the speaker button | ☰ City controls |
 | Bulldoze | Right-click (or Bulldoze tool, B) | Long-press (or Bulldoze tool) |
 | Inspect a tile | Inspect tool (I), then click | Inspect tool, then tap |
-| Pan | Drag | Drag |
+| Pan | Right-drag or middle-drag (or drag with Inspect) | Two fingers (or one finger with Inspect) |
 | Zoom | Mouse wheel | Pinch |
 | Pick a tool | 1 House · 2 Tower · 3 Shop · 4 Office · 5 School · 6 Clinic · 7 Tree · 8 Park · 9 Road · 0 Water | Toolbar; buttons with a dot open more choices |
 | Pause / change speed | Space, or the speed button | ☰ City controls |
@@ -64,6 +71,9 @@ Each system lives in its own module under `src/` and talks to the others only th
 | Renderer | `renderer.js`, `lighting.js`, `color.js`, `iso.js` | Reads state and draws the diorama. The ground layer is cached offscreen and redrawn only when the map changes; buildings and agents are depth-sorted and drawn each frame for on-screen tiles only. Also draws the data overlays. |
 | Input/Camera | `input.js`, `camera.js` | Pointer, wheel and pinch gestures; smooth pan and zoom; fitting to the screen. |
 | Persistence | `persistence.js` | Versioned localStorage saves with a migration table; autosave. |
+| Weather | `weather.js` | Seasons from the day count; weather spells with seasonal odds; smoothed rain, snow, fog and snow cover for the renderer and agents. |
+| Audio | `audio.js` | Synthesised effects (ZzFX-based) and ambience through one master volume. |
+| History | `history.js` | Undo and redo of tile edits, plus the L-shaped road and brush stroke paths. |
 | Glue | `main.js`, `ui.js`, `generator.js` | Wires systems together, the toolbar and stats bubble, Random Town. |
 
 Derived data (labor market, commute routes, congestion, coverage) lives on tiles and in `city.derived`, is recomputed about once a second, and is never saved.
@@ -84,5 +94,7 @@ The tests cover the labor market, road reachability, service coverage, save migr
 - **New saved data**: store it under `city.systems.<name>`, bump `SAVE_VERSION` and add a `MIGRATIONS[n]` step.
 
 ## Credits
+
+Sound effects use a sample generator adapted from [ZzFX](https://github.com/KilledByAPixel/ZzFX) by Frank Force (MIT).
 
 The labor market and traffic model are adapted from [Cimulity](https://github.com/zeikar/cimulity) by zeikar (MIT): residents fill the nearest reachable jobs over the road graph, and commutes load the roads along their routes.

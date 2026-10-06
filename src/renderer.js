@@ -3,7 +3,7 @@
 import { PALETTE, BUILDING_VARIANTS, STRUCTURES } from './config.js';
 import { HALF_W, HALF_H, gridToWorld, worldToGrid } from './iso.js';
 import { lightingAt } from './lighting.js';
-import { lit, litA, rgba } from './color.js';
+import { lit, litA, rgba, mixHex } from './color.js';
 import { clamp, hash2 } from './utils.js';
 
 const SLAB_DEPTH = 18;
@@ -74,6 +74,39 @@ function convexHull(points) {
   return lower.slice(0, -1).concat(upper.slice(0, -1));
 }
 
+// Seasonal colours. Autumn leaves pick a warm colour per tree; winter frosts everything over.
+const AUTUMN_LEAVES = [
+  ['#e8935a', '#f2a66a', '#f8c28a'],
+  ['#d9725a', '#e88a6c', '#f2aa8c'],
+  ['#e0b04f', '#eec468', '#f6d88e'],
+  ['#c98a5a', '#dca06e', '#ecbc8e'],
+];
+const SNOW = '#f3f6f9';
+
+// Visible growth: houses gain a stage as they fill; towers and offices add floors as people arrive.
+// Pure function of the tile, so shadows, pins and drawing all agree.
+export function growthOf(t, ghost = false) {
+  const s = t.structure;
+  if (!s) return null;
+  if (s.type === 'house') {
+    if (ghost) return { stage: 1 };
+    return { stage: s.residents === 0 ? 0 : s.residents < 3 ? 1 : 2 };
+  }
+  if (s.type === 'tower') {
+    const total = s.floors || 5;
+    if (ghost) return { floors: total };
+    const occ = s.residents / STRUCTURES.tower.capacity;
+    return { floors: Math.max(2, Math.min(total, Math.ceil(total * (0.3 + 0.7 * occ)))) };
+  }
+  if (s.type === 'office') {
+    const total = s.floors || 4;
+    if (ghost) return { floors: total };
+    const fill = (t.workersFilled || 0) / STRUCTURES.office.jobs;
+    return { floors: Math.max(2, Math.min(total, Math.ceil(total * (0.35 + 0.65 * fill)))) };
+  }
+  return null;
+}
+
 // A soft round shadow drawn once and stamped under every building.
 let contactCanvas = null;
 function contactSprite() {
@@ -121,6 +154,12 @@ export class Renderer {
     this.glows = [];
     this.reduceMotion = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     this.ground = { canvas: null, key: '' };
+    this.growth = new Map();
+    this.onGrow = null;
+    this.season = 'spring';
+    this.snowCover = 0;
+    this.drops = [];
+    this._weatherL = { key: '', L: null };
     city.on((ev) => this.onCityEvent(ev));
   }
 
@@ -139,20 +178,29 @@ export class Renderer {
     switch (ev.type) {
       case 'placed': {
         const t = ev.structure.type;
-        if (t === 'road' || t === 'park') this.ring(ev.x, ev.y, '#ffffff');
-        if (t !== 'road') this.bounces.set(key, { start: this.time, delay: 0, kind: 'pop' });
+        const d = ev.delay || 0;
+        if (t === 'road' || t === 'park') this.ring(ev.x, ev.y, '#ffffff', d);
+        if (t !== 'road') this.bounces.set(key, { start: this.time, delay: d, kind: 'pop' });
         break;
       }
       case 'removed':
         this.bounces.delete(key);
-        if (ev.wasWater) this.ring(ev.x, ev.y, '#ffffff');
-        else this.dust(ev.x, ev.y, ev.previous?.type === 'tower' ? 16 : 10);
+        if (ev.wasWater) this.ring(ev.x, ev.y, '#ffffff', ev.delay || 0);
+        else this.dust(ev.x, ev.y, ev.previous?.type === 'tower' ? 16 : 10, ev.delay || 0);
         break;
       case 'watered':
         this.bounces.delete(key);
-        if (ev.previous) this.dust(ev.x, ev.y, 8);
-        this.ring(ev.x, ev.y, PALETTE.water);
-        this.ring(ev.x, ev.y, '#ffffff', 0.15);
+        if (ev.previous) this.dust(ev.x, ev.y, 8, ev.delay || 0);
+        this.ring(ev.x, ev.y, PALETTE.water, ev.delay || 0);
+        this.ring(ev.x, ev.y, '#ffffff', (ev.delay || 0) + 0.15);
+        break;
+      case 'restored':
+        ev.tiles.forEach((c, i) => {
+          const t = this.city.getTile(c.x, c.y);
+          const d = Math.min(i * 0.02, 0.6);
+          if (t?.structure && t.structure.type !== 'road') this.bounces.set(`${c.x},${c.y}`, { start: this.time, delay: d, kind: 'pop' });
+          else if (i < 120) this.ring(c.x, c.y, '#ffffff', d);
+        });
         break;
       case 'movedIn':
         if (this.particles.filter((p) => p.kind === 'heart').length < 10) this.heart(ev.x, ev.y);
@@ -175,11 +223,31 @@ export class Renderer {
     }
   }
 
+  // Notice when a building reaches a new stage and celebrate it with a stretch and sparkles.
+  trackGrowth(t) {
+    const g = growthOf(t);
+    if (!g) return;
+    const key = `${t.x},${t.y}`;
+    const sig = `${t.structure.id}:${g.stage ?? g.floors}`;
+    const prev = this.growth.get(key);
+    this.growth.set(key, sig);
+    if (!prev || prev.split(':')[0] !== sig.split(':')[0]) return;
+    if (Number(sig.split(':')[1]) > Number(prev.split(':')[1]) && !this.bounces.has(key)) {
+      this.bounces.set(key, { start: this.time, delay: 0, kind: 'grow' });
+      const f = this.footprint(t);
+      const top = gridToWorld(t.x + 0.5, t.y + 0.5, (f?.h || 20) + 4);
+      for (let i = 0; i < 6; i++) {
+        this.particles.push({ kind: 'spark', x: top.x + (Math.random() - 0.5) * 18, y: top.y + (Math.random() - 0.5) * 8, age: -i * 0.05, life: 0.8 });
+      }
+      this.onGrow?.(t);
+    }
+  }
+
   nudge(x, y) {
     this.bounces.set(`${x},${y}`, { start: this.time, delay: 0, kind: 'wobble' });
   }
 
-  dust(x, y, count) {
+  dust(x, y, count, delay = 0) {
     const c = gridToWorld(x + 0.5, y + 0.5);
     for (let i = 0; i < count; i++) {
       const a = (i / count) * Math.PI * 2 + Math.random() * 0.5;
@@ -191,7 +259,7 @@ export class Renderer {
         vx: Math.cos(a) * sp,
         vy: Math.sin(a) * sp * 0.5 - 12,
         r: 3 + Math.random() * 3.5,
-        age: 0,
+        age: -delay,
         life: 0.7 + Math.random() * 0.35,
       });
     }
@@ -222,6 +290,10 @@ export class Renderer {
       const s = Math.sin(t * 28) * 0.06 * (1 - t);
       return { sx: 1 + s, sy: 1 - s, hidden: false };
     }
+    if (b.kind === 'grow') {
+      const s = Math.sin(t * Math.PI) * 0.12 * (1 - t * 0.5);
+      return { sx: 1 - s * 0.4, sy: 1 + s, hidden: false };
+    }
     // Squash and stretch: grow from flat, overshoot tall and thin, settle.
     const sy = 1 - Math.exp(-5 * t) * Math.cos(9 * t);
     const sx = clamp(1 + (1 - sy) * 0.5, 0.86, 1.3);
@@ -233,7 +305,11 @@ export class Renderer {
   render(dt, view) {
     this.time += dt;
     const { ctx, camera: cam, city } = this;
-    const L = lightingAt(city.clock);
+    const w = city.derived.weather || { rain: 0, snow: 0, fog: 0, cloud: 0, snowCover: 0, season: 'spring' };
+    this.weather = w;
+    this.season = w.season || 'spring';
+    this.snowCover = Math.round((w.snowCover || 0) * 10) / 10;
+    const L = this.weatherLight(lightingAt(city.clock), w);
     this.L = L;
     this.glows.length = 0;
 
@@ -261,6 +337,7 @@ export class Renderer {
     if (view.overlay && view.overlay !== 'none') for (const t of tiles) this.drawOverlay(ctx, t, view.overlay);
     if (view.selected) this.drawSelected(ctx, view.selected);
     if (view.hover) this.drawHover(ctx, view.hover);
+    if (view.plan) this.drawPlan(ctx, view.plan);
     for (const t of tiles) if (t.structure) this.drawShadow(ctx, t, L);
 
     // Everything with height is depth-sorted together: buildings, props, cars and people.
@@ -279,6 +356,15 @@ export class Renderer {
     }
     for (const w of this.agents.walkers) items.push({ d: w.gx + w.gy + 0.05, kind: 'walker', w });
     if (view.ghost) items.push({ d: view.ghost.x + view.ghost.y + 1.01, kind: 'ghost', ghost: view.ghost });
+    if (view.plan && STRUCTURES[view.plan.tool] && view.plan.tool !== 'road') {
+      for (const c of view.plan.tiles) {
+        if (!c.valid) continue;
+        const t = this.city.getTile(c.x, c.y);
+        if (t.structure) continue;
+        const ghost = { x: c.x, y: c.y, structure: { type: view.plan.tool, variant: 'blush', floors: 4, shape: (c.x + c.y) % 4, residents: 0 } };
+        items.push({ d: c.x + c.y + 1.01, kind: 'ghost', ghost });
+      }
+    }
     items.sort((a, b) => a.d - b.d);
     for (const it of items) this.drawItem(ctx, it, L);
     this.drawLifePins(ctx, L);
@@ -287,7 +373,116 @@ export class Renderer {
     this.drawGlows(ctx, L);
 
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    this.drawPrecipitation(ctx, dt, w);
+    this.drawFog(ctx, w, L);
     this.drawVignette(ctx, L);
+  }
+
+  // Overcast skies dim and cool the light. Cached so the colour cache survives between frames.
+  weatherLight(base, w) {
+    const q = (v) => Math.round(v * 20) / 20;
+    const key = `${base.clock}|${q(w.cloud)}|${q(w.fog)}`;
+    if (this._weatherL.key === key) return this._weatherL.L;
+    const cloud = q(w.cloud);
+    const dim = 1 - 0.16 * cloud;
+    const grey = (hex, amt) => mixHex(hex, base.daylight > 0.4 ? '#a7afc0' : '#3c3f5c', amt);
+    const L = {
+      ...base,
+      ambient: [base.ambient[0] * dim * 0.98, base.ambient[1] * dim, base.ambient[2] * (dim + 0.03 * cloud)],
+      skyTop: grey(base.skyTop, cloud * 0.55),
+      skyBottom: grey(base.skyBottom, cloud * 0.5 + q(w.fog) * 0.2),
+      shadow: { ...base.shadow, alpha: base.shadow.alpha * (1 - cloud * 0.85) },
+      cloud,
+    };
+    this._weatherL = { key, L };
+    return L;
+  }
+
+  // Seasonal colour for grass, trees and water.
+  grassColor(base = PALETTE.grass) {
+    const tint = this.season === 'summer' ? mixHex(base, '#8fca8c', 0.35) : this.season === 'autumn' ? mixHex(base, '#c4cf8a', 0.45) : base;
+    return this.snowCover ? mixHex(tint, SNOW, this.snowCover * 0.85) : tint;
+  }
+
+  treeColors(x, y, blossom) {
+    if (this.snowCover >= 0.5) return { deep: '#c9d8d6', mid: '#e1eae9', light: '#ffffff' };
+    if (this.season === 'autumn' && !blossom) {
+      const [deep, mid, light] = AUTUMN_LEAVES[Math.floor(hash2(x | 0, y | 0, 51) * AUTUMN_LEAVES.length)];
+      return { deep, mid, light };
+    }
+    if (blossom) {
+      return this.season === 'spring' ? { deep: '#ef9fb0', mid: '#f9bfcc', light: '#ffe3ea' } : { deep: '#e9aab6', mid: PALETTE.blossom, light: PALETTE.blossomLight };
+    }
+    if (this.season === 'summer') return { deep: '#5fa874', mid: '#7cc28a', light: '#a4d99a' };
+    return { deep: PALETTE.leafDeep, mid: PALETTE.leaf, light: PALETTE.leafLight };
+  }
+
+  roofColor(hex) {
+    return this.snowCover ? mixHex(hex, SNOW, this.snowCover * 0.8) : hex;
+  }
+
+  // Rain streaks and snowflakes, drawn in screen space over the city.
+  drawPrecipitation(ctx, dt, w) {
+    const rain = w.rain || 0;
+    const snow = w.snow || 0;
+    const want = Math.round(170 * rain + 140 * snow) * (this.reduceMotion ? 0.4 : 1);
+    while (this.drops.length < want) this.drops.push({ x: Math.random() * this.w, y: Math.random() * this.h, s: 0.6 + Math.random() * 0.8, p: Math.random() * 6.28 });
+    if (this.drops.length > want) this.drops.length = want;
+    if (!want) return;
+    const snowy = snow > rain;
+    ctx.save();
+    ctx.beginPath();
+    if (snowy) ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    else {
+      ctx.strokeStyle = 'rgba(214,226,246,0.5)';
+      ctx.lineWidth = 1.1;
+      ctx.lineCap = 'round';
+    }
+    for (const d of this.drops) {
+      if (snowy) {
+        d.y += (38 + 30 * d.s) * dt;
+        d.x += Math.sin(this.time * 1.3 + d.p) * 14 * dt;
+      } else {
+        d.y += (620 + 260 * d.s) * dt;
+        d.x -= 140 * dt;
+      }
+      if (d.y > this.h + 10) {
+        d.y = -10;
+        d.x = Math.random() * (this.w + 60);
+      }
+      if (d.x < -20) d.x += this.w + 40;
+      if (snowy) {
+        const r = 1 + d.s * 1.3;
+        ctx.moveTo(d.x + r, d.y);
+        ctx.arc(d.x, d.y, r, 0, Math.PI * 2);
+      } else {
+        ctx.moveTo(d.x, d.y);
+        ctx.lineTo(d.x + 3 * d.s, d.y - 13 * d.s);
+      }
+    }
+    if (snowy) ctx.fill();
+    else ctx.stroke();
+    ctx.restore();
+  }
+
+  // Morning fog: a soft haze with slow drifting bands.
+  drawFog(ctx, w, L) {
+    const fog = w.fog || 0;
+    if (fog < 0.02) return;
+    const tone = L.daylight > 0.4 ? '242,242,248' : '120,124,160';
+    ctx.fillStyle = `rgba(${tone},${(0.32 * fog).toFixed(3)})`;
+    ctx.fillRect(0, 0, this.w, this.h);
+    for (let i = 0; i < 3; i++) {
+      const y = this.h * (0.3 + i * 0.22);
+      const x = ((this.time * (8 + i * 4)) % (this.w + 400)) - 200;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, this.w * 0.45);
+      g.addColorStop(0, `rgba(${tone},${(0.28 * fog).toFixed(3)})`);
+      g.addColorStop(1, `rgba(${tone},0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(x, y, this.w * 0.45, this.h * 0.12, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   // Only walk the slice of the grid that can be on screen, so large maps stay cheap.
@@ -336,14 +531,20 @@ export class Renderer {
       }
     }
 
-    const cloudAlpha = 0.25 + 0.35 * L.daylight;
-    for (let i = 0; i < 4; i++) {
+    const overcast = L.cloud || 0;
+    const cloudAlpha = Math.min(0.85, 0.25 + 0.35 * L.daylight + overcast * 0.3);
+    for (let i = 0; i < 4 + Math.round(overcast * 4); i++) {
       const speed = 6 + i * 2.5;
       const span = this.w + 360;
       const cx = ((hash2(i, 7, 3) * span + this.time * speed) % span) - 180;
       const cy = this.h * (0.07 + 0.11 * i);
       const s = 0.8 + hash2(i, 8, 3) * 0.7;
-      ctx.fillStyle = L.daylight > 0.5 ? `rgba(255,255,255,${cloudAlpha})` : `rgba(220,214,245,${cloudAlpha * 0.6})`;
+      ctx.fillStyle =
+        L.daylight > 0.5
+          ? overcast > 0.3
+            ? `rgba(214,219,230,${cloudAlpha})`
+            : `rgba(255,255,255,${cloudAlpha})`
+          : `rgba(220,214,245,${cloudAlpha * 0.6})`;
       ctx.beginPath();
       ctx.ellipse(cx, cy, 46 * s, 14 * s, 0, 0, Math.PI * 2);
       ctx.ellipse(cx - 22 * s, cy + 3, 26 * s, 11 * s, 0, 0, Math.PI * 2);
@@ -366,7 +567,7 @@ export class Renderer {
     const want = this.camera.zoom * this.dpr;
     if (want > cap * 1.05) return false;
     const scale = Math.min(cap, GROUND_SCALES.find((s) => s >= want * 0.95) || cap);
-    const key = `${city.revision}|${W}x${H}|${scale.toFixed(3)}`;
+    const key = `${city.revision}|${W}x${H}|${scale.toFixed(3)}|${this.season}|${this.snowCover}`;
     if (this.ground.key === key) return true;
     const g = this.ground;
     if (!g.canvas) g.canvas = document.createElement('canvas');
@@ -414,6 +615,18 @@ export class Renderer {
   drawWaterMotion(ctx, t, L) {
     if (this.camera.zoom < 0.5) return;
     const { x, y } = t;
+    const rain = this.weather?.rain || 0;
+    if (rain > 0.2) {
+      ctx.strokeStyle = `rgba(255,255,255,${(0.45 * rain).toFixed(3)})`;
+      ctx.lineWidth = 0.8;
+      for (let i = 0; i < 2; i++) {
+        const ph = (this.time * 1.4 + hash2(x, y, 120 + i)) % 1;
+        const c = gridToWorld(x + 0.2 + hash2(x, y, 130 + i) * 0.6, y + 0.2 + hash2(x, y, 140 + i) * 0.6);
+        ctx.beginPath();
+        ctx.ellipse(c.x, c.y, 1 + ph * 5, 0.5 + ph * 2.5, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
     ctx.lineCap = 'round';
     ctx.lineWidth = 1.2;
     for (let i = 0; i < 2; i++) {
@@ -495,7 +708,7 @@ export class Renderer {
     ]);
     ctx.fill();
     // Fill the top under the tiles so antialiased seams show grass, not the sky.
-    ctx.fillStyle = lit(PALETTE.grass, 0.97, L);
+    ctx.fillStyle = lit(this.grassColor(), 0.97, L);
     poly(ctx, [
       [0, 0],
       [W, 0],
@@ -521,7 +734,7 @@ export class Renderer {
     if (t.terrain === 'water') return this.drawWater(ctx, t, L);
     const s = t.structure;
     if (s?.type === 'road') return this.drawRoad(ctx, t, L);
-    ctx.fillStyle = lit(PALETTE.grass, 0.97 + hash2(x, y, 1) * 0.06, L);
+    ctx.fillStyle = lit(this.grassColor(), 0.97 + hash2(x, y, 1) * 0.06, L);
     tilePoly(ctx, x, y);
     ctx.fill();
     if (s?.type === 'park') this.drawParkGround(ctx, t, L);
@@ -530,7 +743,8 @@ export class Renderer {
 
   drawMeadow(ctx, t, L) {
     const { x, y } = t;
-    ctx.strokeStyle = lit(PALETTE.grass, 0.8, L);
+    if (this.snowCover >= 0.6) return;
+    ctx.strokeStyle = lit(this.grassColor(), 0.8, L);
     ctx.lineWidth = 0.9;
     ctx.lineCap = 'round';
     for (let i = 0; i < 3; i++) {
@@ -544,10 +758,12 @@ export class Renderer {
       ctx.lineTo(p.x + 3, p.y - 2);
       ctx.stroke();
     }
-    if (hash2(x, y, 3) < 0.3) {
+    const flowers = this.season === 'spring' ? 0.45 : this.season === 'summer' ? 0.3 : this.season === 'autumn' ? 0.4 : 0;
+    if (hash2(x, y, 3) < flowers) {
       for (let i = 0; i < 4; i++) {
         const p = gridToWorld(x + 0.15 + hash2(x, y, 50 + i) * 0.7, y + 0.15 + hash2(x, y, 60 + i) * 0.7);
-        ctx.fillStyle = lit(FLOWER_COLORS[(i + x + y) % FLOWER_COLORS.length], 1, L);
+        const palette = this.season === 'autumn' ? AUTUMN_LEAVES[(i + x) % AUTUMN_LEAVES.length] : FLOWER_COLORS;
+        ctx.fillStyle = lit(palette[(i + x + y) % palette.length], 1, L);
         ctx.beginPath();
         ctx.arc(p.x, p.y, 1.3, 0, Math.PI * 2);
         ctx.fill();
@@ -558,7 +774,8 @@ export class Renderer {
   drawWater(ctx, t, L) {
     const { x, y } = t;
     const city = this.city;
-    ctx.fillStyle = lit(PALETTE.water, 1, L);
+    const water = this.snowCover ? mixHex(PALETTE.water, '#cfe9f4', this.snowCover * 0.6) : PALETTE.water;
+    ctx.fillStyle = lit(water, 1, L);
     tilePoly(ctx, x, y);
     ctx.fill();
     // Slightly deeper centre where the tile is surrounded by water.
@@ -568,7 +785,7 @@ export class Renderer {
       if (!n || n.terrain === 'water') wet++;
     });
     if (wet >= 3) {
-      ctx.fillStyle = lit(PALETTE.water, 0.93, L);
+      ctx.fillStyle = lit(water, 0.93, L);
       gridEllipse(ctx, x + 0.5, y + 0.5, 0, 0.28);
       ctx.fill();
     }
@@ -662,7 +879,7 @@ export class Renderer {
   drawParkGround(ctx, t, L) {
     const { x, y } = t;
     const city = this.city;
-    ctx.fillStyle = lit(PALETTE.parkGrass, 1, L);
+    ctx.fillStyle = lit(this.grassColor(PALETTE.parkGrass), 1, L);
     tilePoly(ctx, x, y, 0.04);
     ctx.fill();
     // Paths run to the edge where they meet another park or a road.
@@ -737,6 +954,26 @@ export class Renderer {
     ctx.fill();
   }
 
+  // Tiles a drag stroke will change: tinted where the tool can go, faint red where it can't.
+  drawPlan(ctx, plan) {
+    const z = this.camera.zoom;
+    const destroy = plan.tool === 'bulldoze';
+    const fill = destroy ? 'rgba(255,143,128,0.4)' : plan.tool === 'water' ? 'rgba(126,200,227,0.75)' : plan.tool === 'road' ? 'rgba(214,208,196,0.92)' : 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 1.4 / z;
+    for (const c of plan.tiles) {
+      tilePoly(ctx, c.x, c.y, 0.03);
+      if (c.valid) {
+        ctx.fillStyle = fill;
+        ctx.strokeStyle = destroy ? 'rgba(255,120,104,0.95)' : 'rgba(255,255,255,0.95)';
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        ctx.strokeStyle = 'rgba(255,128,112,0.45)';
+        ctx.stroke();
+      }
+    }
+  }
+
   drawSelected(ctx, sel) {
     const z = this.camera.zoom;
     const pulse = 0.6 + 0.4 * Math.sin(this.time * 4);
@@ -764,11 +1001,11 @@ export class Renderer {
 
   footprint(t) {
     const s = t.structure;
-    if (s.type === 'house') return { inset: 0.2, h: 27 };
-    if (s.type === 'tower') return { inset: 0.16, h: 6 + (s.floors || 5) * 11 };
+    if (s.type === 'house') return { inset: 0.2, h: growthOf(t).stage === 0 ? 22 : 27 };
+    if (s.type === 'tower') return { inset: 0.16, h: 6 + growthOf(t).floors * 11 };
     if (s.type === 'tree') return { inset: 0.32, h: 24, round: true };
     if (s.type === 'shop') return { inset: 0.16, h: 22 };
-    if (s.type === 'office') return { inset: 0.14, h: 8 + (s.floors || 4) * 12 };
+    if (s.type === 'office') return { inset: 0.14, h: 8 + growthOf(t).floors * 12 };
     if (s.type === 'school') return { inset: 0.12, h: 26 };
     if (s.type === 'clinic') return { inset: 0.15, h: 24 };
     return null;
@@ -826,6 +1063,7 @@ export class Renderer {
       return;
     }
     const t = it.t;
+    this.trackGrowth(t);
     const b = this.bounceFor(t.x, t.y);
     if (b.hidden) return;
     const c = gridToWorld(t.x + 0.5, t.y + 0.5);
@@ -854,7 +1092,7 @@ export class Renderer {
       case 'clinic':
         return this.drawClinic(ctx, x, y, s, L, ghost);
       case 'tree':
-        return this.drawTree(ctx, x + 0.5, y + 0.5, s.shape || 0, L, hash2(x, y, 12) * 6.28, 1);
+        return this.drawTree(ctx, x + 0.5, y + 0.5, s.shape || 0, L, hash2(x, y, 12) * 6.28, 1, x, y);
       case 'park':
         return this.drawParkProps(ctx, x, y, L);
       case 'road':
@@ -967,75 +1205,104 @@ export class Renderer {
 
   drawHouse(ctx, x, y, s, L, ghost) {
     const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.peach;
-    const x0 = x + 0.2;
-    const x1 = x + 0.8;
-    const y0 = y + 0.22;
-    const y1 = y + 0.78;
-    const h = 15;
-    const rh = 12;
+    const t = this.city.getTile(x, y);
+    const stage = ghost || !t ? 1 : growthOf(t).stage;
+    // An empty lot shows a small cottage; it becomes a full house, then gains a garage.
+    const inset = stage === 0 ? 0.26 : 0.2;
+    const x0 = x + inset;
+    const x1 = x + 1 - inset;
+    const y0 = y + inset + 0.02;
+    const y1 = y + 1 - inset - 0.02;
+    const h = stage === 0 ? 12 : 15;
+    const rh = stage === 0 ? 10 : 12;
     const o = 0.05;
-    const xm = (x0 + x1) / 2;
     const occ = ghost ? 0 : s.residents / STRUCTURES.house.capacity;
+    const roof = ['gableY', 'gableX', 'hip'][Math.floor(hash2(x, y, 41) * 3)];
     this.drawBox(ctx, L, x0, y0, x1, y1, 0, h, v.wall, false);
 
     ctx.fillStyle = lit(v.roof, 0.72, L);
-    poly(ctx, this.faceQuad('L', x0, y0, x1, y1, 0.6, 0.8, 0, 9));
+    poly(ctx, this.faceQuad('L', x0, y0, x1, y1, 0.6, 0.8, 0, Math.min(9, h - 3)));
     ctx.fill();
-    this.drawWindow(ctx, L, this.faceQuad('L', x0, y0, x1, y1, 0.16, 0.4, 5, 11), 0.92, this.isWindowLit(x, y, 0, occ, L));
-    this.drawWindow(ctx, L, this.faceQuad('R', x0, y0, x1, y1, 0.16, 0.4, 5, 11), 0.8, this.isWindowLit(x, y, 1, occ, L));
-    this.drawWindow(ctx, L, this.faceQuad('R', x0, y0, x1, y1, 0.6, 0.84, 5, 11), 0.8, this.isWindowLit(x, y, 2, occ, L));
+    this.drawWindow(ctx, L, this.faceQuad('L', x0, y0, x1, y1, 0.16, 0.4, 5, Math.min(11, h - 3)), 0.92, this.isWindowLit(x, y, 0, occ, L));
+    this.drawWindow(ctx, L, this.faceQuad('R', x0, y0, x1, y1, 0.16, 0.4, 5, Math.min(11, h - 3)), 0.8, this.isWindowLit(x, y, 1, occ, L));
+    if (stage > 0) this.drawWindow(ctx, L, this.faceQuad('R', x0, y0, x1, y1, 0.6, 0.84, 5, 11), 0.8, this.isWindowLit(x, y, 2, occ, L));
 
-    // Gable end, then the two roof slopes with a small overhang.
-    ctx.fillStyle = lit(v.wall, 0.92, L);
-    poly(ctx, [
-      [x0, y1, h],
-      [x1, y1, h],
-      [xm, y1, h + rh],
-    ]);
-    ctx.fill();
-    ctx.fillStyle = lit(v.roof, 1.05, L);
-    poly(ctx, [
-      [x0 - o, y0 - o, h],
-      [x0 - o, y1 + o, h],
-      [xm, y1 + o, h + rh],
-      [xm, y0 - o, h + rh],
-    ]);
-    ctx.fill();
-    ctx.fillStyle = lit(v.roof, 0.82, L);
-    poly(ctx, [
-      [x1 + o, y0 - o, h],
-      [x1 + o, y1 + o, h],
-      [xm, y1 + o, h + rh],
-      [xm, y0 - o, h + rh],
-    ]);
-    ctx.fill();
-    // Chimney sitting on the right slope.
-    const cx0 = xm + 0.08;
-    const cx1 = xm + 0.16;
-    const base = h + rh * (1 - (cx1 - xm) / (x1 + o - xm));
-    this.drawBox(ctx, L, cx0, y0 + 0.06, cx1, y0 + 0.14, base - 1, 6 + rh * 0.2, v.trim);
-    // Ridge and eave lines.
+    const xm = (x0 + x1) / 2;
+    const ym = (y0 + y1) / 2;
+    const top = h + rh;
+    const roofHex = this.roofColor(v.roof);
+    const fillPoly = (pts, shade, color = roofHex) => {
+      ctx.fillStyle = lit(color, shade, L);
+      poly(ctx, pts);
+      ctx.fill();
+    };
+    if (roof === 'gableY') {
+      // Ridge runs front to back; the gable faces the viewer's left.
+      fillPoly([[x0, y1, h], [x1, y1, h], [xm, y1, top]], 0.92, v.wall);
+      fillPoly([[x0 - o, y0 - o, h], [x0 - o, y1 + o, h], [xm, y1 + o, top], [xm, y0 - o, top]], 1.05);
+      fillPoly([[x1 + o, y0 - o, h], [x1 + o, y1 + o, h], [xm, y1 + o, top], [xm, y0 - o, top]], 0.82);
+      if (stage > 0) {
+        const cx0 = xm + 0.08;
+        const cx1 = xm + 0.16;
+        const base = h + rh * (1 - (cx1 - xm) / (x1 + o - xm));
+        this.drawBox(ctx, L, cx0, y0 + 0.06, cx1, y0 + 0.14, base - 1, 6 + rh * 0.2, v.trim);
+      }
+      this.roofLines(ctx, L, v, [[xm, y0 - o, top], [xm, y1 + o, top]], [[x0 - o, y1 + o, h], [xm, y1 + o, top], [x1 + o, y1 + o, h]]);
+    } else if (roof === 'gableX') {
+      // Ridge runs left to right; the gable faces the viewer's right.
+      fillPoly([[x0 - o, y0 - o, h], [x1 + o, y0 - o, h], [x1 + o, ym, top], [x0 - o, ym, top]], 0.95);
+      fillPoly([[x1, y0, h], [x1, y1, h], [x1, ym, top]], 0.78, v.wall);
+      fillPoly([[x0 - o, y1 + o, h], [x1 + o, y1 + o, h], [x1 + o, ym, top], [x0 - o, ym, top]], 1.02);
+      if (stage > 0) this.drawBox(ctx, L, x0 + 0.08, ym - 0.05, x0 + 0.16, ym + 0.05, top - 4, 6, v.trim);
+      this.roofLines(ctx, L, v, [[x0 - o, ym, top], [x1 + o, ym, top]], [[x1 + o, y1 + o, h], [x1 + o, ym, top], [x1 + o, y0 - o, h]]);
+    } else {
+      // Hipped roof: four slopes up to a short ridge.
+      const r0 = x0 + (x1 - x0) * 0.32;
+      const r1 = x1 - (x1 - x0) * 0.32;
+      fillPoly([[x0 - o, y0 - o, h], [x1 + o, y0 - o, h], [r1, ym, top], [r0, ym, top]], 0.95);
+      fillPoly([[x0 - o, y0 - o, h], [x0 - o, y1 + o, h], [r0, ym, top]], 1.05);
+      fillPoly([[x1 + o, y0 - o, h], [x1 + o, y1 + o, h], [r1, ym, top]], 0.8);
+      fillPoly([[x0 - o, y1 + o, h], [x1 + o, y1 + o, h], [r1, ym, top], [r0, ym, top]], 1.0);
+      this.roofLines(ctx, L, v, [[r0, ym, top], [r1, ym, top]], [[x0 - o, y1 + o, h], [r0, ym, top]], [[x1 + o, y1 + o, h], [r1, ym, top]]);
+    }
+
+    // A full house gains a little garage in front.
+    if (stage === 2) {
+      const g0 = x + 0.56;
+      const g1 = x + 0.86;
+      const gy0 = y + 0.8;
+      const gy1 = y + 0.95;
+      this.drawBox(ctx, L, g0, gy0, g1, gy1, 0, 8, v.wall);
+      ctx.fillStyle = lit(v.trim, 0.95, L);
+      poly(ctx, this.faceQuad('L', g0, gy0, g1, gy1, 0.15, 0.85, 0, 6));
+      ctx.fill();
+      ctx.fillStyle = lit(roofHex, 0.95, L);
+      poly(ctx, [[g0 - 0.02, gy0 - 0.02, 8], [g1 + 0.02, gy0 - 0.02, 8], [g1 + 0.02, gy1 + 0.02, 8], [g0 - 0.02, gy1 + 0.02, 8]]);
+      ctx.fill();
+    }
+  }
+
+  roofLines(ctx, L, v, ridge, ...eaves) {
     ctx.lineWidth = 0.8;
     ctx.strokeStyle = `rgba(255,255,255,${(0.25 + 0.25 * L.daylight).toFixed(3)})`;
-    ctx.beginPath();
-    const r0 = gridToWorld(xm, y0 - o, h + rh);
-    const r1 = gridToWorld(xm, y1 + o, h + rh);
-    ctx.moveTo(r0.x, r0.y);
-    ctx.lineTo(r1.x, r1.y);
-    ctx.stroke();
+    const line = (pts) => {
+      ctx.beginPath();
+      pts.forEach((p, i) => {
+        const w = gridToWorld(p[0], p[1], p[2]);
+        if (i) ctx.lineTo(w.x, w.y);
+        else ctx.moveTo(w.x, w.y);
+      });
+      ctx.stroke();
+    };
+    line(ridge);
     ctx.strokeStyle = lit(v.roof, 0.66, L);
-    ctx.beginPath();
-    const e0 = gridToWorld(x0 - o, y1 + o, h);
-    const e1 = gridToWorld(x1 + o, y1 + o, h);
-    ctx.moveTo(e0.x, e0.y);
-    ctx.lineTo(r1.x, r1.y);
-    ctx.lineTo(e1.x, e1.y);
-    ctx.stroke();
+    for (const e of eaves) line(e);
   }
 
   drawTower(ctx, x, y, s, L, ghost) {
     const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.lavender;
-    const floors = s.floors || 5;
+    const tile = this.city.getTile(x, y);
+    const floors = ghost || !tile ? s.floors || 5 : growthOf(tile).floors;
     const x0 = x + 0.16;
     const x1 = x + 0.84;
     const y0 = y + 0.16;
@@ -1072,7 +1339,7 @@ export class Renderer {
     }
 
     // Roof deck with a parapet rim and a small rooftop unit.
-    ctx.fillStyle = lit(v.trim, 1, L);
+    ctx.fillStyle = lit(this.roofColor(v.trim), 1, L);
     poly(ctx, [
       [x0, y0, h],
       [x1, y0, h],
@@ -1080,7 +1347,7 @@ export class Renderer {
       [x0, y1, h],
     ]);
     ctx.fill();
-    ctx.fillStyle = lit(v.wall, 0.95, L);
+    ctx.fillStyle = lit(this.roofColor(v.wall), 0.95, L);
     poly(ctx, [
       [x0 + 0.05, y0 + 0.05, h],
       [x1 - 0.05, y0 + 0.05, h],
@@ -1088,7 +1355,7 @@ export class Renderer {
       [x0 + 0.05, y1 - 0.05, h],
     ]);
     ctx.fill();
-    this.drawBox(ctx, L, x0 + 0.12, y0 + 0.12, x0 + 0.32, y0 + 0.3, h, 5, v.trim);
+    this.drawRooftop(ctx, L, x, y, x0, y0, x1, y1, h, v);
     if (floors >= 6) {
       const a = gridToWorld(x1 - 0.15, y1 - 0.15, h);
       ctx.strokeStyle = lit(PALETTE.pole, 1, L);
@@ -1101,6 +1368,45 @@ export class Renderer {
       ctx.beginPath();
       ctx.arc(a.x, a.y - 12, 1.4, 0, Math.PI * 2);
       ctx.fill();
+    }
+  }
+
+  // Rooftops vary by building: an air-con unit, a water tank, or a little roof garden.
+  drawRooftop(ctx, L, x, y, x0, y0, x1, y1, h, v) {
+    const kind = Math.floor(hash2(x, y, 43) * 3);
+    if (kind === 0) {
+      this.drawBox(ctx, L, x0 + 0.12, y0 + 0.12, x0 + 0.32, y0 + 0.3, h, 5, v.trim);
+    } else if (kind === 1) {
+      const cx = x0 + 0.24;
+      const cy = y0 + 0.24;
+      this.drawBox(ctx, L, cx - 0.08, cy - 0.08, cx + 0.08, cy + 0.08, h, 7, '#c9b49a');
+      const tip = gridToWorld(cx, cy, h + 12);
+      const l = gridToWorld(cx - 0.08, cy + 0.08, h + 7);
+      const r = gridToWorld(cx + 0.08, cy - 0.08, h + 7);
+      const b = gridToWorld(cx + 0.08, cy + 0.08, h + 7);
+      ctx.fillStyle = lit('#a88c74', 1, L);
+      ctx.beginPath();
+      ctx.moveTo(l.x, l.y);
+      ctx.lineTo(tip.x, tip.y);
+      ctx.lineTo(r.x, r.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.fillStyle = lit(PALETTE.parkGrass, 0.95, L);
+      poly(ctx, [[x0 + 0.1, y0 + 0.1, h], [x1 - 0.1, y0 + 0.1, h], [x1 - 0.1, y1 - 0.1, h], [x0 + 0.1, y1 - 0.1, h]]);
+      ctx.fill();
+      for (const [gx, gy] of [[x0 + 0.22, y0 + 0.22], [x1 - 0.2, y1 - 0.24], [x0 + 0.24, y1 - 0.2]]) {
+        const p = gridToWorld(gx, gy, h);
+        ctx.fillStyle = lit(PALETTE.leafDeep, 1, L);
+        ctx.beginPath();
+        ctx.arc(p.x + 0.5, p.y - 3, 3.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = lit(PALETTE.leaf, 1, L);
+        ctx.beginPath();
+        ctx.arc(p.x - 0.4, p.y - 3.8, 2.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 
@@ -1155,7 +1461,8 @@ export class Renderer {
 
   drawOffice(ctx, x, y, s, L, ghost) {
     const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.lavender;
-    const floors = s.floors || 4;
+    const otile = this.city.getTile(x, y);
+    const floors = ghost || !otile ? s.floors || 4 : growthOf(otile).floors;
     const x0 = x + 0.14;
     const x1 = x + 0.86;
     const y0 = y + 0.14;
@@ -1320,7 +1627,8 @@ export class Renderer {
     }
   }
 
-  drawTree(ctx, gx, gy, shape, L, phase, scale) {
+  drawTree(ctx, gx, gy, shape, L, phase, scale, tx = gx, ty = gy) {
+    const col = this.treeColors(tx * 3, ty * 3, shape === 3);
     const p = gridToWorld(gx, gy);
     const sway = this.reduceMotion ? 0 : Math.sin(this.time * 1.2 + phase) * 0.7;
     ctx.save();
@@ -1342,14 +1650,17 @@ export class Renderer {
         const base = -6 - i * 7;
         const w = 9 - i * 2;
         const s = sway * (0.5 + i * 0.25);
-        ctx.fillStyle = lit(PALETTE.leafDeep, 1, L);
+        // Pines stay green all year; in winter their tiers carry snow.
+        const pineDeep = this.snowCover >= 0.5 ? '#6f9e88' : PALETTE.leafDeep;
+        const pineMid = this.snowCover >= 0.5 ? '#e8efee' : PALETTE.leaf;
+        ctx.fillStyle = lit(pineDeep, 1, L);
         ctx.beginPath();
         ctx.moveTo(-w + s * 0.5, base);
         ctx.lineTo(w + s * 0.5, base);
         ctx.lineTo(s, base - 11);
         ctx.closePath();
         ctx.fill();
-        ctx.fillStyle = lit(PALETTE.leaf, 1, L);
+        ctx.fillStyle = lit(pineMid, 1, L);
         ctx.beginPath();
         ctx.moveTo(-w + s * 0.5, base);
         ctx.lineTo(s * 0.7, base);
@@ -1358,20 +1669,17 @@ export class Renderer {
         ctx.fill();
       }
     } else if (shape === 2) {
-      ctx.fillStyle = lit(PALETTE.leafDeep, 1, L);
+      ctx.fillStyle = lit(col.deep, 1, L);
       ctx.beginPath();
       ctx.ellipse(sway + 0.8, -17, 7, 11, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = lit(PALETTE.leaf, 1, L);
+      ctx.fillStyle = lit(col.mid, 1, L);
       ctx.beginPath();
       ctx.ellipse(sway - 0.6, -18, 5.8, 10, 0, 0, Math.PI * 2);
       ctx.fill();
-      blob(-2.5, -22, 2.6, PALETTE.leafLight, 1);
+      blob(-2.5, -22, 2.6, col.light, 1);
     } else {
-      const blossom = shape === 3;
-      const deep = blossom ? '#e9aab6' : PALETTE.leafDeep;
-      const mid = blossom ? PALETTE.blossom : PALETTE.leaf;
-      const light = blossom ? PALETTE.blossomLight : PALETTE.leafLight;
+      const { deep, mid, light } = col;
       blob(1, -15, 9, deep, 1);
       blob(-4, -16, 6.5, mid, 1);
       blob(3, -20, 6.5, mid, 1);
@@ -1515,6 +1823,22 @@ export class Renderer {
     ctx.beginPath();
     ctx.arc(p.x, p.y - 7.8 - bob, 1.7, 0, Math.PI * 2);
     ctx.fill();
+    // Umbrellas come out in the rain and snow.
+    const wet = Math.max(this.weather?.rain || 0, this.weather?.snow || 0);
+    if (wet > 0.3) {
+      const top = p.y - 12.5 - bob;
+      ctx.strokeStyle = lit('#6d6890', 1, L);
+      ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      ctx.moveTo(p.x + 1.4, top);
+      ctx.lineTo(p.x + 1.4, p.y - 5 - bob);
+      ctx.stroke();
+      ctx.fillStyle = lit(w.umbrella || w.shirt, 1, L);
+      ctx.beginPath();
+      ctx.ellipse(p.x + 1.4, top, 4.6, 2.6, 0, Math.PI, 0);
+      ctx.closePath();
+      ctx.fill();
+    }
     ctx.restore();
   }
 
@@ -1596,6 +1920,22 @@ export class Renderer {
         ctx.lineWidth = 2 * (1 - t) + 0.5;
         gridEllipse(ctx, p.gx, p.gy, 0, r);
         ctx.stroke();
+      } else if (p.kind === 'spark') {
+        const a = 1 - t;
+        const r = 2.2 * (1 - t * 0.5);
+        const y = p.y - t * 14;
+        ctx.fillStyle = `rgba(255,236,170,${a.toFixed(3)})`;
+        ctx.beginPath();
+        ctx.moveTo(p.x, y - r * 2);
+        ctx.lineTo(p.x + r * 0.6, y - r * 0.6);
+        ctx.lineTo(p.x + r * 2, y);
+        ctx.lineTo(p.x + r * 0.6, y + r * 0.6);
+        ctx.lineTo(p.x, y + r * 2);
+        ctx.lineTo(p.x - r * 0.6, y + r * 0.6);
+        ctx.lineTo(p.x - r * 2, y);
+        ctx.lineTo(p.x - r * 0.6, y - r * 0.6);
+        ctx.closePath();
+        ctx.fill();
       } else if (p.kind === 'heart') {
         const y = p.y - t * 22;
         const s = 3.2 * (t < 0.15 ? t / 0.15 : 1);
