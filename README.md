@@ -12,9 +12,7 @@ node build.mjs   # writes dist/pocket-metropolis.html
 
 `vercel.json` runs `node build.mjs` and serves `dist/` (no dependencies to install).
 
-1. In Vercel, choose **Add New → Project** and import this GitHub repository.
-2. Set **Root Directory** to `pocket-metropolis`. Leave the framework preset as **Other**.
-3. Deploy. Every push to the production branch redeploys automatically.
+Import this repository in Vercel (**Add New → Project**) with the framework preset left as **Other**; no other settings are needed.
 
 ## Controls
 
