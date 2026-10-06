@@ -2,6 +2,8 @@
 
 import { STRUCTURES, DAY_LENGTH_SECONDS, SIM_STEP } from './config.js';
 import { recomputeDesirability } from './desirability.js';
+import { computeLaborMarket } from './labor.js';
+import { computeCoverage } from './coverage.js';
 import { AgentSystem } from './agents.js';
 import { daylightAt } from './time.js';
 import { clamp, pickWeighted } from './utils.js';
@@ -10,13 +12,15 @@ export class Simulation {
   constructor(city) {
     this.city = city;
     this.agents = new AgentSystem(city);
-    this.speed = 1;
+    this.speed = 1; // 0 pauses; 1–3 run faster
     this._acc = 0;
+    this._marketTimer = 0;
   }
 
   update(dt) {
     const city = this.city;
     const step = Math.min(dt, 0.25) * this.speed;
+    if (!step) return;
     city.clock += step / DAY_LENGTH_SECONDS;
     if (city.clock >= 1) {
       city.clock -= 1;
@@ -31,8 +35,24 @@ export class Simulation {
   }
 
   tick() {
-    if (this.city.dirty) recomputeDesirability(this.city);
+    const city = this.city;
+    this._marketTimer -= SIM_STEP;
+    // Jobs, traffic and desirability feed each other, so refresh them together about once a second.
+    if (city.dirty || this._marketTimer <= 0) {
+      if (city.dirty) computeCoverage(city);
+      city.derived.labor = computeLaborMarket(city);
+      recomputeDesirability(city);
+      this._marketTimer = 1;
+    }
     this.updateHousing();
+    this.updateStats();
+  }
+
+  // Run the derived systems immediately, e.g. right after loading or generating a city.
+  refresh() {
+    computeCoverage(this.city);
+    this.city.derived.labor = computeLaborMarket(this.city);
+    recomputeDesirability(this.city);
     this.updateStats();
   }
 
@@ -84,12 +104,20 @@ export class Simulation {
       desirSum += h.desirability;
     }
     const happiness = population ? weighted / population : homes.length ? desirSum / homes.length : 0;
+    const labor = city.derived.labor || { employed: 0, unemployed: 0, jobs: 0 };
+    const workers = labor.employed + labor.unemployed;
+    let busiest = 0;
+    for (const t of city.tiles) if (t.congestion > busiest) busiest = t.congestion;
     city.stats = {
       population,
       capacity,
       homes: homes.length,
       occupancy: capacity ? population / capacity : 0,
       happiness: Math.round(happiness * 100),
+      jobs: labor.jobs,
+      employed: labor.employed,
+      employment: workers ? labor.employed / workers : 1,
+      traffic: busiest,
     };
   }
 }

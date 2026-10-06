@@ -1,14 +1,22 @@
-// Interface: the toolbar, stats bubble and buttons. Reads stats, never touches the simulation directly.
+// Interface: toolbar, stats bubble, inspector, speed and view controls.
+// Reads city state for display; changes only go through the callbacks main.js provides.
 
-import { TOOLS } from './config.js';
+import { TOOL_GROUPS, TOOLS, VIEWS, STRUCTURES, SERVICES } from './config.js';
+import { FACTORS } from './desirability.js';
 import { formatClock } from './time.js';
+import { workersIn } from './labor.js';
 
 const svg = (body) =>
   `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 
 const ICONS = {
+  inspect: svg('<circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5.5 5.5"/><path d="M10.5 8v5M8 10.5h5"/>'),
   house: svg('<path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/>'),
   tower: svg('<rect x="6.5" y="3" width="11" height="18" rx="1.5"/><path d="M10 7.5h.01M14 7.5h.01M10 11.5h.01M14 11.5h.01M10 15.5h.01M14 15.5h.01" stroke-width="2.6"/>'),
+  shop: svg('<path d="M4 10v10h16V10"/><path d="M3 10h18l-1.5-5h-15z"/><path d="M7.5 10v0a2.25 2.25 0 0 0 4.5 0 2.25 2.25 0 0 0 4.5 0"/><path d="M10 20v-5h4v5"/>'),
+  office: svg('<rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M5 8h14M5 12.5h14M5 17h14"/>'),
+  school: svg('<path d="M3 10 12 5l9 5-9 5z"/><path d="M7 12.2V17c2.8 2 7.2 2 10 0v-4.8"/><path d="M21 10v5"/>'),
+  clinic: svg('<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/>'),
   tree: svg('<circle cx="12" cy="9.5" r="6"/><path d="M12 15.5V21M9 21h6"/>'),
   park: svg('<path d="M4 13.5h16M5.5 13.5v5M18.5 13.5v5"/><path d="M4.5 9.5h15"/><path d="M7 9.5V6.5M17 9.5V6.5"/>'),
   road: svg('<path d="M8.5 3 5 21M15.5 3 19 21"/><path d="M12 4v2.5M12 10.5V13M12 17v3"/>'),
@@ -16,6 +24,10 @@ const ICONS = {
   bulldoze: svg(
     '<rect x="2.5" y="10.5" width="10" height="5" rx="1.2"/><path d="M5 10.5V7h4.5l1.5 3.5"/><path d="M12.5 13h3.5"/><path d="M17 8.5c1.7 2.6 1.7 6.4 0 9h3.5"/><rect x="2.5" y="17" width="10" height="3.5" rx="1.75"/>'
   ),
+  pause: svg('<path d="M9 5v14M15 5v14" stroke-width="2.6"/>'),
+  play: svg('<path d="M7 4.5v15l12-7.5z"/>'),
+  layers: svg('<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 12.5 9 5 9-5"/><path d="m3 17 9 5 9-5"/>'),
+  close: svg('<path d="M6 6l12 12M18 6 6 18"/>'),
 };
 
 const MOUTHS = {
@@ -24,9 +36,18 @@ const MOUTHS = {
   sad: 'M8.5 16.5c1.9-2.2 5.1-2.2 7 0',
 };
 
+const LEGENDS = {
+  desirability: ['Where people want to live', 'Low', 'High', 'ramp'],
+  traffic: ['Commuters on each road', 'Clear', 'Jammed', 'ramp-rev'],
+  services: ['School and clinic coverage', 'None', 'Covered', 'service'],
+};
+
+const pct = (v) => `${Math.round(v * 100)}%`;
+
 export class Interface {
-  constructor({ onTool, onRandom, onFit }) {
+  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect }) {
     this.toolbar = document.getElementById('toolbar');
+    this.tray = document.getElementById('tray');
     this.popEl = document.getElementById('stat-pop');
     this.capEl = document.getElementById('stat-cap');
     this.happyEl = document.getElementById('stat-happy');
@@ -34,38 +55,151 @@ export class Interface {
     this.meterEl = document.getElementById('happy-meter');
     this.clockEl = document.getElementById('stat-clock');
     this.toastEl = document.getElementById('toast');
+    this.inspectEl = document.getElementById('inspector');
+    this.legendEl = document.getElementById('legend');
+    this.speedBtn = document.getElementById('btn-speed');
+    this.viewBtn = document.getElementById('btn-view');
     this.onTool = onTool;
+    this.onSpeed = onSpeed;
+    this.onView = onView;
     this.tool = 'house';
+    this.groupChoice = Object.fromEntries(TOOL_GROUPS.map((g) => [g.id, g.tools[0].id]));
+    this.speed = 1;
+    this.view = 'none';
     this._last = {};
 
-    for (const t of TOOLS) {
+    for (const g of TOOL_GROUPS) {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'tool';
-      b.id = `tool-${t.id}`;
-      b.dataset.tool = t.id;
-      b.title = `${t.label} (${t.key})`;
+      b.id = `group-${g.id}`;
+      b.dataset.group = g.id;
       b.setAttribute('aria-pressed', 'false');
-      b.innerHTML = `<span class="tool-icon">${ICONS[t.id]}</span><span class="tool-label">${t.label}</span>`;
-      b.addEventListener('click', () => this.setTool(t.id));
+      if (g.tools.length > 1) b.setAttribute('aria-haspopup', 'true');
+      b.addEventListener('click', () => this.pressGroup(g.id));
       this.toolbar.appendChild(b);
     }
     document.getElementById('btn-random').addEventListener('click', onRandom);
     document.getElementById('btn-fit').addEventListener('click', onFit);
+    this.speedBtn.addEventListener('click', () => this.setSpeed(this.speed === 0 ? this._resume || 1 : this.speed >= 3 ? 0 : this.speed + 1));
+    this.viewBtn.addEventListener('click', () => {
+      const i = VIEWS.findIndex((v) => v.id === this.view);
+      this.setView(VIEWS[(i + 1) % VIEWS.length].id);
+    });
+    this.inspectEl.addEventListener('click', (e) => {
+      if (e.target.closest('[data-close]')) onCloseInspect();
+    });
+    document.addEventListener('pointerdown', (e) => {
+      if (!this.tray.hidden && !e.target.closest('#tray') && !e.target.closest('.tool')) this.closeTray();
+    });
     window.addEventListener('keydown', (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const t = TOOLS.find((tool) => tool.key === e.key);
+      if (e.key === ' ') {
+        e.preventDefault();
+        this.speedBtn.click();
+        return;
+      }
+      if (e.key === 'v') return this.viewBtn.click();
+      if (e.key === 'Escape') return this.closeTray();
+      const t = TOOLS.find((tool) => tool.key === e.key.toLowerCase());
       if (t) this.setTool(t.id);
     });
     this.setTool(this.tool);
+    this.renderSpeed();
+    this.renderView();
+  }
+
+  groupOf(toolId) {
+    return TOOL_GROUPS.find((g) => g.tools.some((t) => t.id === toolId));
+  }
+
+  pressGroup(groupId) {
+    const g = TOOL_GROUPS.find((x) => x.id === groupId);
+    if (g.tools.length > 1) {
+      if (!this.tray.hidden && this.trayGroup === groupId) return this.closeTray();
+      this.setTool(this.groupChoice[groupId]);
+      this.openTray(g);
+      return;
+    }
+    this.closeTray();
+    this.setTool(this.groupChoice[groupId]);
+  }
+
+  openTray(g) {
+    this.trayGroup = g.id;
+    this.tray.innerHTML = g.tools
+      .map(
+        (t) =>
+          `<button type="button" class="tray-item" data-tool="${t.id}" aria-pressed="${t.id === this.tool}">` +
+          `<span class="tool-icon tint-${t.id}">${ICONS[t.id]}</span><span>${t.label}</span><kbd>${t.key.toUpperCase()}</kbd></button>`
+      )
+      .join('');
+    for (const b of this.tray.querySelectorAll('.tray-item')) {
+      b.addEventListener('click', () => {
+        this.setTool(b.dataset.tool);
+        this.closeTray();
+      });
+    }
+    const anchor = document.getElementById(`group-${g.id}`).getBoundingClientRect();
+    this.toastEl.classList.remove('show');
+    this.tray.hidden = false;
+    const w = this.tray.offsetWidth;
+    const left = Math.max(12, Math.min(window.innerWidth - w - 12, anchor.left + anchor.width / 2 - w / 2));
+    this.tray.style.left = `${left}px`;
+  }
+
+  closeTray() {
+    this.tray.hidden = true;
   }
 
   setTool(id) {
     this.tool = id;
+    const group = this.groupOf(id);
+    this.groupChoice[group.id] = id;
     for (const b of this.toolbar.querySelectorAll('.tool')) {
-      b.setAttribute('aria-pressed', String(b.dataset.tool === id));
+      const g = TOOL_GROUPS.find((x) => x.id === b.dataset.group);
+      const choice = TOOLS.find((t) => t.id === this.groupChoice[g.id]);
+      b.setAttribute('aria-pressed', String(g.id === group.id));
+      b.title = g.tools.length > 1 ? `${g.label}: ${choice.label} (${choice.key.toUpperCase()})` : `${choice.label} (${choice.key.toUpperCase()})`;
+      b.innerHTML =
+        `<span class="tool-icon tint-${choice.id}">${ICONS[choice.id]}</span>` +
+        `<span class="tool-label">${g.tools.length > 1 ? choice.label : g.label}</span>` +
+        (g.tools.length > 1 ? '<span class="more" aria-hidden="true"></span>' : '');
     }
+    if (!this.tray.hidden) for (const b of this.tray.querySelectorAll('.tray-item')) b.setAttribute('aria-pressed', String(b.dataset.tool === id));
     this.onTool(id);
+  }
+
+  setSpeed(speed) {
+    if (speed > 0) this._resume = speed;
+    this.speed = speed;
+    this.renderSpeed();
+    this.onSpeed(speed);
+  }
+
+  renderSpeed() {
+    const paused = this.speed === 0;
+    this.speedBtn.innerHTML = `${paused ? ICONS.play : ICONS.pause}<span class="pill-text">${paused ? 'Paused' : `${this.speed}×`}</span>`;
+    this.speedBtn.setAttribute('aria-label', paused ? 'Resume time' : `Speed ${this.speed}×, change speed`);
+    this.speedBtn.classList.toggle('is-paused', paused);
+  }
+
+  setView(id) {
+    this.view = id;
+    this.renderView();
+    this.onView(id);
+  }
+
+  renderView() {
+    const v = VIEWS.find((x) => x.id === this.view);
+    this.viewBtn.innerHTML = `${ICONS.layers}<span class="pill-text">${v.label}</span>`;
+    this.viewBtn.setAttribute('aria-label', `Map view: ${v.label}. Switch view`);
+    this.viewBtn.classList.toggle('is-on', this.view !== 'none');
+    const legend = LEGENDS[this.view];
+    this.legendEl.hidden = !legend;
+    if (legend) {
+      this.legendEl.innerHTML = `<span class="legend-title">${v.label}</span><span class="legend-sub">${legend[0]}</span><span class="legend-bar ${legend[3]}"></span><span class="legend-ends"><span>${legend[1]}</span><span>${legend[2]}</span></span>`;
+    }
   }
 
   update(city) {
@@ -84,7 +218,54 @@ export class Interface {
       this._last.meterW = s.happiness;
       this.meterEl.style.width = `${s.homes ? s.happiness : 0}%`;
     }
-    set('clock', this.clockEl, `Day ${city.day} · ${formatClock(city.clock)}`);
+    const work = s.jobs ? ` · ${pct(s.employment ?? 1)} employed` : '';
+    set('clock', this.clockEl, `Day ${city.day} · ${formatClock(city.clock)}${work}`);
+  }
+
+  // Inspector: what is on a tile and why people do or don't want to live there.
+  inspect(city, sel) {
+    if (!sel) {
+      this.inspectEl.hidden = true;
+      this._inspectKey = null;
+      return;
+    }
+    const t = city.getTile(sel.x, sel.y);
+    if (!t) return;
+    const s = t.structure;
+    const def = s && STRUCTURES[s.type];
+    let title = t.terrain === 'water' ? 'Water' : s ? def.label : 'Open land';
+    const facts = [];
+    if (def?.capacity) {
+      facts.push(['Residents', `${s.residents} of ${def.capacity}`]);
+      const workers = workersIn(t);
+      if (workers) facts.push(['Working', `${Math.round(t.employment * workers)} of ${workers}`]);
+    }
+    if (def?.jobs) facts.push(['Jobs filled', `${t.workersFilled} of ${def.jobs}`]);
+    if (def?.service) facts.push(['Covers', `${def.radius} tiles around it`]);
+    if (s?.type === 'road') facts.push(['Traffic', t.congestion < 0.02 ? 'Clear' : `${pct(t.congestion)} busy`]);
+    if (!city.accessRoad(t.x, t.y) && def && !def.walkable) facts.push(['Road access', 'None nearby']);
+    const showFactors = t.terrain !== 'water' && s?.type !== 'road';
+    const factors = showFactors
+      ? FACTORS.filter((f) => f.enabled).map((f) => ({ label: f.label, v: t.factors[f.id] || 0 }))
+      : [];
+    const coverage = SERVICES.map((sv) => `${sv.label.replace(/s$/, '')} ${pct(t.coverage?.[sv.id] || 0)}`).join(' · ');
+    const key = JSON.stringify([title, facts, factors.map((f) => f.v.toFixed(3)), t.desirability.toFixed(3), coverage]);
+    if (key === this._inspectKey) return;
+    this._inspectKey = key;
+    this.inspectEl.hidden = false;
+    this.inspectEl.innerHTML =
+      `<header><div><span class="insp-kicker">Tile ${t.x}, ${t.y}</span><h2>${title}</h2></div>` +
+      `<button type="button" class="insp-close" data-close aria-label="Close inspector">${ICONS.close}</button></header>` +
+      (facts.length ? `<dl>${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>` : '') +
+      (showFactors
+        ? `<div class="insp-score"><span>Desirability</span><strong>${pct(t.desirability)}</strong></div>` +
+          `<ul class="factors">${factors
+            .map(
+              (f) =>
+                `<li><span>${f.label}</span><span class="fbar"><span class="${f.v < 0 ? 'neg' : 'pos'}" style="width:${Math.min(100, (Math.abs(f.v) / 0.35) * 100).toFixed(0)}%"></span></span><span class="fval">${f.v >= 0 ? '+' : '−'}${Math.round(Math.abs(f.v) * 100)}</span></li>`
+            )
+            .join('')}</ul><p class="insp-note">${coverage}</p>`
+        : '');
   }
 
   toast(message, ms = 2600) {

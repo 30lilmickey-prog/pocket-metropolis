@@ -5,8 +5,14 @@ import { CAR_COLORS, SHIRT_COLORS, SKIN_TONES } from './config.js';
 import { DIRS } from './state.js';
 import { pick, pickWeighted } from './utils.js';
 
-const MAX_CARS = 30;
-const MAX_WALKERS = 36;
+const MAX_CARS = 70;
+const MAX_WALKERS = 60;
+
+// How busy commuting is at this time of day: morning and evening rush hours, quiet nights.
+export function commuteActivity(clock) {
+  const peak = (c, w) => Math.exp(-(((clock - c) / w) ** 2));
+  return Math.min(1, 0.12 + 0.88 * peak(0.33, 0.05) + 0.88 * peak(0.73, 0.05) + 0.3 * peak(0.52, 0.12));
+}
 
 export class AgentSystem {
   constructor(city) {
@@ -34,28 +40,71 @@ export class AgentSystem {
     this.updateWalkers(dt, daylight);
   }
 
+  get commuters() {
+    return this.cars.filter((c) => c.route && !c.leaving).length;
+  }
+
   // ---- Cars -------------------------------------------------------------
 
+  // Cruising cars scale with the road network; commuters follow the labor market's routes.
   desiredCars(daylight) {
     let roads = 0;
     for (const t of this.city.tiles) if (t.roadMask) roads++;
-    if (roads < 2) return 0;
-    const base = Math.min(Math.floor(roads / 3), 2 + Math.floor(this.city.stats.population / 10), MAX_CARS);
-    return Math.round(base * (0.45 + 0.55 * daylight));
+    if (roads < 2) return { cruising: 0, commuting: 0 };
+    const cruising = Math.round(
+      Math.min(Math.floor(roads / 6), 2 + Math.floor(this.city.stats.population / 25), 20) * (0.35 + 0.65 * daylight)
+    );
+    const employed = this.city.derived.labor?.employed || 0;
+    const commuting = Math.round(Math.min(MAX_CARS - 20, employed / 5) * commuteActivity(this.city.clock));
+    return { cruising, commuting };
   }
 
   updateCars(dt, daylight) {
     const want = this.desiredCars(daylight);
     const active = this.cars.filter((c) => !c.leaving);
-    if (active.length < want && this._carTimer <= 0) {
-      this.spawnCar();
-      this._carTimer = 0.4;
-    } else if (active.length > want && this._carTimer <= 0) {
-      active[0].leaving = true;
-      this._carTimer = 0.6;
+    const commuting = active.filter((c) => c.route).length;
+    const cruising = active.length - commuting;
+    if (this._carTimer <= 0) {
+      if (commuting < want.commuting && this.spawnCommuter()) this._carTimer = 0.18;
+      else if (cruising < want.cruising) {
+        this.spawnCar();
+        this._carTimer = 0.4;
+      } else if (cruising > want.cruising) {
+        active.find((c) => !c.route).leaving = true;
+        this._carTimer = 0.6;
+      }
     }
     for (const c of this.cars) this.stepCar(c, dt);
     this.cars = this.cars.filter((c) => !c.dead);
+  }
+
+  // Pick a commute weighted by how many people make it. Mornings head to work, evenings home.
+  spawnCommuter() {
+    const flows = this.city.derived.labor?.flows;
+    if (!flows || !flows.length) return false;
+    const flow = pickWeighted(flows, (f) => (f.path.length > 1 ? f.count : 0));
+    if (!flow) return false;
+    const W = this.city.width;
+    const homeward = this.city.clock > 0.55 || (this.city.clock > 0.42 && Math.random() < 0.5);
+    const route = (homeward ? flow.path.slice().reverse() : flow.path).map((k) => ({ x: k % W, y: Math.floor(k / W) }));
+    const [a, b] = route;
+    this.cars.push({
+      x: a.x,
+      y: a.y,
+      px: a.x,
+      py: a.y,
+      nx: b.x,
+      ny: b.y,
+      route,
+      ri: 1,
+      t: 0,
+      speed: 1.1 + Math.random() * 0.5,
+      color: pick(CAR_COLORS),
+      alpha: 0,
+      leaving: false,
+      dead: false,
+    });
+    return true;
   }
 
   spawnCar() {
@@ -88,13 +137,32 @@ export class AgentSystem {
       return;
     }
     if (!city.isRoad(c.nx, c.ny)) return;
-    c.t += c.speed * dt;
+    // Busy roads slow everyone down.
+    const jam = city.getTile(c.x, c.y)?.congestion || 0;
+    c.t += c.speed * (1 - 0.55 * jam) * dt;
     while (c.t >= 1) {
       c.t -= 1;
       c.px = c.x;
       c.py = c.y;
       c.x = c.nx;
       c.y = c.ny;
+      if (c.route) {
+        const next = c.route[++c.ri];
+        if (!next || !city.isRoad(next.x, next.y)) {
+          c.leaving = true; // arrived
+          c.t = 0;
+          c.nx = c.x + (c.x - c.px);
+          c.ny = c.y + (c.y - c.py);
+          if (!city.isRoad(c.nx, c.ny)) {
+            c.nx = c.x;
+            c.ny = c.y;
+          }
+          break;
+        }
+        c.nx = next.x;
+        c.ny = next.y;
+        continue;
+      }
       const options = city.roadNeighbors(c.x, c.y).filter((n) => !(n.x === c.px && n.y === c.py));
       const next = options.length ? pick(options) : { x: c.px, y: c.py };
       if (!city.isRoad(next.x, next.y)) {

@@ -7,7 +7,21 @@ const KEY = 'pocket-metropolis:save';
 
 // MIGRATIONS[n] upgrades a save from version n to n + 1.
 export const MIGRATIONS = {
-  // 1: (save) => { save.city.systems.economy = { funds: 1000 }; return save; },
+  // v1 → v2: maps grew from 12×12 to 32×32. Old towns keep every tile and move to the middle.
+  1: (save) => {
+    const c = save.city;
+    const size = Math.max(32, c.width | 0, c.height | 0);
+    const ox = Math.floor((size - c.width) / 2);
+    const oy = Math.floor((size - c.height) / 2);
+    const tiles = Array.from({ length: size * size }, () => ({ terrain: 'grass', structure: null }));
+    c.tiles.forEach((t, i) => {
+      const x = i % c.width;
+      const y = Math.floor(i / c.width);
+      tiles[(y + oy) * size + x + ox] = t;
+    });
+    save.city = { ...c, width: size, height: size, tiles };
+    return save;
+  },
 };
 
 function migrate(save) {

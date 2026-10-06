@@ -24,3 +24,13 @@ export function mapBounds(width, height) {
     bottom: gridToWorld(width, height).y + 22,
   };
 }
+
+// World-space bounds of a block of tiles, padded for building height.
+export function tileRectBounds(x0, y0, x1, y1) {
+  return {
+    left: gridToWorld(x0, y1 + 1).x,
+    right: gridToWorld(x1 + 1, y0).x,
+    top: gridToWorld(x0, y0).y - 70,
+    bottom: gridToWorld(x1 + 1, y1 + 1).y + 10,
+  };
+}
