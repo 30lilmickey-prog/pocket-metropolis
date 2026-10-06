@@ -1114,6 +1114,199 @@ button:focus-visible {
 .ghost-btn:active {
   transform: scale(0.97);
 }
+/* Life Story activities */
+.act-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+.act-head h3 {
+  margin: 0;
+}
+.energy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.energy small {
+  margin-left: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+.energy-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--meter-track);
+}
+.energy-dot.on {
+  background: var(--stat-happiness);
+  box-shadow: 0 0 0 2px rgba(255, 207, 110, 0.3);
+}
+.act-group {
+  display: grid;
+  gap: 6px;
+}
+.act-group-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.act-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.act {
+  appearance: none;
+  border: 0;
+  border-radius: 14px;
+  padding: 9px 10px;
+  min-height: 52px;
+  background: var(--meter-track);
+  color: var(--ink);
+  text-align: left;
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  cursor: pointer;
+  font: 800 12.5px/1.2 var(--font-body);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.act small {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.act:not(:disabled):hover {
+  background: rgba(255, 207, 110, 0.35);
+}
+.act:not(:disabled):active {
+  transform: scale(0.97);
+}
+.act:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Achievements and life ribbons */
+.achievements summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+  padding: 4px 0;
+}
+.achievements summary::-webkit-details-marker {
+  display: none;
+}
+.achievements summary h3 {
+  margin: 0;
+}
+.achievements summary h3::before {
+  content: '▸ ';
+  color: var(--ink-soft);
+}
+.achievements[open] summary h3::before {
+  content: '▾ ';
+}
+.achievements summary span {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+.ach-grid {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.ach-grid li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 8px;
+  border-radius: 12px;
+  background: var(--meter-track);
+  opacity: 0.6;
+}
+.ach-grid li.got {
+  opacity: 1;
+  background: rgba(255, 207, 110, 0.3);
+}
+.ach-grid b {
+  display: block;
+  font-size: 12px;
+}
+.ach-grid small {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.ach-icon {
+  font-size: 18px;
+  color: #e6a93a;
+}
+.ribbon {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--ribbon) 45%, transparent);
+  border: 2px solid var(--ribbon);
+}
+.ribbon-badge {
+  flex: none;
+  filter: drop-shadow(0 2px 3px rgba(84, 70, 130, 0.2));
+}
+.ribbon small {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.ribbon b {
+  font: 600 18px/1.1 var(--font-display);
+}
+.past-lives {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.past-lives li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.past-lives small {
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+.mini-ribbon {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  background: color-mix(in srgb, var(--ribbon) 55%, transparent);
+}
+
 .life-hint {
   margin: -4px 0 0;
   font-size: 11.5px;

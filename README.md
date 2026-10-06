@@ -41,8 +41,13 @@ Open **Life** to create a character: name, pronouns, look and two traits. They a
 - Events pop up as messages with two to four choices. Each choice has its own outcomes, which change Happiness, Health, Smarts, Looks, Money and relationships.
 - The city shapes the life: schools and clinics near home, parks and trees, traffic on the commute, which workplaces are hiring and which homes have room. Bulldozing their home or workplace changes their story too.
 - Stages run from baby to senior. When a life ends you can continue as your child, or start a new life.
+- **Things to do:** between events, pick activities (two a year as a child, three from 13): study, exercise, see a doctor, hang out with friends and family, go on dates, visit the playground or park, go shopping, volunteer, babysit, work overtime, look for a job. Many use real places: the nearest sports field, playground, park, shop, school or clinic. Gains shrink as a stat gets high, so variety pays.
+- **Buy a home:** save up and buy a real house or flat in your city. Prices follow desirability, so the homes you make lovely cost more.
+- **Neighbours** are the families living in real homes near yours, and they keep the same names. Events follow the city too: snow days, heatwaves, cherry blossom, a festival when your town reaches a new milestone, and nudges when there's no playground or school nearby.
+- **Your character on the map:** from age 3 they walk their real routes, to work by day if they have a job or out to the park, with a ring and a marker so you can spot them.
+- **Achievements** (18, kept across every life in the city) and a **life ribbon** for each finished life, such as Centenarian, Tycoon, Genius or Family first.
 
-Events are plain data in `src/lifeEvents.js`; see the comment at the top of that file to add more.
+Events are plain data in `src/lifeEvents.js` and `src/lifeEventsMore.js` (78 in all); activities are in `src/lifeActivities.js` and achievements in `src/lifeAchievements.js`. See the comment at the top of each file to add more.
 
 ## Controls
 
@@ -70,7 +75,7 @@ Each system lives in its own module under `src/` and talks to the others only th
 | System | Files | Responsibility |
 | --- | --- | --- |
 | City State | `state.js`, `config.js` | Tiles (terrain, structure, residents, road links), clock, stats, `systems` slot for future modules. Emits `placed` / `removed` / `watered` / `movedIn` / `reset` events. |
-| Life Story | `life.js`, `lifeEngine.js`, `lifeEvents.js`, `lifeData.js`, `lifeUI.js` | One resident's life: aging, yearly stats, home and job tied to real tiles, the event engine and content, and the panel and event card. Saved in `city.systems.life`. |
+| Life Story | `life.js`, `lifeEngine.js`, `lifeEvents.js`, `lifeEventsMore.js`, `lifeActivities.js`, `lifeAchievements.js`, `lifeData.js`, `lifeUI.js` | One resident's life: aging, yearly stats, home and job tied to real tiles, the event engine and content, and the panel and event card. Saved in `city.systems.life`. |
 | Simulation | `simulation.js`, `desirability.js`, `labor.js`, `coverage.js`, `agents.js`, `time.js` | Fixed-step ticks: time of day, service coverage, the labor market and road congestion, desirability, residents moving in and out, stats. Agents (commuters, cruising cars, pedestrians) read the city and move through it. |
 | Renderer | `renderer.js`, `lighting.js`, `color.js`, `iso.js` | Reads state and draws the diorama. The ground layer is cached offscreen and redrawn only when the map changes; buildings and agents are depth-sorted and drawn each frame for on-screen tiles only. Also draws the data overlays. |
 | Input/Camera | `input.js`, `camera.js` | Pointer, wheel and pinch gestures; smooth pan and zoom; fitting to the screen. |
@@ -89,7 +94,7 @@ Derived data (labor market, commute routes, congestion, coverage, resident thoug
 npm test   # node --test, no dependencies
 ```
 
-The tests cover the labor market, road reachability, service and play coverage, milestones and unlocks, resident thoughts, save migration, town generation, pausing, and Life Story (aging, events, jobs and homes from the city, bulldozed homes, whole lives start to finish, saving).
+The tests cover the labor market, road reachability, service and play coverage, milestones and unlocks, resident thoughts, save migration, town generation, pausing, and Life Story (aging, events, jobs and homes from the city, bulldozed homes, activities, buying a home, neighbours, achievements and ribbons, the character's walker, whole lives start to finish, saving).
 
 ### Extending it
 

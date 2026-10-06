@@ -4,14 +4,30 @@
 
 import { STRUCTURES, DAY_LENGTH_SECONDS } from './config.js';
 import { FIRST_NAMES, LAST_NAMES, PRONOUNS, CAREERS, stageFor } from './lifeData.js';
-import { pickEvent, fill, choicesFor, rollOutcome, applyEffects } from './lifeEngine.js';
+import { pickEvent, fill, choicesFor, rollOutcome, applyEffects, STAT_KEYS } from './lifeEngine.js';
 import { LIFE_EVENTS } from './lifeEvents.js';
-import { pick } from './utils.js';
+import { ACTIVITIES, energyFor } from './lifeActivities.js';
+import { ACHIEVEMENTS, ribbonFor } from './lifeAchievements.js';
+import { pick, hash2 } from './utils.js';
 
 // One year of life passes per in-game day; Age up skips ahead.
 export const YEAR_SECONDS = DAY_LENGTH_SECONDS;
 const MAX_LOG = 200;
-const FALLBACKS = new Set(['job', 'work', 'a classmate', 'someone special', 'the little one']);
+const FALLBACKS = new Set(['job', 'work', 'a classmate', 'someone special', 'the little one', 'the baby']);
+const CITY_TIER = 3; // the "City" milestone, for the Watched it grow achievement
+
+// Home prices follow desirability; towers are flats, so cheaper.
+export function homePrice(tile) {
+  const base = tile.structure.type === 'tower' ? 26000 : 38000;
+  return Math.round((base * (0.6 + tile.desirability)) / 500) * 500;
+}
+
+// Each lived-in home is home to the same family every time: names come from its position.
+export function familyAt(tile) {
+  const last = LAST_NAMES[Math.floor(hash2(tile.x, tile.y, 77) * LAST_NAMES.length)];
+  const first = FIRST_NAMES[Math.floor(hash2(tile.x, tile.y, 78) * FIRST_NAMES.length)];
+  return { family: `the ${last} family`, person: `${first} ${last}`, x: tile.x, y: tile.y };
+}
 
 export class LifeSystem {
   constructor(city, { rng = Math.random, events = LIFE_EVENTS } = {}) {
@@ -57,12 +73,15 @@ export class LifeSystem {
         mother: { name: parentName(), closeness: r(65, 90), age: r(24, 36), alive: true },
         father: { name: parentName(), closeness: r(60, 90), age: r(25, 38), alive: true },
       },
+      siblings: [],
       friends: [],
       partner: null,
       children: [],
       job: null,
-      flags: {},
+      flags: { townTier: this.city.systems.milestones?.reached ?? 0 },
       seen: {},
+      energy: 0,
+      activityCount: 0,
       log: [],
       plan: [],
       pending: null,
@@ -70,10 +89,11 @@ export class LifeSystem {
       death: null,
       generation: (prev?.char?.generation || 0) + 1,
     };
-    this.city.systems.life = { char, history: prev?.history || [] };
+    this.city.systems.life = { char, history: prev?.history || [], achievements: prev?.achievements || {} };
     const where = home ? `a ${STRUCTURES[home.structure.type].label.toLowerCase()} at ${home.x}, ${home.y}` : 'a city with no homes yet';
     this.log(`${first} ${last} was born in ${where}.`);
     this.planYear();
+    this.checkAchievements();
     this.city.emit('lifeChanged');
     return char;
   }
@@ -95,6 +115,8 @@ export class LifeSystem {
     char.livesWithParents = kid.age < 18;
     char.money = Math.round(parent.money * 0.6);
     char.home = parent.home;
+    char.energy = energyFor(char.age);
+    if (parent.flags.ownsHome) char.flags.ownsHome = true; // the family home is inherited
     char.log = [];
     this.log(`${char.first} carries on the ${parent.last} family story, inheriting $${char.money.toLocaleString()}.`);
     this.planYear();
@@ -108,6 +130,7 @@ export class LifeSystem {
   update(dt) {
     const c = this.char;
     if (!c || !c.alive || c.pending) return;
+    if (c.flags.townTier == null) c.flags.townTier = this.city.systems.milestones?.reached ?? 0; // older saves
     c.yearProgress += dt / YEAR_SECONDS;
     while (c.plan.length && c.yearProgress >= c.plan[0] && !c.pending) {
       c.plan.shift();
@@ -132,8 +155,13 @@ export class LifeSystem {
     const c = this.char;
     c.age += 1;
     c.yearProgress = 0;
+    c.energy = energyFor(c.age);
+    c.yearActs = {};
     this.yearly();
-    if (c.alive) this.planYear();
+    if (c.alive) {
+      this.planYear();
+      this.checkAchievements();
+    }
     this.city.emit('lifeChanged');
   }
 
@@ -149,6 +177,7 @@ export class LifeSystem {
     const f = this.facts();
     const has = (t) => c.traits.includes(t);
     for (const k of c.children) k.age += 1;
+    for (const s of c.siblings || []) s.age += 1;
     for (const p of [c.family.mother, c.family.father]) {
       if (!p?.alive) continue;
       p.age += 1;
@@ -217,6 +246,9 @@ export class LifeSystem {
 
   die(cause) {
     const c = this.char;
+    this.checkAchievements();
+    const ribbon = ribbonFor(c);
+    c.ribbon = { id: ribbon.id, label: ribbon.label, color: ribbon.color };
     c.alive = false;
     c.death = { age: c.age, cause };
     c.plan = [];
@@ -248,10 +280,12 @@ export class LifeSystem {
       return null;
     }
     const vars = this.vars();
+    const ctx = this.ctx();
+    const textOf = (v) => fill(typeof v === 'function' ? v(ctx) : v, vars);
     return {
       id: ev.id,
-      title: ev.title ? fill(ev.title, vars) : null,
-      text: fill(ev.text, vars),
+      title: ev.title ? textOf(ev.title) : null,
+      text: textOf(ev.text),
       choices: c.pending.choices.map((ch) => fill(ch.label, vars)),
     };
   }
@@ -267,16 +301,88 @@ export class LifeSystem {
     const before = this.vars();
     const changes = applyEffects(outcome.effects, ctx);
     if (outcome.do) outcome.do(ctx, choice.data);
-    // Name things as they were when the choice was made (the job just left), plus anything new (a baby's name).
-    const after = this.vars();
-    const vars = { ...after };
-    for (const k of Object.keys(before)) if (FALLBACKS.has(after[k]) && !FALLBACKS.has(before[k])) vars[k] = before[k];
-    const text = fill(outcome.text, vars);
+    const text = fill(outcome.text, mergeVars(before, this.vars()));
     this.log(text);
     c.pending = null;
     if (outcome.next) this.fireEvent(outcome.next);
+    this.checkAchievements();
     this.city.emit('lifeChanged');
     return { text, changes };
+  }
+
+  // ---- Activities ----------------------------------------------------------------
+
+  // What the character could do right now, with labels filled in and a reason when blocked.
+  activities() {
+    const c = this.char;
+    if (!c?.alive) return [];
+    const ctx = this.ctx();
+    const vars = this.vars();
+    const energy = c.energy ?? energyFor(c.age);
+    return ACTIVITIES.filter((a) => c.age >= (a.minAge ?? 0) && c.age <= (a.maxAge ?? 200) && (!a.when || a.when(ctx))).map((a) => {
+      const cost = a.cost ? a.cost(ctx) : 0;
+      let blocked = null;
+      if (c.pending) blocked = 'An event is waiting';
+      else if (energy <= 0) blocked = 'No energy left this year';
+      else if (cost > c.money) blocked = `Needs $${cost.toLocaleString()}`;
+      return { id: a.id, group: a.group, label: fill(a.label(ctx), vars), hint: a.hint ? fill(a.hint(ctx), vars) : '', cost, blocked };
+    });
+  }
+
+  // Run an activity. Returns { text, changes } for the outcome card, { launched } when it opened an
+  // event card instead, or null if it can't be done.
+  doActivity(id) {
+    const c = this.char;
+    const a = ACTIVITIES.find((x) => x.id === id);
+    const offer = this.activities().find((x) => x.id === id);
+    if (!a || !offer || offer.blocked) return null;
+    const ctx = this.ctx();
+    const result = a.run(ctx, this.rng);
+    c.energy = (c.energy ?? energyFor(c.age)) - 1;
+    c.activityCount = (c.activityCount || 0) + 1;
+    c.yearActs = c.yearActs || {};
+    const repeats = c.yearActs[id] || 0;
+    c.yearActs[id] = repeats + 1;
+    if (result.launch) {
+      if (offer.cost) c.money = Math.max(0, c.money - offer.cost);
+      this.fireEvent(result.launch);
+      this.city.emit('lifeChanged');
+      return { launched: result.launch };
+    }
+    const before = this.vars();
+    // Diminishing returns: gains shrink as a stat gets high, and doing the same thing twice in a
+    // year helps less, so a life can't be maxed out by repeating one activity.
+    const effects = { ...result.effects, money: (result.effects?.money || 0) - offer.cost };
+    for (const k of STAT_KEYS) {
+      if (!(effects[k] > 0)) continue;
+      effects[k] = Math.round((effects[k] * Math.max(0, 1 - c.stats[k] / 110)) / (1 + repeats));
+    }
+    const changes = applyEffects(effects, ctx);
+    if (result.do) result.do(ctx);
+    const text = fill(result.text, mergeVars(before, this.vars()));
+    this.log(text);
+    this.checkAchievements();
+    this.city.emit('lifeChanged');
+    return { text, changes };
+  }
+
+  // ---- Achievements ----------------------------------------------------------------
+
+  // Achievements are kept across lives in city.systems.life.achievements. Returns the new ones.
+  checkAchievements() {
+    const s = this.state;
+    const c = s?.char;
+    if (!c) return [];
+    s.achievements = s.achievements || {};
+    const f = this.facts();
+    const earned = [];
+    for (const a of ACHIEVEMENTS) {
+      if (s.achievements[a.id] || !a.test(c, f)) continue;
+      s.achievements[a.id] = { by: `${c.first} ${c.last}`, age: c.age };
+      earned.push(a);
+      this.city.emit('achievement', { achievement: a });
+    }
+    return earned;
   }
 
   // ---- Helpers events use --------------------------------------------------
@@ -304,6 +410,11 @@ export class LifeSystem {
       friend: friend?.name.split(' ')[0] || 'a classmate',
       partner: c.partner?.name.split(' ')[0] || 'someone special',
       child: c.children[0]?.name.split(' ')[0] || 'the little one',
+      sibling: c.siblings?.[0]?.name.split(' ')[0] || 'the baby',
+      money: `$${c.money.toLocaleString()}`,
+      neighbour: this.neighbour()?.family || 'the neighbours',
+      neighbourperson: this.neighbour()?.person || 'a neighbour',
+      nspot: this.neighbour() ? `${this.neighbour().x}, ${this.neighbour().y}` : 'next door',
       job: c.job ? CAREERS[c.job.type].titles[c.job.level].toLowerCase() : 'job',
       workplace: c.job ? STRUCTURES[c.job.type].label.toLowerCase() : 'work',
     };
@@ -352,6 +463,52 @@ export class LifeSystem {
       .sort((a, b) => b.desirability - a.desirability);
   }
 
+  // The nearest lived-in home to the character's own, as a named family.
+  neighbour() {
+    const c = this.char;
+    if (!c?.home) return null;
+    let best = null;
+    let bestD = Infinity;
+    for (let dy = -4; dy <= 4; dy++) {
+      for (let dx = -4; dx <= 4; dx++) {
+        if (!dx && !dy) continue;
+        const t = this.city.getTile(c.home.x + dx, c.home.y + dy);
+        if (!t?.structure || !STRUCTURES[t.structure.type].capacity || t.structure.residents <= 0) continue;
+        const d = Math.abs(dx) + Math.abs(dy);
+        if (d < bestD) {
+          bestD = d;
+          best = t;
+        }
+      }
+    }
+    return best ? familyAt(best) : null;
+  }
+
+  // The nearest structure of the given type(s) to home, within `max` tiles (straight-line).
+  nearest(types, max = 8) {
+    const c = this.char;
+    const from = c?.home || { x: this.city.width / 2, y: this.city.height / 2 };
+    const want = Array.isArray(types) ? types : [types];
+    let best = null;
+    let bestD = Infinity;
+    for (const t of this.city.tiles) {
+      if (!t.structure || !want.includes(t.structure.type)) continue;
+      const d = Math.hypot(t.x - from.x, t.y - from.y);
+      if (d <= max && d < bestD) {
+        bestD = d;
+        best = t;
+      }
+    }
+    return best;
+  }
+
+  // Homes with room that the character could buy, cheapest first, with prices.
+  homesForSale() {
+    return this.openHomes()
+      .map((tile) => ({ tile, price: homePrice(tile) }))
+      .sort((a, b) => a.price - b.price);
+  }
+
   bestHome({ occupiedOk = false, preferOccupied = false } = {}) {
     const homes = this.city.homes().sort((a, b) => b.desirability - a.desirability);
     if (preferOccupied) {
@@ -375,10 +532,16 @@ export class LifeSystem {
         if (who === 'partner') return c.partner;
         if (who === 'friend') return [...c.friends].sort((a, b) => b.closeness - a.closeness)[0] || null;
         if (who === 'child') return c.children[0] || null;
+        if (who === 'sibling') return c.siblings?.[0] || null;
         return null;
       },
-      addFriend(closeness = 55) {
-        const name = `${pick(FIRST_NAMES, life.rng)} ${pick(LAST_NAMES, life.rng)}`;
+      addFriend(closeness = 55, known = null) {
+        const name = known || `${pick(FIRST_NAMES, life.rng)} ${pick(LAST_NAMES, life.rng)}`;
+        const existing = c.friends.find((f) => f.name === name);
+        if (existing) {
+          existing.closeness = Math.min(100, existing.closeness + 10);
+          return name;
+        }
         c.friends.push({ name, closeness });
         if (c.friends.length > 6) c.friends.sort((a, b) => b.closeness - a.closeness).length = 6;
         return name;
@@ -393,6 +556,26 @@ export class LifeSystem {
         c.children.push(kid);
         return kid.name;
       },
+      addSibling(pronouns = pick(['she', 'he', 'they'], life.rng)) {
+        c.siblings = c.siblings || [];
+        const sib = { name: `${pick(FIRST_NAMES, life.rng)} ${c.last}`, age: 0, pronouns, closeness: 70, alive: true };
+        c.siblings.push(sib);
+        return sib.name;
+      },
+      markTownTier() {
+        const tier = life.city.systems.milestones?.reached ?? 0;
+        c.flags.townTier = tier;
+        if (tier >= CITY_TIER) c.flags.sawCity = true;
+      },
+      neighbour: () => life.neighbour(),
+      nearest: (types, max) => life.nearest(types, max),
+      nearestWater(r = 6) {
+        const h = c.home;
+        if (!h) return null;
+        for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (life.city.getTile(h.x + dx, h.y + dy)?.terrain === 'water') return { x: h.x + dx, y: h.y + dy };
+        return null;
+      },
+      homesForSale: () => life.homesForSale(),
       moveTo(tile) {
         c.home = { x: tile.x, y: tile.y };
         c.livesWithParents = false;
@@ -409,6 +592,13 @@ export class LifeSystem {
   }
 }
 
+// Name things as they were before a choice (the job just left), plus anything new (a baby's name).
+function mergeVars(before, after) {
+  const vars = { ...after };
+  for (const k of Object.keys(before)) if (FALLBACKS.has(after[k]) && !FALLBACKS.has(before[k])) vars[k] = before[k];
+  return vars;
+}
+
 export function summaryOf(c) {
   return {
     name: `${c.first} ${c.last}`,
@@ -417,6 +607,7 @@ export function summaryOf(c) {
     money: c.money,
     children: c.children.length,
     generation: c.generation,
+    ribbon: c.ribbon || null,
   };
 }
 

@@ -10,6 +10,7 @@ import { AutoSaver, loadCity } from './persistence.js';
 import { generateTown } from './generator.js';
 import { Interface } from './ui.js';
 import { LifeInterface } from './lifeUI.js';
+import { summaryOf } from './life.js';
 import { CityPanel } from './cityUI.js';
 import { unlockTier } from './milestones.js';
 import { computeCoverage } from './coverage.js';
@@ -328,11 +329,20 @@ function start(hotData = {}) {
       }
       return result;
     },
+    onActivity: (id) => {
+      const result = sim.life.doActivity(id);
+      if (result?.text) {
+        const score = result.changes.reduce((n, c) => n + Math.sign(c.delta), 0);
+        audio.play(score >= 0 ? 'good' : 'bad');
+      } else if (result?.launched) audio.play('chime');
+      else audio.play('nope');
+      return result;
+    },
     onContinue: () => sim.life.continueAsChild(),
     onNewLife: () => {
       const s = city.systems.life;
-      if (s?.char) s.history = [...(s.history || []), { name: `${s.char.first} ${s.char.last}`, age: s.char.age }];
-      city.systems.life = s ? { char: null, history: s.history } : null;
+      if (s?.char) s.history = [...(s.history || []), summaryOf(s.char)];
+      city.systems.life = s ? { char: null, history: s.history, achievements: s.achievements || {} } : null;
     },
     onOpen: () => {
       cityPanel.toggle(false);
@@ -358,6 +368,10 @@ function start(hotData = {}) {
     else if (ev.type === 'restored') audio.play('undo');
     else if (ev.type === 'lifeEvent') audio.play('chime');
     if (ev.type === 'milestone') celebrate(ev.milestone);
+    if (ev.type === 'achievement') {
+      audio.play('fanfare', { gap: 1 });
+      ui.toast(`★ Achievement: ${ev.achievement.label}. ${ev.achievement.desc}`, 3600);
+    }
 
     if (ev.type === 'lifeEvent') lifeUI.eventArrived();
     else if (ev.type === 'lifeChanged') lifeUI.render();
