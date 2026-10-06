@@ -547,6 +547,25 @@ button {
   outline: 2px solid var(--tint-tower);
 }
 
+/* Undo and redo, floating beside the toolbar */
+.history-btns {
+  position: absolute;
+  left: calc(env(safe-area-inset-left, 0px) + 16px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
+  display: flex;
+  gap: 8px;
+  z-index: 2;
+}
+.history-btns .pill {
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  justify-content: center;
+}
+.history-btns .pill:disabled {
+  opacity: 0.45;
+}
+
 /* City controls sheet: speed, map view, recenter and Random Town on phones */
 .more-sheet {
   position: absolute;
@@ -1201,8 +1220,18 @@ button:focus-visible {
   #btn-speed,
   #btn-view,
   #btn-fit,
+  #btn-sound,
   #btn-random {
     display: none;
+  }
+  /* Undo sits just above the toolbar's left end on phones */
+  .history-btns {
+    left: calc(env(safe-area-inset-left, 0px) + 12px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 98px);
+  }
+  .history-btns .pill {
+    width: 42px;
+    height: 42px;
   }
   #btn-more {
     display: inline-flex;
@@ -1306,6 +1335,9 @@ button:focus-visible {
   }
   .tray {
     bottom: calc(env(safe-area-inset-bottom, 0px) + 62px);
+  }
+  .history-btns {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
   }
   .toast {
     bottom: calc(env(safe-area-inset-bottom, 0px) + 66px);

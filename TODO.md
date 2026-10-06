@@ -10,6 +10,7 @@
 - [x] 32×32 map, jobs (shop, office), services (school, clinic), traffic, Inspect tool, map views, speed controls
 - [x] Life Story, first version (see section 1)
 - [x] Phone layout: Life and a controls sheet up top instead of a column of side buttons; compact landscape layout
+- [x] Phase 1 polish: sound effects and ambience, drag to build, undo and redo, buildings that grow and vary, seasons and weather
 
 ## 1. Life Story: live one resident's life
 
@@ -57,7 +58,17 @@ You create a main character who moves into your city. Every so often a text even
 - [ ] More events: siblings, pets with names, neighbours from real nearby homes, city milestones ("the town reached 500 people")
 - [x] Choose with the keyboard; respects reduced motion
 
-## 2. Ideas from IsoCity
+## 2. Next up (from the GitHub research plan)
+
+- [ ] Milestones and unlocks: Hamlet → Village → Town → City, unlocking buildings with a small celebration
+- [ ] Resident thoughts and advisor hints that point to real places on the map
+- [ ] Floating "+8" desirability feedback when placing parks and services
+- [ ] **Decision:** a gentle economy (coins, no debt)
+- [ ] Life Story activities you can do any time (study, gym, date, visit, shop)
+- [ ] More Life Story events (consider inkjs for writing them), achievements and life ribbons
+- [ ] Share a city as a link (lz-string)
+
+## 3. Ideas from IsoCity
 
 From [isometric-city](https://github.com/uxcaleb/isometric-city) (originally amilich/isometric-city) (MIT). Ideas to adapt, not code to copy.
 
@@ -72,7 +83,7 @@ From [isometric-city](https://github.com/uxcaleb/isometric-city) (originally ami
 - [ ] City name generator and several saved cities
 - [ ] Statistics panel with history sparklines
 
-## 3. Deploy and tooling
+## 4. Deploy and tooling
 - [ ] Move the code to `andrerlaster-lgtm/Metropolis` and link it to Vercel so every push redeploys (until then each deploy is started by hand)
 - [ ] Test pinch and long-press on a real phone
 - [ ] Run `npm test` on every pull request with GitHub Actions

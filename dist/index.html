@@ -558,6 +558,25 @@ button {
   outline: 2px solid var(--tint-tower);
 }
 
+/* Undo and redo, floating beside the toolbar */
+.history-btns {
+  position: absolute;
+  left: calc(env(safe-area-inset-left, 0px) + 16px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
+  display: flex;
+  gap: 8px;
+  z-index: 2;
+}
+.history-btns .pill {
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  justify-content: center;
+}
+.history-btns .pill:disabled {
+  opacity: 0.45;
+}
+
 /* City controls sheet: speed, map view, recenter and Random Town on phones */
 .more-sheet {
   position: absolute;
@@ -1212,8 +1231,18 @@ button:focus-visible {
   #btn-speed,
   #btn-view,
   #btn-fit,
+  #btn-sound,
   #btn-random {
     display: none;
+  }
+  /* Undo sits just above the toolbar's left end on phones */
+  .history-btns {
+    left: calc(env(safe-area-inset-left, 0px) + 12px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 98px);
+  }
+  .history-btns .pill {
+    width: 42px;
+    height: 42px;
   }
   #btn-more {
     display: inline-flex;
@@ -1317,6 +1346,9 @@ button:focus-visible {
   }
   .tray {
     bottom: calc(env(safe-area-inset-bottom, 0px) + 62px);
+  }
+  .history-btns {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
   }
   .toast {
     bottom: calc(env(safe-area-inset-bottom, 0px) + 66px);
@@ -1460,6 +1492,7 @@ button:focus-visible {
         <button type="button" id="btn-fit" class="pill glass icon-only" aria-label="Recenter the city" title="Recenter">
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/><path d="m12 8.5 3.5 2v3l-3.5 2-3.5-2v-3z"/></svg>
         </button>
+        <button type="button" id="btn-sound" class="pill glass icon-only" aria-label="Sound on" title="Sound (M)"></button>
         <button type="button" id="btn-random" class="pill glass" aria-label="Generate a random town">
           <span class="dice"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 9h.01M15 9h.01M12 12h.01M9 15h.01M15 15h.01" stroke-width="2.8"/></svg></span>
           <span class="pill-text">Random Town</span>
@@ -1471,6 +1504,14 @@ button:focus-visible {
       <aside class="life-panel glass" id="life-panel" aria-label="Life Story" hidden></aside>
       <section class="life-card glass" id="life-card" role="dialog" aria-live="polite" aria-label="Life event" hidden></section>
       <div class="tray glass" id="tray" role="menu" hidden></div>
+      <div class="history-btns">
+        <button type="button" id="btn-undo" class="pill glass icon-only" aria-label="Undo" title="Undo (Ctrl+Z)" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+        </button>
+        <button type="button" id="btn-redo" class="pill glass icon-only" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>
+        </button>
+      </div>
       <nav class="toolbar glass" id="toolbar" aria-label="Build tools"></nav>
       <div class="toast glass" id="toast" role="status"></div>
     </main>
@@ -1717,7 +1758,8 @@ class CityState {
   }
 
   // The one entry point for player edits. Returns true when the city changed.
-  apply(tool, x, y) {
+  // `delay` (seconds) lets a batch of edits animate one after another.
+  apply(tool, x, y, { delay = 0 } = {}) {
     if (!this.canApply(tool, x, y)) return false;
     const t = this.getTile(x, y);
     const previous = t.structure;
@@ -1725,21 +1767,49 @@ class CityState {
       if (t.structure) t.structure = null;
       else t.terrain = 'grass';
       this._changed(x, y);
-      this.emit('removed', { x, y, previous, wasWater: !previous });
+      this.emit('removed', { x, y, previous, wasWater: !previous, delay });
       return true;
     }
     if (tool === 'water') {
       t.structure = null;
       t.terrain = 'water';
       this._changed(x, y);
-      this.emit('watered', { x, y, previous });
+      this.emit('watered', { x, y, previous, delay });
       return true;
     }
     t.terrain = 'grass';
     t.structure = this.createStructure(tool);
     this._changed(x, y);
-    this.emit('placed', { x, y, structure: t.structure, previous });
+    this.emit('placed', { x, y, structure: t.structure, previous, delay });
     return true;
+  }
+
+  // Apply one tool along a stroke of tiles. Returns how many tiles changed.
+  applyMany(tool, coords) {
+    let n = 0;
+    this.emit('batchStart', { tool, count: coords.length });
+    for (const { x, y } of coords) if (this.apply(tool, x, y, { delay: n * 0.035 })) n++;
+    this.emit('batchEnd', { tool, count: n });
+    return n;
+  }
+
+  // Copy of the given tiles' saved state, for undo.
+  snapshot(coords) {
+    return coords
+      .map(({ x, y }) => this.getTile(x, y))
+      .filter(Boolean)
+      .map((t) => ({ x: t.x, y: t.y, terrain: t.terrain, structure: t.structure ? { ...t.structure } : null }));
+  }
+
+  restore(snap) {
+    for (const s of snap) {
+      const t = this.getTile(s.x, s.y);
+      if (!t) continue;
+      t.terrain = s.terrain;
+      t.structure = s.structure ? { ...s.structure } : null;
+      this._changed(s.x, s.y);
+    }
+    this.emit('restored', { tiles: snap.map(({ x, y }) => ({ x, y })) });
   }
 
   createStructure(type, rand = Math.random) {
@@ -2343,7 +2413,9 @@ class AgentSystem {
 
   desiredWalkers(daylight) {
     const pop = this.city.stats.population;
-    return Math.round(Math.min(MAX_WALKERS, pop / 4) * (0.15 + 0.85 * daylight));
+    const w = this.city.derived.weather;
+    const shelter = 1 - 0.55 * (w?.rain || 0) - 0.4 * (w?.snow || 0);
+    return Math.round(Math.min(MAX_WALKERS, pop / 4) * (0.15 + 0.85 * daylight) * shelter);
   }
 
   updateWalkers(dt, daylight) {
@@ -3733,6 +3805,94 @@ function lifeStage(c) {
 return { YEAR_SECONDS, LifeSystem, summaryOf, lifeStage };
 })();
 
+// ---- weather.js ----
+const __mod_weather = (() => {
+// Seasons and weather. Seasons follow the day count; weather changes every few in-game hours with
+// odds that depend on the season. The current spell is saved in city.systems.weather; the smoothed
+// intensities the renderer and agents read live in city.derived.weather.
+
+const { clamp } = __mod_utils;
+const DAYS_PER_SEASON = 2;
+const SEASONS = [
+  { id: 'spring', label: 'Spring' },
+  { id: 'summer', label: 'Summer' },
+  { id: 'autumn', label: 'Autumn' },
+  { id: 'winter', label: 'Winter' },
+];
+
+// Odds of each kind of weather per season. Snow only falls in winter.
+const ODDS = {
+  spring: { clear: 0.5, cloudy: 0.2, rain: 0.25, fog: 0.05 },
+  summer: { clear: 0.72, cloudy: 0.13, rain: 0.15 },
+  autumn: { clear: 0.38, cloudy: 0.24, rain: 0.28, fog: 0.1 },
+  winter: { clear: 0.32, cloudy: 0.2, snow: 0.38, fog: 0.1 },
+};
+
+const WEATHER_LABELS = { clear: 'Clear', cloudy: 'Cloudy', rain: 'Rain', snow: 'Snow', fog: 'Fog' };
+
+function seasonFor(day) {
+  return SEASONS[Math.floor((Math.max(1, day) - 1) / DAYS_PER_SEASON) % SEASONS.length];
+}
+
+// How far through the current season we are, 0..1 (used to blend autumn into winter and so on).
+function seasonProgress(day, clock) {
+  return (((Math.max(1, day) - 1) % DAYS_PER_SEASON) + clock) / DAYS_PER_SEASON;
+}
+
+class WeatherSystem {
+  constructor(city, rng = Math.random) {
+    this.city = city;
+    this.rng = rng;
+    city.derived.weather = { kind: 'clear', rain: 0, snow: 0, fog: 0, cloud: 0, snowCover: 0 };
+  }
+
+  get spell() {
+    const s = this.city.systems;
+    if (!s.weather) s.weather = { kind: 'clear', ends: this.city.day + this.city.clock + 0.2 };
+    return s.weather;
+  }
+
+  // Pick the next spell of weather for the season.
+  roll() {
+    const season = seasonFor(this.city.day).id;
+    const odds = ODDS[season];
+    let r = this.rng();
+    let kind = 'clear';
+    for (const [k, p] of Object.entries(odds)) {
+      if ((r -= p) <= 0) {
+        kind = k;
+        break;
+      }
+    }
+    // Fog belongs to mornings; outside them it becomes a grey sky.
+    if (kind === 'fog' && (this.city.clock < 0.2 || this.city.clock > 0.45)) kind = 'cloudy';
+    const length = kind === 'clear' ? 0.25 + this.rng() * 0.35 : 0.1 + this.rng() * 0.2;
+    this.city.systems.weather = { kind, ends: this.city.day + this.city.clock + length };
+  }
+
+  update(dt) {
+    const now = this.city.day + this.city.clock;
+    if (now >= this.spell.ends) this.roll();
+    const kind = this.spell.kind;
+    const w = this.city.derived.weather;
+    const ease = (cur, target, rate) => cur + (target - cur) * Math.min(1, dt * rate);
+    w.kind = kind;
+    w.rain = ease(w.rain, kind === 'rain' ? 1 : 0, 0.25);
+    w.snow = ease(w.snow, kind === 'snow' ? 1 : 0, 0.25);
+    w.fog = ease(w.fog, kind === 'fog' ? 1 : 0, 0.2);
+    w.cloud = ease(w.cloud, kind === 'clear' ? 0 : kind === 'cloudy' || kind === 'fog' ? 0.6 : 1, 0.25);
+    // Snow settles through winter and melts away early in spring.
+    const season = seasonFor(this.city.day).id;
+    const p = seasonProgress(this.city.day, this.city.clock);
+    const coverTarget = season === 'winter' ? clamp(0.35 + p * 0.5 + w.snow * 0.3, 0, 1) : season === 'spring' ? clamp(0.4 - p * 2, 0, 1) : 0;
+    w.snowCover = ease(w.snowCover, coverTarget, 0.1);
+    w.season = season;
+  }
+}
+
+return { DAYS_PER_SEASON, SEASONS, WEATHER_LABELS, seasonFor, seasonProgress, WeatherSystem };
+})();
+
 // ---- time.js ----
 const __mod_time = (() => {
 // Time of day as simulation data. `clock` runs 0..1 per day: 0 = midnight, 0.25 = sunrise, 0.5 = noon.
@@ -3768,6 +3928,7 @@ const { computeLaborMarket } = __mod_labor;
 const { computeCoverage } = __mod_coverage;
 const { AgentSystem } = __mod_agents;
 const { LifeSystem } = __mod_life;
+const { WeatherSystem } = __mod_weather;
 const { daylightAt } = __mod_time;
 const { clamp, pickWeighted } = __mod_utils;
 class Simulation {
@@ -3775,6 +3936,7 @@ class Simulation {
     this.city = city;
     this.agents = new AgentSystem(city);
     this.life = new LifeSystem(city);
+    this.weather = new WeatherSystem(city);
     this.speed = 1; // 0 pauses; 1–3 run faster
     this._acc = 0;
     this._marketTimer = 0;
@@ -3794,6 +3956,7 @@ class Simulation {
       this._acc -= SIM_STEP;
       this.tick();
     }
+    this.weather.update(step);
     this.agents.update(step, daylightAt(city.clock));
     this.life.update(step);
   }
@@ -4070,7 +4233,7 @@ const __mod_renderer = (() => {
 const { PALETTE, BUILDING_VARIANTS, STRUCTURES } = __mod_config;
 const { HALF_W, HALF_H, gridToWorld, worldToGrid } = __mod_iso;
 const { lightingAt } = __mod_lighting;
-const { lit, litA, rgba } = __mod_color;
+const { lit, litA, rgba, mixHex } = __mod_color;
 const { clamp, hash2 } = __mod_utils;
 const SLAB_DEPTH = 18;
 // Unlit lighting for the cached ground layer; the frame's real light is multiplied on afterwards.
@@ -4140,6 +4303,39 @@ function convexHull(points) {
   return lower.slice(0, -1).concat(upper.slice(0, -1));
 }
 
+// Seasonal colours. Autumn leaves pick a warm colour per tree; winter frosts everything over.
+const AUTUMN_LEAVES = [
+  ['#e8935a', '#f2a66a', '#f8c28a'],
+  ['#d9725a', '#e88a6c', '#f2aa8c'],
+  ['#e0b04f', '#eec468', '#f6d88e'],
+  ['#c98a5a', '#dca06e', '#ecbc8e'],
+];
+const SNOW = '#f3f6f9';
+
+// Visible growth: houses gain a stage as they fill; towers and offices add floors as people arrive.
+// Pure function of the tile, so shadows, pins and drawing all agree.
+function growthOf(t, ghost = false) {
+  const s = t.structure;
+  if (!s) return null;
+  if (s.type === 'house') {
+    if (ghost) return { stage: 1 };
+    return { stage: s.residents === 0 ? 0 : s.residents < 3 ? 1 : 2 };
+  }
+  if (s.type === 'tower') {
+    const total = s.floors || 5;
+    if (ghost) return { floors: total };
+    const occ = s.residents / STRUCTURES.tower.capacity;
+    return { floors: Math.max(2, Math.min(total, Math.ceil(total * (0.3 + 0.7 * occ)))) };
+  }
+  if (s.type === 'office') {
+    const total = s.floors || 4;
+    if (ghost) return { floors: total };
+    const fill = (t.workersFilled || 0) / STRUCTURES.office.jobs;
+    return { floors: Math.max(2, Math.min(total, Math.ceil(total * (0.35 + 0.65 * fill)))) };
+  }
+  return null;
+}
+
 // A soft round shadow drawn once and stamped under every building.
 let contactCanvas = null;
 function contactSprite() {
@@ -4187,6 +4383,12 @@ class Renderer {
     this.glows = [];
     this.reduceMotion = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     this.ground = { canvas: null, key: '' };
+    this.growth = new Map();
+    this.onGrow = null;
+    this.season = 'spring';
+    this.snowCover = 0;
+    this.drops = [];
+    this._weatherL = { key: '', L: null };
     city.on((ev) => this.onCityEvent(ev));
   }
 
@@ -4205,20 +4407,29 @@ class Renderer {
     switch (ev.type) {
       case 'placed': {
         const t = ev.structure.type;
-        if (t === 'road' || t === 'park') this.ring(ev.x, ev.y, '#ffffff');
-        if (t !== 'road') this.bounces.set(key, { start: this.time, delay: 0, kind: 'pop' });
+        const d = ev.delay || 0;
+        if (t === 'road' || t === 'park') this.ring(ev.x, ev.y, '#ffffff', d);
+        if (t !== 'road') this.bounces.set(key, { start: this.time, delay: d, kind: 'pop' });
         break;
       }
       case 'removed':
         this.bounces.delete(key);
-        if (ev.wasWater) this.ring(ev.x, ev.y, '#ffffff');
-        else this.dust(ev.x, ev.y, ev.previous?.type === 'tower' ? 16 : 10);
+        if (ev.wasWater) this.ring(ev.x, ev.y, '#ffffff', ev.delay || 0);
+        else this.dust(ev.x, ev.y, ev.previous?.type === 'tower' ? 16 : 10, ev.delay || 0);
         break;
       case 'watered':
         this.bounces.delete(key);
-        if (ev.previous) this.dust(ev.x, ev.y, 8);
-        this.ring(ev.x, ev.y, PALETTE.water);
-        this.ring(ev.x, ev.y, '#ffffff', 0.15);
+        if (ev.previous) this.dust(ev.x, ev.y, 8, ev.delay || 0);
+        this.ring(ev.x, ev.y, PALETTE.water, ev.delay || 0);
+        this.ring(ev.x, ev.y, '#ffffff', (ev.delay || 0) + 0.15);
+        break;
+      case 'restored':
+        ev.tiles.forEach((c, i) => {
+          const t = this.city.getTile(c.x, c.y);
+          const d = Math.min(i * 0.02, 0.6);
+          if (t?.structure && t.structure.type !== 'road') this.bounces.set(`${c.x},${c.y}`, { start: this.time, delay: d, kind: 'pop' });
+          else if (i < 120) this.ring(c.x, c.y, '#ffffff', d);
+        });
         break;
       case 'movedIn':
         if (this.particles.filter((p) => p.kind === 'heart').length < 10) this.heart(ev.x, ev.y);
@@ -4241,11 +4452,31 @@ class Renderer {
     }
   }
 
+  // Notice when a building reaches a new stage and celebrate it with a stretch and sparkles.
+  trackGrowth(t) {
+    const g = growthOf(t);
+    if (!g) return;
+    const key = `${t.x},${t.y}`;
+    const sig = `${t.structure.id}:${g.stage ?? g.floors}`;
+    const prev = this.growth.get(key);
+    this.growth.set(key, sig);
+    if (!prev || prev.split(':')[0] !== sig.split(':')[0]) return;
+    if (Number(sig.split(':')[1]) > Number(prev.split(':')[1]) && !this.bounces.has(key)) {
+      this.bounces.set(key, { start: this.time, delay: 0, kind: 'grow' });
+      const f = this.footprint(t);
+      const top = gridToWorld(t.x + 0.5, t.y + 0.5, (f?.h || 20) + 4);
+      for (let i = 0; i < 6; i++) {
+        this.particles.push({ kind: 'spark', x: top.x + (Math.random() - 0.5) * 18, y: top.y + (Math.random() - 0.5) * 8, age: -i * 0.05, life: 0.8 });
+      }
+      this.onGrow?.(t);
+    }
+  }
+
   nudge(x, y) {
     this.bounces.set(`${x},${y}`, { start: this.time, delay: 0, kind: 'wobble' });
   }
 
-  dust(x, y, count) {
+  dust(x, y, count, delay = 0) {
     const c = gridToWorld(x + 0.5, y + 0.5);
     for (let i = 0; i < count; i++) {
       const a = (i / count) * Math.PI * 2 + Math.random() * 0.5;
@@ -4257,7 +4488,7 @@ class Renderer {
         vx: Math.cos(a) * sp,
         vy: Math.sin(a) * sp * 0.5 - 12,
         r: 3 + Math.random() * 3.5,
-        age: 0,
+        age: -delay,
         life: 0.7 + Math.random() * 0.35,
       });
     }
@@ -4288,6 +4519,10 @@ class Renderer {
       const s = Math.sin(t * 28) * 0.06 * (1 - t);
       return { sx: 1 + s, sy: 1 - s, hidden: false };
     }
+    if (b.kind === 'grow') {
+      const s = Math.sin(t * Math.PI) * 0.12 * (1 - t * 0.5);
+      return { sx: 1 - s * 0.4, sy: 1 + s, hidden: false };
+    }
     // Squash and stretch: grow from flat, overshoot tall and thin, settle.
     const sy = 1 - Math.exp(-5 * t) * Math.cos(9 * t);
     const sx = clamp(1 + (1 - sy) * 0.5, 0.86, 1.3);
@@ -4299,7 +4534,11 @@ class Renderer {
   render(dt, view) {
     this.time += dt;
     const { ctx, camera: cam, city } = this;
-    const L = lightingAt(city.clock);
+    const w = city.derived.weather || { rain: 0, snow: 0, fog: 0, cloud: 0, snowCover: 0, season: 'spring' };
+    this.weather = w;
+    this.season = w.season || 'spring';
+    this.snowCover = Math.round((w.snowCover || 0) * 10) / 10;
+    const L = this.weatherLight(lightingAt(city.clock), w);
     this.L = L;
     this.glows.length = 0;
 
@@ -4327,6 +4566,7 @@ class Renderer {
     if (view.overlay && view.overlay !== 'none') for (const t of tiles) this.drawOverlay(ctx, t, view.overlay);
     if (view.selected) this.drawSelected(ctx, view.selected);
     if (view.hover) this.drawHover(ctx, view.hover);
+    if (view.plan) this.drawPlan(ctx, view.plan);
     for (const t of tiles) if (t.structure) this.drawShadow(ctx, t, L);
 
     // Everything with height is depth-sorted together: buildings, props, cars and people.
@@ -4345,6 +4585,15 @@ class Renderer {
     }
     for (const w of this.agents.walkers) items.push({ d: w.gx + w.gy + 0.05, kind: 'walker', w });
     if (view.ghost) items.push({ d: view.ghost.x + view.ghost.y + 1.01, kind: 'ghost', ghost: view.ghost });
+    if (view.plan && STRUCTURES[view.plan.tool] && view.plan.tool !== 'road') {
+      for (const c of view.plan.tiles) {
+        if (!c.valid) continue;
+        const t = this.city.getTile(c.x, c.y);
+        if (t.structure) continue;
+        const ghost = { x: c.x, y: c.y, structure: { type: view.plan.tool, variant: 'blush', floors: 4, shape: (c.x + c.y) % 4, residents: 0 } };
+        items.push({ d: c.x + c.y + 1.01, kind: 'ghost', ghost });
+      }
+    }
     items.sort((a, b) => a.d - b.d);
     for (const it of items) this.drawItem(ctx, it, L);
     this.drawLifePins(ctx, L);
@@ -4353,7 +4602,116 @@ class Renderer {
     this.drawGlows(ctx, L);
 
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    this.drawPrecipitation(ctx, dt, w);
+    this.drawFog(ctx, w, L);
     this.drawVignette(ctx, L);
+  }
+
+  // Overcast skies dim and cool the light. Cached so the colour cache survives between frames.
+  weatherLight(base, w) {
+    const q = (v) => Math.round(v * 20) / 20;
+    const key = `${base.clock}|${q(w.cloud)}|${q(w.fog)}`;
+    if (this._weatherL.key === key) return this._weatherL.L;
+    const cloud = q(w.cloud);
+    const dim = 1 - 0.16 * cloud;
+    const grey = (hex, amt) => mixHex(hex, base.daylight > 0.4 ? '#a7afc0' : '#3c3f5c', amt);
+    const L = {
+      ...base,
+      ambient: [base.ambient[0] * dim * 0.98, base.ambient[1] * dim, base.ambient[2] * (dim + 0.03 * cloud)],
+      skyTop: grey(base.skyTop, cloud * 0.55),
+      skyBottom: grey(base.skyBottom, cloud * 0.5 + q(w.fog) * 0.2),
+      shadow: { ...base.shadow, alpha: base.shadow.alpha * (1 - cloud * 0.85) },
+      cloud,
+    };
+    this._weatherL = { key, L };
+    return L;
+  }
+
+  // Seasonal colour for grass, trees and water.
+  grassColor(base = PALETTE.grass) {
+    const tint = this.season === 'summer' ? mixHex(base, '#8fca8c', 0.35) : this.season === 'autumn' ? mixHex(base, '#c4cf8a', 0.45) : base;
+    return this.snowCover ? mixHex(tint, SNOW, this.snowCover * 0.85) : tint;
+  }
+
+  treeColors(x, y, blossom) {
+    if (this.snowCover >= 0.5) return { deep: '#c9d8d6', mid: '#e1eae9', light: '#ffffff' };
+    if (this.season === 'autumn' && !blossom) {
+      const [deep, mid, light] = AUTUMN_LEAVES[Math.floor(hash2(x | 0, y | 0, 51) * AUTUMN_LEAVES.length)];
+      return { deep, mid, light };
+    }
+    if (blossom) {
+      return this.season === 'spring' ? { deep: '#ef9fb0', mid: '#f9bfcc', light: '#ffe3ea' } : { deep: '#e9aab6', mid: PALETTE.blossom, light: PALETTE.blossomLight };
+    }
+    if (this.season === 'summer') return { deep: '#5fa874', mid: '#7cc28a', light: '#a4d99a' };
+    return { deep: PALETTE.leafDeep, mid: PALETTE.leaf, light: PALETTE.leafLight };
+  }
+
+  roofColor(hex) {
+    return this.snowCover ? mixHex(hex, SNOW, this.snowCover * 0.8) : hex;
+  }
+
+  // Rain streaks and snowflakes, drawn in screen space over the city.
+  drawPrecipitation(ctx, dt, w) {
+    const rain = w.rain || 0;
+    const snow = w.snow || 0;
+    const want = Math.round(170 * rain + 140 * snow) * (this.reduceMotion ? 0.4 : 1);
+    while (this.drops.length < want) this.drops.push({ x: Math.random() * this.w, y: Math.random() * this.h, s: 0.6 + Math.random() * 0.8, p: Math.random() * 6.28 });
+    if (this.drops.length > want) this.drops.length = want;
+    if (!want) return;
+    const snowy = snow > rain;
+    ctx.save();
+    ctx.beginPath();
+    if (snowy) ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    else {
+      ctx.strokeStyle = 'rgba(214,226,246,0.5)';
+      ctx.lineWidth = 1.1;
+      ctx.lineCap = 'round';
+    }
+    for (const d of this.drops) {
+      if (snowy) {
+        d.y += (38 + 30 * d.s) * dt;
+        d.x += Math.sin(this.time * 1.3 + d.p) * 14 * dt;
+      } else {
+        d.y += (620 + 260 * d.s) * dt;
+        d.x -= 140 * dt;
+      }
+      if (d.y > this.h + 10) {
+        d.y = -10;
+        d.x = Math.random() * (this.w + 60);
+      }
+      if (d.x < -20) d.x += this.w + 40;
+      if (snowy) {
+        const r = 1 + d.s * 1.3;
+        ctx.moveTo(d.x + r, d.y);
+        ctx.arc(d.x, d.y, r, 0, Math.PI * 2);
+      } else {
+        ctx.moveTo(d.x, d.y);
+        ctx.lineTo(d.x + 3 * d.s, d.y - 13 * d.s);
+      }
+    }
+    if (snowy) ctx.fill();
+    else ctx.stroke();
+    ctx.restore();
+  }
+
+  // Morning fog: a soft haze with slow drifting bands.
+  drawFog(ctx, w, L) {
+    const fog = w.fog || 0;
+    if (fog < 0.02) return;
+    const tone = L.daylight > 0.4 ? '242,242,248' : '120,124,160';
+    ctx.fillStyle = `rgba(${tone},${(0.32 * fog).toFixed(3)})`;
+    ctx.fillRect(0, 0, this.w, this.h);
+    for (let i = 0; i < 3; i++) {
+      const y = this.h * (0.3 + i * 0.22);
+      const x = ((this.time * (8 + i * 4)) % (this.w + 400)) - 200;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, this.w * 0.45);
+      g.addColorStop(0, `rgba(${tone},${(0.28 * fog).toFixed(3)})`);
+      g.addColorStop(1, `rgba(${tone},0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(x, y, this.w * 0.45, this.h * 0.12, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   // Only walk the slice of the grid that can be on screen, so large maps stay cheap.
@@ -4402,14 +4760,20 @@ class Renderer {
       }
     }
 
-    const cloudAlpha = 0.25 + 0.35 * L.daylight;
-    for (let i = 0; i < 4; i++) {
+    const overcast = L.cloud || 0;
+    const cloudAlpha = Math.min(0.85, 0.25 + 0.35 * L.daylight + overcast * 0.3);
+    for (let i = 0; i < 4 + Math.round(overcast * 4); i++) {
       const speed = 6 + i * 2.5;
       const span = this.w + 360;
       const cx = ((hash2(i, 7, 3) * span + this.time * speed) % span) - 180;
       const cy = this.h * (0.07 + 0.11 * i);
       const s = 0.8 + hash2(i, 8, 3) * 0.7;
-      ctx.fillStyle = L.daylight > 0.5 ? `rgba(255,255,255,${cloudAlpha})` : `rgba(220,214,245,${cloudAlpha * 0.6})`;
+      ctx.fillStyle =
+        L.daylight > 0.5
+          ? overcast > 0.3
+            ? `rgba(214,219,230,${cloudAlpha})`
+            : `rgba(255,255,255,${cloudAlpha})`
+          : `rgba(220,214,245,${cloudAlpha * 0.6})`;
       ctx.beginPath();
       ctx.ellipse(cx, cy, 46 * s, 14 * s, 0, 0, Math.PI * 2);
       ctx.ellipse(cx - 22 * s, cy + 3, 26 * s, 11 * s, 0, 0, Math.PI * 2);
@@ -4432,7 +4796,7 @@ class Renderer {
     const want = this.camera.zoom * this.dpr;
     if (want > cap * 1.05) return false;
     const scale = Math.min(cap, GROUND_SCALES.find((s) => s >= want * 0.95) || cap);
-    const key = `${city.revision}|${W}x${H}|${scale.toFixed(3)}`;
+    const key = `${city.revision}|${W}x${H}|${scale.toFixed(3)}|${this.season}|${this.snowCover}`;
     if (this.ground.key === key) return true;
     const g = this.ground;
     if (!g.canvas) g.canvas = document.createElement('canvas');
@@ -4480,6 +4844,18 @@ class Renderer {
   drawWaterMotion(ctx, t, L) {
     if (this.camera.zoom < 0.5) return;
     const { x, y } = t;
+    const rain = this.weather?.rain || 0;
+    if (rain > 0.2) {
+      ctx.strokeStyle = `rgba(255,255,255,${(0.45 * rain).toFixed(3)})`;
+      ctx.lineWidth = 0.8;
+      for (let i = 0; i < 2; i++) {
+        const ph = (this.time * 1.4 + hash2(x, y, 120 + i)) % 1;
+        const c = gridToWorld(x + 0.2 + hash2(x, y, 130 + i) * 0.6, y + 0.2 + hash2(x, y, 140 + i) * 0.6);
+        ctx.beginPath();
+        ctx.ellipse(c.x, c.y, 1 + ph * 5, 0.5 + ph * 2.5, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
     ctx.lineCap = 'round';
     ctx.lineWidth = 1.2;
     for (let i = 0; i < 2; i++) {
@@ -4561,7 +4937,7 @@ class Renderer {
     ]);
     ctx.fill();
     // Fill the top under the tiles so antialiased seams show grass, not the sky.
-    ctx.fillStyle = lit(PALETTE.grass, 0.97, L);
+    ctx.fillStyle = lit(this.grassColor(), 0.97, L);
     poly(ctx, [
       [0, 0],
       [W, 0],
@@ -4587,7 +4963,7 @@ class Renderer {
     if (t.terrain === 'water') return this.drawWater(ctx, t, L);
     const s = t.structure;
     if (s?.type === 'road') return this.drawRoad(ctx, t, L);
-    ctx.fillStyle = lit(PALETTE.grass, 0.97 + hash2(x, y, 1) * 0.06, L);
+    ctx.fillStyle = lit(this.grassColor(), 0.97 + hash2(x, y, 1) * 0.06, L);
     tilePoly(ctx, x, y);
     ctx.fill();
     if (s?.type === 'park') this.drawParkGround(ctx, t, L);
@@ -4596,7 +4972,8 @@ class Renderer {
 
   drawMeadow(ctx, t, L) {
     const { x, y } = t;
-    ctx.strokeStyle = lit(PALETTE.grass, 0.8, L);
+    if (this.snowCover >= 0.6) return;
+    ctx.strokeStyle = lit(this.grassColor(), 0.8, L);
     ctx.lineWidth = 0.9;
     ctx.lineCap = 'round';
     for (let i = 0; i < 3; i++) {
@@ -4610,10 +4987,12 @@ class Renderer {
       ctx.lineTo(p.x + 3, p.y - 2);
       ctx.stroke();
     }
-    if (hash2(x, y, 3) < 0.3) {
+    const flowers = this.season === 'spring' ? 0.45 : this.season === 'summer' ? 0.3 : this.season === 'autumn' ? 0.4 : 0;
+    if (hash2(x, y, 3) < flowers) {
       for (let i = 0; i < 4; i++) {
         const p = gridToWorld(x + 0.15 + hash2(x, y, 50 + i) * 0.7, y + 0.15 + hash2(x, y, 60 + i) * 0.7);
-        ctx.fillStyle = lit(FLOWER_COLORS[(i + x + y) % FLOWER_COLORS.length], 1, L);
+        const palette = this.season === 'autumn' ? AUTUMN_LEAVES[(i + x) % AUTUMN_LEAVES.length] : FLOWER_COLORS;
+        ctx.fillStyle = lit(palette[(i + x + y) % palette.length], 1, L);
         ctx.beginPath();
         ctx.arc(p.x, p.y, 1.3, 0, Math.PI * 2);
         ctx.fill();
@@ -4624,7 +5003,8 @@ class Renderer {
   drawWater(ctx, t, L) {
     const { x, y } = t;
     const city = this.city;
-    ctx.fillStyle = lit(PALETTE.water, 1, L);
+    const water = this.snowCover ? mixHex(PALETTE.water, '#cfe9f4', this.snowCover * 0.6) : PALETTE.water;
+    ctx.fillStyle = lit(water, 1, L);
     tilePoly(ctx, x, y);
     ctx.fill();
     // Slightly deeper centre where the tile is surrounded by water.
@@ -4634,7 +5014,7 @@ class Renderer {
       if (!n || n.terrain === 'water') wet++;
     });
     if (wet >= 3) {
-      ctx.fillStyle = lit(PALETTE.water, 0.93, L);
+      ctx.fillStyle = lit(water, 0.93, L);
       gridEllipse(ctx, x + 0.5, y + 0.5, 0, 0.28);
       ctx.fill();
     }
@@ -4728,7 +5108,7 @@ class Renderer {
   drawParkGround(ctx, t, L) {
     const { x, y } = t;
     const city = this.city;
-    ctx.fillStyle = lit(PALETTE.parkGrass, 1, L);
+    ctx.fillStyle = lit(this.grassColor(PALETTE.parkGrass), 1, L);
     tilePoly(ctx, x, y, 0.04);
     ctx.fill();
     // Paths run to the edge where they meet another park or a road.
@@ -4803,6 +5183,26 @@ class Renderer {
     ctx.fill();
   }
 
+  // Tiles a drag stroke will change: tinted where the tool can go, faint red where it can't.
+  drawPlan(ctx, plan) {
+    const z = this.camera.zoom;
+    const destroy = plan.tool === 'bulldoze';
+    const fill = destroy ? 'rgba(255,143,128,0.4)' : plan.tool === 'water' ? 'rgba(126,200,227,0.75)' : plan.tool === 'road' ? 'rgba(214,208,196,0.92)' : 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 1.4 / z;
+    for (const c of plan.tiles) {
+      tilePoly(ctx, c.x, c.y, 0.03);
+      if (c.valid) {
+        ctx.fillStyle = fill;
+        ctx.strokeStyle = destroy ? 'rgba(255,120,104,0.95)' : 'rgba(255,255,255,0.95)';
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        ctx.strokeStyle = 'rgba(255,128,112,0.45)';
+        ctx.stroke();
+      }
+    }
+  }
+
   drawSelected(ctx, sel) {
     const z = this.camera.zoom;
     const pulse = 0.6 + 0.4 * Math.sin(this.time * 4);
@@ -4830,11 +5230,11 @@ class Renderer {
 
   footprint(t) {
     const s = t.structure;
-    if (s.type === 'house') return { inset: 0.2, h: 27 };
-    if (s.type === 'tower') return { inset: 0.16, h: 6 + (s.floors || 5) * 11 };
+    if (s.type === 'house') return { inset: 0.2, h: growthOf(t).stage === 0 ? 22 : 27 };
+    if (s.type === 'tower') return { inset: 0.16, h: 6 + growthOf(t).floors * 11 };
     if (s.type === 'tree') return { inset: 0.32, h: 24, round: true };
     if (s.type === 'shop') return { inset: 0.16, h: 22 };
-    if (s.type === 'office') return { inset: 0.14, h: 8 + (s.floors || 4) * 12 };
+    if (s.type === 'office') return { inset: 0.14, h: 8 + growthOf(t).floors * 12 };
     if (s.type === 'school') return { inset: 0.12, h: 26 };
     if (s.type === 'clinic') return { inset: 0.15, h: 24 };
     return null;
@@ -4892,6 +5292,7 @@ class Renderer {
       return;
     }
     const t = it.t;
+    this.trackGrowth(t);
     const b = this.bounceFor(t.x, t.y);
     if (b.hidden) return;
     const c = gridToWorld(t.x + 0.5, t.y + 0.5);
@@ -4920,7 +5321,7 @@ class Renderer {
       case 'clinic':
         return this.drawClinic(ctx, x, y, s, L, ghost);
       case 'tree':
-        return this.drawTree(ctx, x + 0.5, y + 0.5, s.shape || 0, L, hash2(x, y, 12) * 6.28, 1);
+        return this.drawTree(ctx, x + 0.5, y + 0.5, s.shape || 0, L, hash2(x, y, 12) * 6.28, 1, x, y);
       case 'park':
         return this.drawParkProps(ctx, x, y, L);
       case 'road':
@@ -5033,75 +5434,104 @@ class Renderer {
 
   drawHouse(ctx, x, y, s, L, ghost) {
     const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.peach;
-    const x0 = x + 0.2;
-    const x1 = x + 0.8;
-    const y0 = y + 0.22;
-    const y1 = y + 0.78;
-    const h = 15;
-    const rh = 12;
+    const t = this.city.getTile(x, y);
+    const stage = ghost || !t ? 1 : growthOf(t).stage;
+    // An empty lot shows a small cottage; it becomes a full house, then gains a garage.
+    const inset = stage === 0 ? 0.26 : 0.2;
+    const x0 = x + inset;
+    const x1 = x + 1 - inset;
+    const y0 = y + inset + 0.02;
+    const y1 = y + 1 - inset - 0.02;
+    const h = stage === 0 ? 12 : 15;
+    const rh = stage === 0 ? 10 : 12;
     const o = 0.05;
-    const xm = (x0 + x1) / 2;
     const occ = ghost ? 0 : s.residents / STRUCTURES.house.capacity;
+    const roof = ['gableY', 'gableX', 'hip'][Math.floor(hash2(x, y, 41) * 3)];
     this.drawBox(ctx, L, x0, y0, x1, y1, 0, h, v.wall, false);
 
     ctx.fillStyle = lit(v.roof, 0.72, L);
-    poly(ctx, this.faceQuad('L', x0, y0, x1, y1, 0.6, 0.8, 0, 9));
+    poly(ctx, this.faceQuad('L', x0, y0, x1, y1, 0.6, 0.8, 0, Math.min(9, h - 3)));
     ctx.fill();
-    this.drawWindow(ctx, L, this.faceQuad('L', x0, y0, x1, y1, 0.16, 0.4, 5, 11), 0.92, this.isWindowLit(x, y, 0, occ, L));
-    this.drawWindow(ctx, L, this.faceQuad('R', x0, y0, x1, y1, 0.16, 0.4, 5, 11), 0.8, this.isWindowLit(x, y, 1, occ, L));
-    this.drawWindow(ctx, L, this.faceQuad('R', x0, y0, x1, y1, 0.6, 0.84, 5, 11), 0.8, this.isWindowLit(x, y, 2, occ, L));
+    this.drawWindow(ctx, L, this.faceQuad('L', x0, y0, x1, y1, 0.16, 0.4, 5, Math.min(11, h - 3)), 0.92, this.isWindowLit(x, y, 0, occ, L));
+    this.drawWindow(ctx, L, this.faceQuad('R', x0, y0, x1, y1, 0.16, 0.4, 5, Math.min(11, h - 3)), 0.8, this.isWindowLit(x, y, 1, occ, L));
+    if (stage > 0) this.drawWindow(ctx, L, this.faceQuad('R', x0, y0, x1, y1, 0.6, 0.84, 5, 11), 0.8, this.isWindowLit(x, y, 2, occ, L));
 
-    // Gable end, then the two roof slopes with a small overhang.
-    ctx.fillStyle = lit(v.wall, 0.92, L);
-    poly(ctx, [
-      [x0, y1, h],
-      [x1, y1, h],
-      [xm, y1, h + rh],
-    ]);
-    ctx.fill();
-    ctx.fillStyle = lit(v.roof, 1.05, L);
-    poly(ctx, [
-      [x0 - o, y0 - o, h],
-      [x0 - o, y1 + o, h],
-      [xm, y1 + o, h + rh],
-      [xm, y0 - o, h + rh],
-    ]);
-    ctx.fill();
-    ctx.fillStyle = lit(v.roof, 0.82, L);
-    poly(ctx, [
-      [x1 + o, y0 - o, h],
-      [x1 + o, y1 + o, h],
-      [xm, y1 + o, h + rh],
-      [xm, y0 - o, h + rh],
-    ]);
-    ctx.fill();
-    // Chimney sitting on the right slope.
-    const cx0 = xm + 0.08;
-    const cx1 = xm + 0.16;
-    const base = h + rh * (1 - (cx1 - xm) / (x1 + o - xm));
-    this.drawBox(ctx, L, cx0, y0 + 0.06, cx1, y0 + 0.14, base - 1, 6 + rh * 0.2, v.trim);
-    // Ridge and eave lines.
+    const xm = (x0 + x1) / 2;
+    const ym = (y0 + y1) / 2;
+    const top = h + rh;
+    const roofHex = this.roofColor(v.roof);
+    const fillPoly = (pts, shade, color = roofHex) => {
+      ctx.fillStyle = lit(color, shade, L);
+      poly(ctx, pts);
+      ctx.fill();
+    };
+    if (roof === 'gableY') {
+      // Ridge runs front to back; the gable faces the viewer's left.
+      fillPoly([[x0, y1, h], [x1, y1, h], [xm, y1, top]], 0.92, v.wall);
+      fillPoly([[x0 - o, y0 - o, h], [x0 - o, y1 + o, h], [xm, y1 + o, top], [xm, y0 - o, top]], 1.05);
+      fillPoly([[x1 + o, y0 - o, h], [x1 + o, y1 + o, h], [xm, y1 + o, top], [xm, y0 - o, top]], 0.82);
+      if (stage > 0) {
+        const cx0 = xm + 0.08;
+        const cx1 = xm + 0.16;
+        const base = h + rh * (1 - (cx1 - xm) / (x1 + o - xm));
+        this.drawBox(ctx, L, cx0, y0 + 0.06, cx1, y0 + 0.14, base - 1, 6 + rh * 0.2, v.trim);
+      }
+      this.roofLines(ctx, L, v, [[xm, y0 - o, top], [xm, y1 + o, top]], [[x0 - o, y1 + o, h], [xm, y1 + o, top], [x1 + o, y1 + o, h]]);
+    } else if (roof === 'gableX') {
+      // Ridge runs left to right; the gable faces the viewer's right.
+      fillPoly([[x0 - o, y0 - o, h], [x1 + o, y0 - o, h], [x1 + o, ym, top], [x0 - o, ym, top]], 0.95);
+      fillPoly([[x1, y0, h], [x1, y1, h], [x1, ym, top]], 0.78, v.wall);
+      fillPoly([[x0 - o, y1 + o, h], [x1 + o, y1 + o, h], [x1 + o, ym, top], [x0 - o, ym, top]], 1.02);
+      if (stage > 0) this.drawBox(ctx, L, x0 + 0.08, ym - 0.05, x0 + 0.16, ym + 0.05, top - 4, 6, v.trim);
+      this.roofLines(ctx, L, v, [[x0 - o, ym, top], [x1 + o, ym, top]], [[x1 + o, y1 + o, h], [x1 + o, ym, top], [x1 + o, y0 - o, h]]);
+    } else {
+      // Hipped roof: four slopes up to a short ridge.
+      const r0 = x0 + (x1 - x0) * 0.32;
+      const r1 = x1 - (x1 - x0) * 0.32;
+      fillPoly([[x0 - o, y0 - o, h], [x1 + o, y0 - o, h], [r1, ym, top], [r0, ym, top]], 0.95);
+      fillPoly([[x0 - o, y0 - o, h], [x0 - o, y1 + o, h], [r0, ym, top]], 1.05);
+      fillPoly([[x1 + o, y0 - o, h], [x1 + o, y1 + o, h], [r1, ym, top]], 0.8);
+      fillPoly([[x0 - o, y1 + o, h], [x1 + o, y1 + o, h], [r1, ym, top], [r0, ym, top]], 1.0);
+      this.roofLines(ctx, L, v, [[r0, ym, top], [r1, ym, top]], [[x0 - o, y1 + o, h], [r0, ym, top]], [[x1 + o, y1 + o, h], [r1, ym, top]]);
+    }
+
+    // A full house gains a little garage in front.
+    if (stage === 2) {
+      const g0 = x + 0.56;
+      const g1 = x + 0.86;
+      const gy0 = y + 0.8;
+      const gy1 = y + 0.95;
+      this.drawBox(ctx, L, g0, gy0, g1, gy1, 0, 8, v.wall);
+      ctx.fillStyle = lit(v.trim, 0.95, L);
+      poly(ctx, this.faceQuad('L', g0, gy0, g1, gy1, 0.15, 0.85, 0, 6));
+      ctx.fill();
+      ctx.fillStyle = lit(roofHex, 0.95, L);
+      poly(ctx, [[g0 - 0.02, gy0 - 0.02, 8], [g1 + 0.02, gy0 - 0.02, 8], [g1 + 0.02, gy1 + 0.02, 8], [g0 - 0.02, gy1 + 0.02, 8]]);
+      ctx.fill();
+    }
+  }
+
+  roofLines(ctx, L, v, ridge, ...eaves) {
     ctx.lineWidth = 0.8;
     ctx.strokeStyle = `rgba(255,255,255,${(0.25 + 0.25 * L.daylight).toFixed(3)})`;
-    ctx.beginPath();
-    const r0 = gridToWorld(xm, y0 - o, h + rh);
-    const r1 = gridToWorld(xm, y1 + o, h + rh);
-    ctx.moveTo(r0.x, r0.y);
-    ctx.lineTo(r1.x, r1.y);
-    ctx.stroke();
+    const line = (pts) => {
+      ctx.beginPath();
+      pts.forEach((p, i) => {
+        const w = gridToWorld(p[0], p[1], p[2]);
+        if (i) ctx.lineTo(w.x, w.y);
+        else ctx.moveTo(w.x, w.y);
+      });
+      ctx.stroke();
+    };
+    line(ridge);
     ctx.strokeStyle = lit(v.roof, 0.66, L);
-    ctx.beginPath();
-    const e0 = gridToWorld(x0 - o, y1 + o, h);
-    const e1 = gridToWorld(x1 + o, y1 + o, h);
-    ctx.moveTo(e0.x, e0.y);
-    ctx.lineTo(r1.x, r1.y);
-    ctx.lineTo(e1.x, e1.y);
-    ctx.stroke();
+    for (const e of eaves) line(e);
   }
 
   drawTower(ctx, x, y, s, L, ghost) {
     const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.lavender;
-    const floors = s.floors || 5;
+    const tile = this.city.getTile(x, y);
+    const floors = ghost || !tile ? s.floors || 5 : growthOf(tile).floors;
     const x0 = x + 0.16;
     const x1 = x + 0.84;
     const y0 = y + 0.16;
@@ -5138,7 +5568,7 @@ class Renderer {
     }
 
     // Roof deck with a parapet rim and a small rooftop unit.
-    ctx.fillStyle = lit(v.trim, 1, L);
+    ctx.fillStyle = lit(this.roofColor(v.trim), 1, L);
     poly(ctx, [
       [x0, y0, h],
       [x1, y0, h],
@@ -5146,7 +5576,7 @@ class Renderer {
       [x0, y1, h],
     ]);
     ctx.fill();
-    ctx.fillStyle = lit(v.wall, 0.95, L);
+    ctx.fillStyle = lit(this.roofColor(v.wall), 0.95, L);
     poly(ctx, [
       [x0 + 0.05, y0 + 0.05, h],
       [x1 - 0.05, y0 + 0.05, h],
@@ -5154,7 +5584,7 @@ class Renderer {
       [x0 + 0.05, y1 - 0.05, h],
     ]);
     ctx.fill();
-    this.drawBox(ctx, L, x0 + 0.12, y0 + 0.12, x0 + 0.32, y0 + 0.3, h, 5, v.trim);
+    this.drawRooftop(ctx, L, x, y, x0, y0, x1, y1, h, v);
     if (floors >= 6) {
       const a = gridToWorld(x1 - 0.15, y1 - 0.15, h);
       ctx.strokeStyle = lit(PALETTE.pole, 1, L);
@@ -5167,6 +5597,45 @@ class Renderer {
       ctx.beginPath();
       ctx.arc(a.x, a.y - 12, 1.4, 0, Math.PI * 2);
       ctx.fill();
+    }
+  }
+
+  // Rooftops vary by building: an air-con unit, a water tank, or a little roof garden.
+  drawRooftop(ctx, L, x, y, x0, y0, x1, y1, h, v) {
+    const kind = Math.floor(hash2(x, y, 43) * 3);
+    if (kind === 0) {
+      this.drawBox(ctx, L, x0 + 0.12, y0 + 0.12, x0 + 0.32, y0 + 0.3, h, 5, v.trim);
+    } else if (kind === 1) {
+      const cx = x0 + 0.24;
+      const cy = y0 + 0.24;
+      this.drawBox(ctx, L, cx - 0.08, cy - 0.08, cx + 0.08, cy + 0.08, h, 7, '#c9b49a');
+      const tip = gridToWorld(cx, cy, h + 12);
+      const l = gridToWorld(cx - 0.08, cy + 0.08, h + 7);
+      const r = gridToWorld(cx + 0.08, cy - 0.08, h + 7);
+      const b = gridToWorld(cx + 0.08, cy + 0.08, h + 7);
+      ctx.fillStyle = lit('#a88c74', 1, L);
+      ctx.beginPath();
+      ctx.moveTo(l.x, l.y);
+      ctx.lineTo(tip.x, tip.y);
+      ctx.lineTo(r.x, r.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.fillStyle = lit(PALETTE.parkGrass, 0.95, L);
+      poly(ctx, [[x0 + 0.1, y0 + 0.1, h], [x1 - 0.1, y0 + 0.1, h], [x1 - 0.1, y1 - 0.1, h], [x0 + 0.1, y1 - 0.1, h]]);
+      ctx.fill();
+      for (const [gx, gy] of [[x0 + 0.22, y0 + 0.22], [x1 - 0.2, y1 - 0.24], [x0 + 0.24, y1 - 0.2]]) {
+        const p = gridToWorld(gx, gy, h);
+        ctx.fillStyle = lit(PALETTE.leafDeep, 1, L);
+        ctx.beginPath();
+        ctx.arc(p.x + 0.5, p.y - 3, 3.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = lit(PALETTE.leaf, 1, L);
+        ctx.beginPath();
+        ctx.arc(p.x - 0.4, p.y - 3.8, 2.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 
@@ -5221,7 +5690,8 @@ class Renderer {
 
   drawOffice(ctx, x, y, s, L, ghost) {
     const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.lavender;
-    const floors = s.floors || 4;
+    const otile = this.city.getTile(x, y);
+    const floors = ghost || !otile ? s.floors || 4 : growthOf(otile).floors;
     const x0 = x + 0.14;
     const x1 = x + 0.86;
     const y0 = y + 0.14;
@@ -5386,7 +5856,8 @@ class Renderer {
     }
   }
 
-  drawTree(ctx, gx, gy, shape, L, phase, scale) {
+  drawTree(ctx, gx, gy, shape, L, phase, scale, tx = gx, ty = gy) {
+    const col = this.treeColors(tx * 3, ty * 3, shape === 3);
     const p = gridToWorld(gx, gy);
     const sway = this.reduceMotion ? 0 : Math.sin(this.time * 1.2 + phase) * 0.7;
     ctx.save();
@@ -5408,14 +5879,17 @@ class Renderer {
         const base = -6 - i * 7;
         const w = 9 - i * 2;
         const s = sway * (0.5 + i * 0.25);
-        ctx.fillStyle = lit(PALETTE.leafDeep, 1, L);
+        // Pines stay green all year; in winter their tiers carry snow.
+        const pineDeep = this.snowCover >= 0.5 ? '#6f9e88' : PALETTE.leafDeep;
+        const pineMid = this.snowCover >= 0.5 ? '#e8efee' : PALETTE.leaf;
+        ctx.fillStyle = lit(pineDeep, 1, L);
         ctx.beginPath();
         ctx.moveTo(-w + s * 0.5, base);
         ctx.lineTo(w + s * 0.5, base);
         ctx.lineTo(s, base - 11);
         ctx.closePath();
         ctx.fill();
-        ctx.fillStyle = lit(PALETTE.leaf, 1, L);
+        ctx.fillStyle = lit(pineMid, 1, L);
         ctx.beginPath();
         ctx.moveTo(-w + s * 0.5, base);
         ctx.lineTo(s * 0.7, base);
@@ -5424,20 +5898,17 @@ class Renderer {
         ctx.fill();
       }
     } else if (shape === 2) {
-      ctx.fillStyle = lit(PALETTE.leafDeep, 1, L);
+      ctx.fillStyle = lit(col.deep, 1, L);
       ctx.beginPath();
       ctx.ellipse(sway + 0.8, -17, 7, 11, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = lit(PALETTE.leaf, 1, L);
+      ctx.fillStyle = lit(col.mid, 1, L);
       ctx.beginPath();
       ctx.ellipse(sway - 0.6, -18, 5.8, 10, 0, 0, Math.PI * 2);
       ctx.fill();
-      blob(-2.5, -22, 2.6, PALETTE.leafLight, 1);
+      blob(-2.5, -22, 2.6, col.light, 1);
     } else {
-      const blossom = shape === 3;
-      const deep = blossom ? '#e9aab6' : PALETTE.leafDeep;
-      const mid = blossom ? PALETTE.blossom : PALETTE.leaf;
-      const light = blossom ? PALETTE.blossomLight : PALETTE.leafLight;
+      const { deep, mid, light } = col;
       blob(1, -15, 9, deep, 1);
       blob(-4, -16, 6.5, mid, 1);
       blob(3, -20, 6.5, mid, 1);
@@ -5581,6 +6052,22 @@ class Renderer {
     ctx.beginPath();
     ctx.arc(p.x, p.y - 7.8 - bob, 1.7, 0, Math.PI * 2);
     ctx.fill();
+    // Umbrellas come out in the rain and snow.
+    const wet = Math.max(this.weather?.rain || 0, this.weather?.snow || 0);
+    if (wet > 0.3) {
+      const top = p.y - 12.5 - bob;
+      ctx.strokeStyle = lit('#6d6890', 1, L);
+      ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      ctx.moveTo(p.x + 1.4, top);
+      ctx.lineTo(p.x + 1.4, p.y - 5 - bob);
+      ctx.stroke();
+      ctx.fillStyle = lit(w.umbrella || w.shirt, 1, L);
+      ctx.beginPath();
+      ctx.ellipse(p.x + 1.4, top, 4.6, 2.6, 0, Math.PI, 0);
+      ctx.closePath();
+      ctx.fill();
+    }
     ctx.restore();
   }
 
@@ -5662,6 +6149,22 @@ class Renderer {
         ctx.lineWidth = 2 * (1 - t) + 0.5;
         gridEllipse(ctx, p.gx, p.gy, 0, r);
         ctx.stroke();
+      } else if (p.kind === 'spark') {
+        const a = 1 - t;
+        const r = 2.2 * (1 - t * 0.5);
+        const y = p.y - t * 14;
+        ctx.fillStyle = `rgba(255,236,170,${a.toFixed(3)})`;
+        ctx.beginPath();
+        ctx.moveTo(p.x, y - r * 2);
+        ctx.lineTo(p.x + r * 0.6, y - r * 0.6);
+        ctx.lineTo(p.x + r * 2, y);
+        ctx.lineTo(p.x + r * 0.6, y + r * 0.6);
+        ctx.lineTo(p.x, y + r * 2);
+        ctx.lineTo(p.x - r * 0.6, y + r * 0.6);
+        ctx.lineTo(p.x - r * 2, y);
+        ctx.lineTo(p.x - r * 0.6, y - r * 0.6);
+        ctx.closePath();
+        ctx.fill();
       } else if (p.kind === 'heart') {
         const y = p.y - t * 22;
         const s = 3.2 * (t < 0.15 ? t / 0.15 : 1);
@@ -5696,7 +6199,7 @@ class Renderer {
   }
 }
 
-return { Renderer };
+return { growthOf, Renderer };
 })();
 
 // ---- camera.js ----
@@ -5810,7 +6313,9 @@ return { Camera };
 // ---- input.js ----
 const __mod_input = (() => {
 // Input: turns mouse, touch and pen gestures into camera moves and tile actions.
-// Tap/click builds, right-click or long-press bulldozes, drag pans, wheel or pinch zooms.
+// Tap/click builds one tile; dragging with a build tool paints a stroke (roads draw as an L).
+// Touch: two fingers pan and pinch; long-press bulldozes. Mouse: right or middle drag pans,
+// right-click bulldozes, wheel zooms. With the Inspect tool, a one-finger or left drag pans.
 
 const LONG_PRESS_MS = 480;
 
@@ -5818,20 +6323,25 @@ class InputController {
   constructor(canvas, camera, handlers) {
     this.canvas = canvas;
     this.camera = camera;
-    this.handlers = handlers; // { onTap, onBulldoze, onHover, onLongPressStart }
+    this.handlers = handlers; // { onTap, onBulldoze, onHover, canPaint, onPaintStart, onPaintMove, onPaintEnd }
     this.pointers = new Map();
     this.gesture = null;
     this.longTimer = 0;
+    this.last = null; // last pointer position, for edge scrolling while painting
 
     canvas.addEventListener('pointerdown', (e) => this.onDown(e));
     canvas.addEventListener('pointermove', (e) => this.onMove(e));
     canvas.addEventListener('pointerup', (e) => this.onUp(e));
     canvas.addEventListener('pointercancel', (e) => this.onUp(e, true));
     canvas.addEventListener('pointerleave', (e) => {
-      if (e.pointerType === 'mouse') this.handlers.onHover(null);
+      if (e.pointerType === 'mouse' && !this.gesture) this.handlers.onHover(null);
     });
     canvas.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+
+  get painting() {
+    return this.gesture?.mode === 'paint';
   }
 
   local(e) {
@@ -5848,12 +6358,15 @@ class InputController {
     }
     this.pointers.set(e.pointerId, { x: p.x, y: p.y });
     if (this.pointers.size === 1) {
+      const panButton = e.pointerType === 'mouse' && e.button !== 0;
       this.gesture = {
         button: e.button,
         type: e.pointerType,
         startX: p.x,
         startY: p.y,
         moved: false,
+        mode: null, // 'pan' or 'paint' once the pointer has moved
+        wantsPaint: !panButton && this.handlers.canPaint(),
         pinched: false,
         longPressed: false,
         vx: 0,
@@ -5873,6 +6386,9 @@ class InputController {
       }
     } else if (this.pointers.size === 2 && this.gesture) {
       clearTimeout(this.longTimer);
+      // A second finger turns any stroke in progress into a pan/pinch; the stroke is dropped.
+      if (this.gesture.mode === 'paint') this.handlers.onPaintEnd(false);
+      this.gesture.mode = 'pan';
       this.gesture.pinched = true;
       this.gesture.moved = true;
       this.pinch = this.pinchState();
@@ -5895,6 +6411,7 @@ class InputController {
     const dy = p.y - ptr.y;
     ptr.x = p.x;
     ptr.y = p.y;
+    this.last = p;
     const g = this.gesture;
     if (!g) return;
 
@@ -5903,8 +6420,14 @@ class InputController {
       if (!g.moved && Math.hypot(p.x - g.startX, p.y - g.startY) > threshold) {
         g.moved = true;
         clearTimeout(this.longTimer);
+        if (!g.longPressed) {
+          g.mode = g.wantsPaint ? 'paint' : 'pan';
+          if (g.mode === 'paint') this.handlers.onPaintStart(g.startX, g.startY);
+        }
       }
-      if (g.moved && !g.longPressed) {
+      if (g.mode === 'paint') {
+        this.handlers.onPaintMove(p.x, p.y);
+      } else if (g.mode === 'pan') {
         this.camera.panBy(dx, dy);
         const now = performance.now();
         const dtm = Math.max(1, now - g.lastT) / 1000;
@@ -5912,7 +6435,7 @@ class InputController {
         g.vy = g.vy * 0.6 + (dy / dtm) * 0.4;
         g.lastT = now;
       }
-      if (e.pointerType === 'mouse') this.handlers.onHover(g.moved ? null : p.x, p.y);
+      if (e.pointerType === 'mouse' && g.mode !== 'paint') this.handlers.onHover(g.moved ? null : p.x, p.y);
     } else if (this.pointers.size === 2 && this.pinch) {
       const next = this.pinchState();
       this.camera.zoomAt(next.dist / this.pinch.dist, next.mx, next.my, true);
@@ -5932,11 +6455,16 @@ class InputController {
     }
     if (this.pointers.size > 0 || !g) return;
     this.gesture = null;
+    this.last = null;
+    if (g.mode === 'paint') {
+      this.handlers.onPaintEnd(!cancelled);
+      return;
+    }
     if (cancelled) return;
     if (!g.moved && !g.longPressed && !g.pinched) {
       if (g.button === 2) this.handlers.onBulldoze(p.x, p.y);
       else if (g.button === 0) this.handlers.onTap(p.x, p.y);
-    } else if (g.moved && !g.pinched && performance.now() - g.lastT < 80) {
+    } else if (g.mode === 'pan' && !g.pinched && performance.now() - g.lastT < 80) {
       this.camera.fling(g.vx, g.vy);
     }
   }
@@ -5946,6 +6474,24 @@ class InputController {
     const p = this.local(e);
     const scale = e.deltaMode === 1 ? 0.05 : e.ctrlKey ? 0.01 : 0.0015;
     this.camera.zoomAt(Math.exp(-e.deltaY * scale), p.x, p.y);
+  }
+
+  // While painting near a screen edge, slide the map so long strokes can continue.
+  edgeScroll(dt) {
+    if (!this.painting || !this.last) return false;
+    const r = this.canvas.getBoundingClientRect();
+    const m = 48;
+    const speed = 420 * dt;
+    let dx = 0;
+    let dy = 0;
+    if (this.last.x < m) dx = speed * (1 - this.last.x / m);
+    else if (this.last.x > r.width - m) dx = -speed * (1 - (r.width - this.last.x) / m);
+    if (this.last.y < m) dy = speed * (1 - this.last.y / m);
+    else if (this.last.y > r.height - m) dy = -speed * (1 - (r.height - this.last.y) / m);
+    if (!dx && !dy) return false;
+    this.camera.panBy(dx, dy);
+    this.handlers.onPaintMove(this.last.x, this.last.y);
+    return true;
   }
 }
 
@@ -6201,6 +6747,7 @@ const { TOOL_GROUPS, TOOLS, VIEWS, STRUCTURES, SERVICES } = __mod_config;
 const { FACTORS } = __mod_desirability;
 const { formatClock } = __mod_time;
 const { workersIn } = __mod_labor;
+const { seasonFor, WEATHER_LABELS } = __mod_weather;
 const svg = (body) =>
   `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 
@@ -6223,6 +6770,8 @@ const ICONS = {
   play: svg('<path d="M7 4.5v15l12-7.5z"/>'),
   layers: svg('<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 12.5 9 5 9-5"/><path d="m3 17 9 5 9-5"/>'),
   close: svg('<path d="M6 6l12 12M18 6 6 18"/>'),
+  soundOn: svg('<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>'),
+  soundOff: svg('<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/>'),
 };
 
 const MOUTHS = {
@@ -6240,7 +6789,9 @@ const LEGENDS = {
 const pct = (v) => `${Math.round(v * 100)}%`;
 
 class Interface {
-  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect }) {
+  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect, sound }) {
+    this.sound = sound;
+    this.soundBtn = document.getElementById('btn-sound');
     this.toolbar = document.getElementById('toolbar');
     this.tray = document.getElementById('tray');
     this.popEl = document.getElementById('stat-pop');
@@ -6289,6 +6840,10 @@ class Interface {
       if (e.target.closest('[data-close]')) onCloseInspect();
     });
     this.moreBtn.addEventListener('click', () => this.toggleMore());
+    this.soundBtn.addEventListener('click', () => {
+      this.sound.toggle();
+      this.renderSound();
+    });
     this.moreSheet.addEventListener('click', (e) => this.onMoreClick(e));
     document.addEventListener('pointerdown', (e) => {
       if (!this.tray.hidden && !e.target.closest('#tray') && !e.target.closest('.tool')) this.closeTray();
@@ -6302,6 +6857,7 @@ class Interface {
         return;
       }
       if (e.key === 'v') return this.viewBtn.click();
+      if (e.key === 'm') return this.soundBtn.click();
       if (e.key === 'Escape') {
         this.toggleMore(false);
         return this.closeTray();
@@ -6312,6 +6868,15 @@ class Interface {
     this.setTool(this.tool);
     this.renderSpeed();
     this.renderView();
+    this.renderSound();
+  }
+
+  renderSound() {
+    const muted = this.sound.muted();
+    this.soundBtn.innerHTML = muted ? ICONS.soundOff : ICONS.soundOn;
+    this.soundBtn.setAttribute('aria-label', muted ? 'Sound off. Turn sound on' : 'Sound on. Turn sound off');
+    this.soundBtn.setAttribute('aria-pressed', String(!muted));
+    this.renderMore();
   }
 
   groupOf(toolId) {
@@ -6405,6 +6970,7 @@ class Interface {
       `<span class="sheet-label">Map view</span><div class="seg big views">${VIEWS.map(
         (v) => `<button type="button" data-view="${v.id}" aria-pressed="${this.view === v.id}">${v.label}</button>`
       ).join('')}</div>` +
+      `<span class="sheet-label">Sound</span><div class="seg big"><button type="button" data-sound="on" aria-pressed="${!this.sound.muted()}">On</button><button type="button" data-sound="off" aria-pressed="${this.sound.muted()}">Off</button></div>` +
       `<div class="sheet-actions"><button type="button" class="ghost-btn" data-more="fit">Recenter</button>` +
       `<button type="button" class="${this._confirmRandom ? 'primary-btn danger' : 'ghost-btn'}" data-more="random">${this._confirmRandom ? 'Tap again to replace your city' : 'Random Town'}</button></div>`;
   }
@@ -6414,6 +6980,10 @@ class Interface {
     if (!t) return;
     if (t.dataset.speed != null) this.setSpeed(Number(t.dataset.speed));
     else if (t.dataset.view) this.setView(t.dataset.view);
+    else if (t.dataset.sound) {
+      if ((t.dataset.sound === 'off') !== this.sound.muted()) this.sound.toggle();
+      return this.renderSound();
+    }
     else if (t.dataset.more === 'close') return this.toggleMore(false);
     else if (t.dataset.more === 'fit') {
       this.onFit();
@@ -6486,7 +7056,9 @@ class Interface {
       this.meterEl.style.width = `${s.homes ? s.happiness : 0}%`;
     }
     const work = s.jobs ? ` · ${pct(s.employment ?? 1)} employed` : '';
-    set('clock', this.clockEl, `Day ${city.day} · ${formatClock(city.clock)}${work}`);
+    const w = city.derived.weather;
+    const sky = w && w.kind !== 'clear' ? ` · ${WEATHER_LABELS[w.kind]}` : '';
+    set('clock', this.clockEl, `${seasonFor(city.day).label} · Day ${city.day} · ${formatClock(city.clock)}${sky}${work}`);
   }
 
   // Inspector: what is on a tile and why people do or don't want to live there.
@@ -6876,6 +7448,374 @@ class LifeInterface {
 return { avatarSVG, LifeInterface };
 })();
 
+// ---- history.js ----
+const __mod_history = (() => {
+// Undo and redo for player edits. Each entry stores the affected tiles before and after the edit,
+// so a whole drag stroke (or a Random Town) undoes in one step.
+
+const LIMIT = 40;
+
+class History {
+  constructor(city) {
+    this.city = city;
+    this.undoStack = [];
+    this.redoStack = [];
+    this.listeners = new Set();
+  }
+
+  on(fn) {
+    this.listeners.add(fn);
+  }
+
+  changed() {
+    for (const fn of this.listeners) fn(this);
+  }
+
+  get canUndo() {
+    return this.undoStack.length > 0;
+  }
+
+  get canRedo() {
+    return this.redoStack.length > 0;
+  }
+
+  // Run `edit` and remember what it changed. `coords` lists every tile the edit may touch.
+  record(label, coords, edit) {
+    const before = this.city.snapshot(coords);
+    const result = edit();
+    if (!result) return result;
+    const after = this.city.snapshot(coords);
+    this.undoStack.push({ label, before, after });
+    if (this.undoStack.length > LIMIT) this.undoStack.shift();
+    this.redoStack.length = 0;
+    this.changed();
+    return result;
+  }
+
+  undo() {
+    const e = this.undoStack.pop();
+    if (!e) return null;
+    this.city.restore(e.before);
+    this.redoStack.push(e);
+    this.changed();
+    return e.label;
+  }
+
+  redo() {
+    const e = this.redoStack.pop();
+    if (!e) return null;
+    this.city.restore(e.after);
+    this.undoStack.push(e);
+    this.changed();
+    return e.label;
+  }
+
+  clear() {
+    this.undoStack.length = 0;
+    this.redoStack.length = 0;
+    this.changed();
+  }
+}
+
+// Tiles between two points as an L: along the longer axis first, then the shorter. Used for roads.
+function lPath(a, b) {
+  const out = [];
+  const horizontalFirst = Math.abs(b.x - a.x) >= Math.abs(b.y - a.y);
+  const sx = Math.sign(b.x - a.x);
+  const sy = Math.sign(b.y - a.y);
+  let { x, y } = a;
+  out.push({ x, y });
+  if (horizontalFirst) {
+    while (x !== b.x) out.push({ x: (x += sx), y });
+    while (y !== b.y) out.push({ x, y: (y += sy) });
+  } else {
+    while (y !== b.y) out.push({ x, y: (y += sy) });
+    while (x !== b.x) out.push({ x: (x += sx), y });
+  }
+  return out;
+}
+
+// Every tile a straight segment passes through, so fast brush strokes leave no gaps.
+function tileLine(a, b) {
+  const out = [];
+  let { x, y } = a;
+  const dx = Math.abs(b.x - x);
+  const dy = -Math.abs(b.y - y);
+  const sx = x < b.x ? 1 : -1;
+  const sy = y < b.y ? 1 : -1;
+  let err = dx + dy;
+  for (;;) {
+    out.push({ x, y });
+    if (x === b.x && y === b.y) break;
+    const e2 = 2 * err;
+    if (e2 >= dy) {
+      err += dy;
+      x += sx;
+    }
+    if (e2 <= dx) {
+      err += dx;
+      y += sy;
+    }
+  }
+  return out;
+}
+
+return { History, lPath, tileLine };
+})();
+
+// ---- audio.js ----
+const __mod_audio = (() => {
+// Audio: tiny procedural sound effects and ambience. No audio files; every sound is synthesised.
+// The sample generator below is adapted from ZzFX by Frank Force (MIT License, Copyright 2019),
+// https://github.com/KilledByAPixel/ZzFX, changed to return samples so sounds can be cached and
+// routed through one master gain that the mute switch controls.
+
+const SAMPLE_RATE = 44100;
+
+// ZzFX sample generator. Parameters, in order: volume, randomness, frequency, attack, sustain,
+// release, shape, shapeCurve, slide, deltaSlide, pitchJump, pitchJumpTime, repeatTime, noise,
+// modulation, bitCrush, delay, sustainVolume, decay, tremolo, filter.
+function zzfxG(
+  volume = 1,
+  randomness = 0.05,
+  frequency = 220,
+  attack = 0,
+  sustain = 0,
+  release = 0.1,
+  shape = 0,
+  shapeCurve = 1,
+  slide = 0,
+  deltaSlide = 0,
+  pitchJump = 0,
+  pitchJumpTime = 0,
+  repeatTime = 0,
+  noise = 0,
+  modulation = 0,
+  bitCrush = 0,
+  delay = 0,
+  sustainVolume = 1,
+  decay = 0,
+  tremolo = 0,
+  filter = 0
+) {
+  const PI2 = Math.PI * 2;
+  const abs = Math.abs;
+  const sign = (v) => (v < 0 ? -1 : 1);
+  let startSlide = (slide *= (500 * PI2) / SAMPLE_RATE / SAMPLE_RATE);
+  let startFrequency = (frequency *= ((1 + randomness * 2 * Math.random() - randomness) * PI2) / SAMPLE_RATE);
+  let modOffset = 0;
+  let repeat = 0;
+  let crush = 0;
+  let jump = 1;
+  let length;
+  const b = [];
+  let t = 0;
+  let i = 0;
+  let s = 0;
+  let f;
+  const quality = 2;
+  const w = (PI2 * abs(filter) * 2) / SAMPLE_RATE;
+  const cos = Math.cos(w);
+  const alpha = Math.sin(w) / 2 / quality;
+  const a0 = 1 + alpha;
+  const a1 = (-2 * cos) / a0;
+  const a2 = (1 - alpha) / a0;
+  const b0 = (1 + sign(filter) * cos) / 2 / a0;
+  const b1 = -(sign(filter) + cos) / a0;
+  const b2 = b0;
+  let x2 = 0;
+  let x1 = 0;
+  let y2 = 0;
+  let y1 = 0;
+
+  attack = attack * SAMPLE_RATE || 9;
+  decay *= SAMPLE_RATE;
+  sustain *= SAMPLE_RATE;
+  release *= SAMPLE_RATE;
+  delay *= SAMPLE_RATE;
+  deltaSlide *= (500 * PI2) / SAMPLE_RATE ** 3;
+  modulation *= PI2 / SAMPLE_RATE;
+  pitchJump *= PI2 / SAMPLE_RATE;
+  pitchJumpTime *= SAMPLE_RATE;
+  repeatTime = (repeatTime * SAMPLE_RATE) | 0;
+
+  for (length = (attack + decay + sustain + release + delay) | 0; i < length; b[i++] = s * volume) {
+    if (!(++crush % ((bitCrush * 100) | 0))) {
+      s = shape
+        ? shape > 1
+          ? shape > 2
+            ? shape > 3
+              ? shape > 4
+                ? ((t / PI2) % 1 < shapeCurve / 2) * 2 - 1
+                : Math.sin(t ** 3)
+              : Math.max(Math.min(Math.tan(t), 1), -1)
+            : 1 - (((2 * t) / PI2) % 2 + 2) % 2
+          : 1 - 4 * abs(Math.round(t / PI2) - t / PI2)
+        : Math.sin(t);
+      s =
+        (repeatTime ? 1 - tremolo + tremolo * Math.sin((PI2 * i) / repeatTime) : 1) *
+        (shape > 4 ? s : sign(s) * abs(s) ** shapeCurve) *
+        (i < attack
+          ? i / attack
+          : i < attack + decay
+            ? 1 - ((i - attack) / decay) * (1 - sustainVolume)
+            : i < attack + decay + sustain
+              ? sustainVolume
+              : i < length - delay
+                ? ((length - i - delay) / release) * sustainVolume
+                : 0);
+      s = delay ? s / 2 + (delay > i ? 0 : ((i < length - delay ? 1 : (length - i) / delay) * b[(i - delay) | 0]) / 2 / volume) : s;
+      if (filter) s = y1 = b2 * x2 + b1 * (x2 = x1) + b0 * (x1 = s) - a2 * y2 - a1 * (y2 = y1);
+    }
+    f = (frequency += slide += deltaSlide) * Math.cos(modulation * modOffset++);
+    t += f + f * noise * (((i * i * PI2) % 2) - 1);
+    if (jump && ++jump > pitchJumpTime) {
+      frequency += pitchJump;
+      startFrequency += pitchJump;
+      jump = 0;
+    }
+    if (repeatTime && !(++repeat % repeatTime)) {
+      frequency = startFrequency;
+      slide = startSlide;
+      jump ||= 1;
+    }
+  }
+  return b;
+}
+
+// Sound presets (ZzFX parameter lists). Kept soft to suit a cozy game.
+const SOUNDS = {
+  pop: [0.55, 0.06, 420, 0.005, 0.02, 0.12, 0, 1.4, 18, 0, 0, 0, 0, 0, 0, 0, 0, 0.7],
+  popBig: [0.6, 0.05, 230, 0.01, 0.04, 0.22, 1, 1.5, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0.7],
+  plant: [0.45, 0.05, 760, 0.005, 0.02, 0.1, 0, 1, 24, 0, 0, 0, 0, 0, 0, 0, 0.05, 0.6],
+  road: [0.3, 0.08, 170, 0.002, 0.01, 0.05, 2, 1, 0, 0, 0, 0, 0, 0.4],
+  water: [0.3, 0.1, 520, 0.01, 0.05, 0.3, 4, 1, -6, 0, 0, 0, 0, 0, 0, 0, 0, 0.5, 0, 0, 1400],
+  demolish: [0.6, 0.2, 110, 0.005, 0.07, 0.32, 4, 1.2, -2, 0, 0, 0, 0, 1, 0, 0.1, 0, 0.6, 0, 0, 900],
+  nope: [0.35, 0, 140, 0.01, 0.04, 0.1, 2, 1, -3],
+  chime: [0.6, 0, 880, 0.01, 0.08, 0.5, 0, 1.8, 0, 0, 440, 0.09, 0, 0, 0, 0, 0.08, 0.5],
+  good: [0.4, 0, 660, 0.01, 0.06, 0.28, 0, 1.5, 0, 0, 330, 0.06],
+  bad: [0.38, 0, 330, 0.01, 0.06, 0.28, 0, 1.5, 0, 0, -110, 0.07],
+  click: [0.2, 0, 1300, 0, 0.004, 0.03],
+  grow: [0.3, 0.05, 1100, 0.005, 0.03, 0.15, 0, 1, 0, 0, 500, 0.04],
+  undo: [0.35, 0, 560, 0.005, 0.03, 0.1, 0, 1, -14],
+  fanfare: [0.45, 0, 523, 0.02, 0.18, 0.5, 0, 1.6, 0, 0, 262, 0.12, 0.24, 0, 0, 0, 0.1, 0.6],
+  bird: [0.12, 0.35, 2600, 0.01, 0.03, 0.06, 0, 1.5, 40, -90, 0, 0, 0.05],
+  cricket: [0.05, 0.1, 4300, 0, 0.012, 0.02, 5, 0.5, 0, 0, 0, 0, 0.026, 0, 0, 0, 0, 1, 0, 0.6],
+};
+
+const MUTE_KEY = 'pocket-metropolis:muted';
+
+class Audio {
+  constructor() {
+    this.ctx = null;
+    this.master = null;
+    this.muted = false;
+    try {
+      this.muted = localStorage.getItem(MUTE_KEY) === '1';
+    } catch {
+      /* storage may be unavailable */
+    }
+    this._last = {};
+    this.rain = null;
+    // Browsers only allow audio after a user gesture, so start on the first touch or key.
+    const unlock = () => {
+      this.ensure();
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+    window.addEventListener('pointerdown', unlock);
+    window.addEventListener('keydown', unlock);
+  }
+
+  ensure() {
+    if (this.ctx) {
+      if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+      return true;
+    }
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return false;
+    try {
+      this.ctx = new Ctx();
+      this.master = this.ctx.createGain();
+      this.master.gain.value = this.muted ? 0 : 0.5;
+      this.master.connect(this.ctx.destination);
+    } catch {
+      this.ctx = null;
+    }
+    return !!this.ctx;
+  }
+
+  setMuted(muted) {
+    this.muted = muted;
+    try {
+      localStorage.setItem(MUTE_KEY, muted ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+    if (this.master) this.master.gain.setTargetAtTime(muted ? 0 : 0.5, this.ctx.currentTime, 0.05);
+  }
+
+  // Play a preset. `gap` stops the same sound stacking up when many fire at once.
+  play(name, { delay = 0, gap = 0.04, volume = 1 } = {}) {
+    if (this.muted || !this.ctx || this.ctx.state !== 'running') return;
+    const now = this.ctx.currentTime + delay;
+    if (this._last[name] && now - this._last[name] < gap) return;
+    this._last[name] = now;
+    const params = SOUNDS[name].slice();
+    params[0] *= volume;
+    const samples = zzfxG(...params);
+    const buffer = this.ctx.createBuffer(1, samples.length, SAMPLE_RATE);
+    buffer.getChannelData(0).set(samples);
+    const src = this.ctx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(this.master);
+    src.start(now);
+  }
+
+  // Background sound: birds by day, crickets at night, rain when it rains.
+  ambient(dt, { daylight, rain }) {
+    if (this.muted || !this.ctx || this.ctx.state !== 'running') return;
+    if (!rain && daylight > 0.6 && Math.random() < dt * 0.35) {
+      this.play('bird', { gap: 0.3 });
+      if (Math.random() < 0.5) this.play('bird', { delay: 0.12 + Math.random() * 0.1, gap: 0 });
+    }
+    if (daylight < 0.25 && !rain && Math.random() < dt * 0.5) this.play('cricket', { gap: 0.4 });
+    this.setRain(rain);
+  }
+
+  // A looping filtered-noise bed whose loudness follows the rain.
+  setRain(amount) {
+    if (!this.ctx) return;
+    if (!this.rain && amount > 0) {
+      const len = SAMPLE_RATE * 2;
+      const buf = this.ctx.createBuffer(1, len, SAMPLE_RATE);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 1100;
+      const gain = this.ctx.createGain();
+      gain.gain.value = 0;
+      src.connect(filter).connect(gain).connect(this.master);
+      src.start();
+      this.rain = { gain, level: 0 };
+    }
+    if (this.rain) {
+      const target = Math.max(0, Math.min(1, amount)) * 0.18;
+      if (Math.abs(target - this.rain.level) > 0.005) {
+        this.rain.level = target;
+        this.rain.gain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.8);
+      }
+    }
+  }
+}
+
+return { zzfxG, SOUNDS, Audio };
+})();
+
 // ---- main.js ----
 const __mod_main = (() => {
 // Wiring: creates each system, connects input to state, and runs the frame loop.
@@ -6891,6 +7831,13 @@ const { generateTown } = __mod_generator;
 const { Interface } = __mod_ui;
 const { LifeInterface } = __mod_lifeUI;
 const { worldToGrid, mapBounds, tileRectBounds, gridToWorld } = __mod_iso;
+const { History, lPath, tileLine } = __mod_history;
+const { Audio } = __mod_audio;
+const { daylightAt } = __mod_time;
+const MAX_STROKE = 160;
+const TOOL_SOUNDS = { house: 'pop', shop: 'pop', tower: 'popBig', office: 'popBig', school: 'popBig', clinic: 'popBig', tree: 'plant', park: 'plant', road: 'road' };
+const STROKE_LABELS = { road: 'road', water: 'water', bulldoze: 'bulldozing', tree: 'trees', park: 'parks' };
+
 function start(hotData = {}) {
   const canvas = document.getElementById('city');
   let city = null;
@@ -6908,6 +7855,8 @@ function start(hotData = {}) {
   const sim = new Simulation(city);
   const renderer = new Renderer(canvas, city, camera, sim.agents);
   const saver = new AutoSaver(city);
+  const history = new History(city);
+  const audio = new Audio();
 
   let tool = 'house';
   let hover = null; // { x, y } tile under the mouse
@@ -6915,6 +7864,7 @@ function start(hotData = {}) {
   let overlay = 'none';
   let fitted = false;
   let framing = 'town'; // what the recenter button framed last
+  let stroke = null; // drag-to-build in progress: { start, last, tiles }
 
   const tileAt = (sx, sy) => {
     const w = camera.screenToWorld(sx, sy);
@@ -6930,7 +7880,10 @@ function start(hotData = {}) {
       if (id !== 'inspect') selected = null;
     },
     onRandom: () => {
-      generateTown(city);
+      history.record('Random Town', city.tiles.map((t) => ({ x: t.x, y: t.y })), () => {
+        generateTown(city);
+        return true;
+      });
       sim.refresh();
       selected = null;
       fitView(false);
@@ -6947,7 +7900,58 @@ function start(hotData = {}) {
     onCloseInspect: () => {
       selected = null;
     },
+    sound: {
+      muted: () => audio.muted,
+      toggle: () => {
+        audio.setMuted(!audio.muted);
+        if (!audio.muted) {
+          audio.ensure();
+          audio.play('click');
+        }
+        return audio.muted;
+      },
+    },
   });
+
+  // ---- Undo and redo --------------------------------------------------------
+  const undoBtn = document.getElementById('btn-undo');
+  const redoBtn = document.getElementById('btn-redo');
+  const syncHistoryButtons = () => {
+    undoBtn.hidden = !history.canUndo && !history.canRedo;
+    redoBtn.hidden = !history.canRedo;
+    undoBtn.disabled = !history.canUndo;
+  };
+  history.on(syncHistoryButtons);
+  syncHistoryButtons();
+  const doUndo = () => {
+    const label = history.undo();
+    if (label) ui.toast(`Undid ${label}`, 1600);
+  };
+  const doRedo = () => {
+    const label = history.redo();
+    if (label) ui.toast(`Redid ${label}`, 1600);
+  };
+  undoBtn.addEventListener('click', doUndo);
+  redoBtn.addEventListener('click', doRedo);
+  window.addEventListener('keydown', (e) => {
+    if (!(e.metaKey || e.ctrlKey) || e.target.closest?.('input')) return;
+    const k = e.key.toLowerCase();
+    if (k === 'z' && !e.shiftKey) doUndo();
+    else if ((k === 'z' && e.shiftKey) || k === 'y') doRedo();
+    else return;
+    e.preventDefault();
+  });
+
+  const labelFor = (t, n = 1) => {
+    if (t === 'bulldoze') return n > 1 ? `bulldozing ${n} tiles` : 'bulldozing';
+    const name = STROKE_LABELS[t] || STRUCTURES[t]?.label.toLowerCase() || t;
+    return n > 1 ? `${n} ${name}${name.endsWith('s') || name === 'water' || name === 'road' ? '' : 's'}` : name;
+  };
+  renderer.onGrow = () => audio.play('grow', { gap: 0.25 });
+  const nope = (x, y) => {
+    renderer.nudge(x, y);
+    audio.play('nope');
+  };
 
   function uiInsets() {
     const narrow = window.innerWidth < 560;
@@ -7011,7 +8015,14 @@ function start(hotData = {}) {
       ui.toast(`${draft.first} was born. Watch for life events as the years go by.`, 3600);
     },
     onAgeUp: () => sim.life.ageUp(),
-    onChoose: (i) => sim.life.choose(i),
+    onChoose: (i) => {
+      const result = sim.life.choose(i);
+      if (result) {
+        const score = result.changes.reduce((n, c) => n + Math.sign(c.delta), 0);
+        audio.play(score >= 0 ? 'good' : 'bad');
+      }
+      return result;
+    },
     onContinue: () => sim.life.continueAsChild(),
     onNewLife: () => {
       const s = city.systems.life;
@@ -7029,9 +8040,18 @@ function start(hotData = {}) {
     },
   });
   city.on((ev) => {
+    // Sounds. Strokes fire many events; only the first few make a sound.
+    const d = ev.delay || 0;
+    if (ev.type === 'placed' && d < 0.5) audio.play(TOOL_SOUNDS[ev.structure.type] || 'pop', { delay: d, gap: 0.03 });
+    else if (ev.type === 'removed' && d < 0.5) audio.play(ev.wasWater ? 'plant' : 'demolish', { delay: d, gap: 0.05 });
+    else if (ev.type === 'watered' && d < 0.5) audio.play('water', { delay: d, gap: 0.05 });
+    else if (ev.type === 'reset') audio.play('fanfare');
+    else if (ev.type === 'restored') audio.play('undo');
+    else if (ev.type === 'lifeEvent') audio.play('chime');
+
     if (ev.type === 'lifeEvent') lifeUI.eventArrived();
     else if (ev.type === 'lifeChanged') lifeUI.render();
-    else if (ev.type === 'removed' || ev.type === 'watered' || ev.type === 'placed' || ev.type === 'reset') {
+    else if (['removed', 'watered', 'placed', 'reset', 'restored'].includes(ev.type)) {
       // A bulldozed home or workplace changes the character's life right away.
       if (sim.life.char?.alive) {
         sim.life.syncWithCity();
@@ -7040,23 +8060,62 @@ function start(hotData = {}) {
     }
   });
 
-  new InputController(canvas, camera, {
+  const input = new InputController(canvas, camera, {
     onTap: (sx, sy) => {
       const t = tileAt(sx, sy);
       if (tool === 'inspect') {
         selected = t && !(selected && selected.x === t.x && selected.y === t.y) ? t : null;
         ui.inspect(city, selected);
+        if (selected) audio.play('click');
         return;
       }
       if (!t) return;
-      if (!city.apply(tool, t.x, t.y)) renderer.nudge(t.x, t.y);
+      if (!history.record(labelFor(tool), [t], () => city.apply(tool, t.x, t.y))) nope(t.x, t.y);
     },
     onBulldoze: (sx, sy) => {
       const t = tileAt(sx, sy);
-      if (t && !city.apply('bulldoze', t.x, t.y)) renderer.nudge(t.x, t.y);
+      if (t && !history.record('bulldozing', [t], () => city.apply('bulldoze', t.x, t.y))) nope(t.x, t.y);
     },
     onHover: (sx, sy) => {
       hover = sx == null ? null : tileAt(sx, sy);
+    },
+    // Drag to build: roads follow an L from where the drag started; other tools paint as a brush.
+    canPaint: () => tool !== 'inspect',
+    onPaintStart: (sx, sy) => {
+      const t = tileAt(sx, sy);
+      stroke = t ? { tool, start: t, last: t, tiles: [t] } : null;
+      hover = null;
+    },
+    onPaintMove: (sx, sy) => {
+      const t = tileAt(sx, sy);
+      if (!t) return;
+      if (!stroke) {
+        stroke = { tool, start: t, last: t, tiles: [t] };
+        return;
+      }
+      if (t.x === stroke.last.x && t.y === stroke.last.y) return;
+      if (stroke.tool === 'road') {
+        stroke.tiles = lPath(stroke.start, t).slice(0, MAX_STROKE);
+      } else {
+        const seen = new Set(stroke.tiles.map((c) => c.y * city.width + c.x));
+        for (const c of tileLine(stroke.last, t)) {
+          if (stroke.tiles.length >= MAX_STROKE) break;
+          const k = c.y * city.width + c.x;
+          if (!seen.has(k)) {
+            seen.add(k);
+            stroke.tiles.push(c);
+          }
+        }
+      }
+      stroke.last = t;
+    },
+    onPaintEnd: (commit) => {
+      const s = stroke;
+      stroke = null;
+      if (!commit || !s) return;
+      const coords = s.tiles.filter((c) => city.canApply(s.tool, c.x, c.y));
+      if (!coords.length) return nope(s.start.x, s.start.y);
+      history.record(labelFor(s.tool, coords.length), coords, () => city.applyMany(s.tool, coords));
     },
   });
 
@@ -7065,7 +8124,10 @@ function start(hotData = {}) {
     sim.refresh();
     fitView(true);
     const touch = window.matchMedia?.('(pointer: coarse)').matches;
-    ui.toast(touch ? 'Tap to build · long-press to bulldoze' : 'Click to build · right-click to bulldoze', 5200);
+    ui.toast(
+      touch ? 'Tap or drag to build · two fingers to move · long-press to bulldoze' : 'Click or drag to build · right-drag to move · right-click to bulldoze',
+      6000
+    );
   } else {
     sim.refresh();
     city.emit('loaded');
@@ -7076,14 +8138,15 @@ function start(hotData = {}) {
   hot?.snapshot?.(() => ({ city: city.toJSON() }));
 
   function viewState() {
-    if (!hover) return { overlay, selected };
+    const plan = stroke ? { tool: stroke.tool, tiles: stroke.tiles.map((c) => ({ ...c, valid: city.canApply(stroke.tool, c.x, c.y) })) } : null;
+    if (!hover) return { overlay, selected, plan };
     const t = city.getTile(hover.x, hover.y);
     const valid = tool === 'inspect' || city.canApply(tool, hover.x, hover.y);
     const ghost =
       valid && STRUCTURES[tool] && !t.structure && t.terrain === 'grass'
         ? { x: hover.x, y: hover.y, structure: { type: tool, variant: 'blush', floors: tool === 'office' ? 4 : 5, shape: 0, residents: 0 } }
         : null;
-    return { hover: { ...hover, tool, valid }, ghost, overlay, selected };
+    return { hover: { ...hover, tool, valid }, ghost, overlay, selected, plan };
   }
 
   let last = performance.now();
@@ -7092,7 +8155,9 @@ function start(hotData = {}) {
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     sim.update(dt);
+    input.edgeScroll(dt);
     camera.update(dt);
+    audio.ambient(dt, { daylight: daylightAt(city.clock), rain: city.derived.weather?.rain || 0 });
     renderer.render(dt, viewState());
     saver.tick(dt);
     uiTimer -= dt;
@@ -7107,7 +8172,7 @@ function start(hotData = {}) {
   requestAnimationFrame(frame);
 
   // Handy for poking at the simulation from the console.
-  window.pocketMetropolis = { city, sim, camera, renderer };
+  window.pocketMetropolis = { city, sim, camera, renderer, history, audio };
 }
 
 const hot = window.claude?.hot;

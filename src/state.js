@@ -110,7 +110,8 @@ export class CityState {
   }
 
   // The one entry point for player edits. Returns true when the city changed.
-  apply(tool, x, y) {
+  // `delay` (seconds) lets a batch of edits animate one after another.
+  apply(tool, x, y, { delay = 0 } = {}) {
     if (!this.canApply(tool, x, y)) return false;
     const t = this.getTile(x, y);
     const previous = t.structure;
@@ -118,21 +119,49 @@ export class CityState {
       if (t.structure) t.structure = null;
       else t.terrain = 'grass';
       this._changed(x, y);
-      this.emit('removed', { x, y, previous, wasWater: !previous });
+      this.emit('removed', { x, y, previous, wasWater: !previous, delay });
       return true;
     }
     if (tool === 'water') {
       t.structure = null;
       t.terrain = 'water';
       this._changed(x, y);
-      this.emit('watered', { x, y, previous });
+      this.emit('watered', { x, y, previous, delay });
       return true;
     }
     t.terrain = 'grass';
     t.structure = this.createStructure(tool);
     this._changed(x, y);
-    this.emit('placed', { x, y, structure: t.structure, previous });
+    this.emit('placed', { x, y, structure: t.structure, previous, delay });
     return true;
+  }
+
+  // Apply one tool along a stroke of tiles. Returns how many tiles changed.
+  applyMany(tool, coords) {
+    let n = 0;
+    this.emit('batchStart', { tool, count: coords.length });
+    for (const { x, y } of coords) if (this.apply(tool, x, y, { delay: n * 0.035 })) n++;
+    this.emit('batchEnd', { tool, count: n });
+    return n;
+  }
+
+  // Copy of the given tiles' saved state, for undo.
+  snapshot(coords) {
+    return coords
+      .map(({ x, y }) => this.getTile(x, y))
+      .filter(Boolean)
+      .map((t) => ({ x: t.x, y: t.y, terrain: t.terrain, structure: t.structure ? { ...t.structure } : null }));
+  }
+
+  restore(snap) {
+    for (const s of snap) {
+      const t = this.getTile(s.x, s.y);
+      if (!t) continue;
+      t.terrain = s.terrain;
+      t.structure = s.structure ? { ...s.structure } : null;
+      this._changed(s.x, s.y);
+    }
+    this.emit('restored', { tiles: snap.map(({ x, y }) => ({ x, y })) });
   }
 
   createStructure(type, rand = Math.random) {

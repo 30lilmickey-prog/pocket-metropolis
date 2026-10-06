@@ -52,6 +52,7 @@
         <button type="button" id="btn-fit" class="pill glass icon-only" aria-label="Recenter the city" title="Recenter">
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/><path d="m12 8.5 3.5 2v3l-3.5 2-3.5-2v-3z"/></svg>
         </button>
+        <button type="button" id="btn-sound" class="pill glass icon-only" aria-label="Sound on" title="Sound (M)"></button>
         <button type="button" id="btn-random" class="pill glass" aria-label="Generate a random town">
           <span class="dice"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 9h.01M15 9h.01M12 12h.01M9 15h.01M15 15h.01" stroke-width="2.8"/></svg></span>
           <span class="pill-text">Random Town</span>
@@ -63,6 +64,14 @@
       <aside class="life-panel glass" id="life-panel" aria-label="Life Story" hidden></aside>
       <section class="life-card glass" id="life-card" role="dialog" aria-live="polite" aria-label="Life event" hidden></section>
       <div class="tray glass" id="tray" role="menu" hidden></div>
+      <div class="history-btns">
+        <button type="button" id="btn-undo" class="pill glass icon-only" aria-label="Undo" title="Undo (Ctrl+Z)" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+        </button>
+        <button type="button" id="btn-redo" class="pill glass icon-only" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>
+        </button>
+      </div>
       <nav class="toolbar glass" id="toolbar" aria-label="Build tools"></nav>
       <div class="toast glass" id="toast" role="status"></div>
     </main>

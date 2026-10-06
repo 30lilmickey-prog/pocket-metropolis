@@ -192,7 +192,9 @@ export class AgentSystem {
 
   desiredWalkers(daylight) {
     const pop = this.city.stats.population;
-    return Math.round(Math.min(MAX_WALKERS, pop / 4) * (0.15 + 0.85 * daylight));
+    const w = this.city.derived.weather;
+    const shelter = 1 - 0.55 * (w?.rain || 0) - 0.4 * (w?.snow || 0);
+    return Math.round(Math.min(MAX_WALKERS, pop / 4) * (0.15 + 0.85 * daylight) * shelter);
   }
 
   updateWalkers(dt, daylight) {

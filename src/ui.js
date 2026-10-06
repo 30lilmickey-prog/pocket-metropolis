@@ -5,6 +5,7 @@ import { TOOL_GROUPS, TOOLS, VIEWS, STRUCTURES, SERVICES } from './config.js';
 import { FACTORS } from './desirability.js';
 import { formatClock } from './time.js';
 import { workersIn } from './labor.js';
+import { seasonFor, WEATHER_LABELS } from './weather.js';
 
 const svg = (body) =>
   `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
@@ -28,6 +29,8 @@ const ICONS = {
   play: svg('<path d="M7 4.5v15l12-7.5z"/>'),
   layers: svg('<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 12.5 9 5 9-5"/><path d="m3 17 9 5 9-5"/>'),
   close: svg('<path d="M6 6l12 12M18 6 6 18"/>'),
+  soundOn: svg('<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>'),
+  soundOff: svg('<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/>'),
 };
 
 const MOUTHS = {
@@ -45,7 +48,9 @@ const LEGENDS = {
 const pct = (v) => `${Math.round(v * 100)}%`;
 
 export class Interface {
-  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect }) {
+  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect, sound }) {
+    this.sound = sound;
+    this.soundBtn = document.getElementById('btn-sound');
     this.toolbar = document.getElementById('toolbar');
     this.tray = document.getElementById('tray');
     this.popEl = document.getElementById('stat-pop');
@@ -94,6 +99,10 @@ export class Interface {
       if (e.target.closest('[data-close]')) onCloseInspect();
     });
     this.moreBtn.addEventListener('click', () => this.toggleMore());
+    this.soundBtn.addEventListener('click', () => {
+      this.sound.toggle();
+      this.renderSound();
+    });
     this.moreSheet.addEventListener('click', (e) => this.onMoreClick(e));
     document.addEventListener('pointerdown', (e) => {
       if (!this.tray.hidden && !e.target.closest('#tray') && !e.target.closest('.tool')) this.closeTray();
@@ -107,6 +116,7 @@ export class Interface {
         return;
       }
       if (e.key === 'v') return this.viewBtn.click();
+      if (e.key === 'm') return this.soundBtn.click();
       if (e.key === 'Escape') {
         this.toggleMore(false);
         return this.closeTray();
@@ -117,6 +127,15 @@ export class Interface {
     this.setTool(this.tool);
     this.renderSpeed();
     this.renderView();
+    this.renderSound();
+  }
+
+  renderSound() {
+    const muted = this.sound.muted();
+    this.soundBtn.innerHTML = muted ? ICONS.soundOff : ICONS.soundOn;
+    this.soundBtn.setAttribute('aria-label', muted ? 'Sound off. Turn sound on' : 'Sound on. Turn sound off');
+    this.soundBtn.setAttribute('aria-pressed', String(!muted));
+    this.renderMore();
   }
 
   groupOf(toolId) {
@@ -210,6 +229,7 @@ export class Interface {
       `<span class="sheet-label">Map view</span><div class="seg big views">${VIEWS.map(
         (v) => `<button type="button" data-view="${v.id}" aria-pressed="${this.view === v.id}">${v.label}</button>`
       ).join('')}</div>` +
+      `<span class="sheet-label">Sound</span><div class="seg big"><button type="button" data-sound="on" aria-pressed="${!this.sound.muted()}">On</button><button type="button" data-sound="off" aria-pressed="${this.sound.muted()}">Off</button></div>` +
       `<div class="sheet-actions"><button type="button" class="ghost-btn" data-more="fit">Recenter</button>` +
       `<button type="button" class="${this._confirmRandom ? 'primary-btn danger' : 'ghost-btn'}" data-more="random">${this._confirmRandom ? 'Tap again to replace your city' : 'Random Town'}</button></div>`;
   }
@@ -219,6 +239,10 @@ export class Interface {
     if (!t) return;
     if (t.dataset.speed != null) this.setSpeed(Number(t.dataset.speed));
     else if (t.dataset.view) this.setView(t.dataset.view);
+    else if (t.dataset.sound) {
+      if ((t.dataset.sound === 'off') !== this.sound.muted()) this.sound.toggle();
+      return this.renderSound();
+    }
     else if (t.dataset.more === 'close') return this.toggleMore(false);
     else if (t.dataset.more === 'fit') {
       this.onFit();
@@ -291,7 +315,9 @@ export class Interface {
       this.meterEl.style.width = `${s.homes ? s.happiness : 0}%`;
     }
     const work = s.jobs ? ` · ${pct(s.employment ?? 1)} employed` : '';
-    set('clock', this.clockEl, `Day ${city.day} · ${formatClock(city.clock)}${work}`);
+    const w = city.derived.weather;
+    const sky = w && w.kind !== 'clear' ? ` · ${WEATHER_LABELS[w.kind]}` : '';
+    set('clock', this.clockEl, `${seasonFor(city.day).label} · Day ${city.day} · ${formatClock(city.clock)}${sky}${work}`);
   }
 
   // Inspector: what is on a tile and why people do or don't want to live there.
