@@ -1,4 +1,5 @@
-// Random Town: lays out a small, tidy starter city using the same state API the player uses.
+// Random Town: lays out a starter town in the middle of the map with countryside around it,
+// using the same state API the player uses.
 
 import { STRUCTURES } from './config.js';
 import { DIRS } from './state.js';
@@ -23,76 +24,115 @@ export function generateTown(city, seed = (Math.random() * 2 ** 32) >>> 0) {
     return !!t && t.terrain === 'grass' && !t.structure;
   };
 
-  // Roads: one avenue in each direction plus a side street or two.
-  const ax = ri(4, W - 5);
-  const ay = ri(4, H - 5);
-  for (let i = 0; i < W; i++) place(i, ay, 'road');
-  for (let i = 0; i < H; i++) place(ax, i, 'road');
-  if (rand() < 0.75) {
-    const sy = ay + (ay > H / 2 ? -ri(3, 4) : ri(3, 4));
-    const from = ri(0, 2);
-    const to = W - 1 - ri(0, 3);
-    for (let x = from; x <= to; x++) place(x, sy, 'road');
+  // Town footprint: under half the map, centred, so there is room to grow.
+  const cx = Math.floor(W / 2) + ri(-2, 2);
+  const cy = Math.floor(H / 2) + ri(-2, 2);
+  const half = Math.max(5, Math.floor(Math.min(W, H) * 0.23));
+  const inTown = (x, y) => Math.abs(x - cx) <= half && Math.abs(y - cy) <= half;
+
+  // A river winds across one side of the map.
+  const vertical = rand() < 0.5;
+  const span = vertical ? W : H;
+  let pos = rand() < 0.5 ? ri(2, Math.max(3, Math.floor(span * 0.18))) : span - 1 - ri(2, Math.max(3, Math.floor(span * 0.18)));
+  for (let i = 0; i < (vertical ? H : W); i++) {
+    const width = rand() < 0.3 ? 2 : 1;
+    for (let k = 0; k < width; k++) {
+      const t = vertical ? tile(pos + k, i) : tile(i, pos + k);
+      if (t) t.terrain = 'water';
+    }
+    if (rand() < 0.35) pos = Math.max(1, Math.min(span - 3, pos + (rand() < 0.5 ? -1 : 1)));
   }
-  if (rand() < 0.5) {
-    const sx = ax + (ax > W / 2 ? -ri(3, 4) : ri(3, 4));
-    const from = ri(1, 3);
-    const to = H - 1 - ri(0, 2);
-    for (let y = from; y <= to; y++) place(sx, y, 'road');
+  // A pond on the far side, if it fits.
+  if (W >= 20) {
+    const px = vertical ? (pos < W / 2 ? W - 4 : 3) : ri(4, W - 5);
+    const py = vertical ? ri(4, H - 5) : pos < H / 2 ? H - 4 : 3;
+    const r = 1.5 + rand();
+    for (const t of city.tiles) if (Math.hypot(t.x - px, t.y - py) + (rand() - 0.5) * 0.8 < r && !inTown(t.x, t.y)) t.terrain = 'water';
   }
 
-  // A pond tucked into the quietest corner.
-  const corners = [
-    [1, 1],
-    [W - 2, 1],
-    [1, H - 2],
-    [W - 2, H - 2],
-  ];
-  const [cx, cy] = corners.reduce((best, c) => {
-    const d = (p) => Math.abs(p[0] - ax) + Math.abs(p[1] - ay);
-    return d(c) > d(best) ? c : best;
-  });
-  const radius = 1.5 + rand() * 1.1;
-  for (const t of city.tiles) {
-    if (t.structure) continue;
-    const d = Math.hypot(t.x - cx, t.y - cy) + (rand() - 0.5) * 0.9;
-    if (d < radius) t.terrain = 'water';
+  // Streets: two avenues cross downtown and run to the map edge; a grid fills the town.
+  for (let i = 0; i < W; i++) place(i, cy, 'road');
+  for (let i = 0; i < H; i++) place(cx, i, 'road');
+  const step = W >= 24 ? 5 : 4;
+  for (let o = step; o <= half; o += step) {
+    for (const s of [-1, 1]) {
+      const ry = cy + s * o;
+      const rx = cx + s * o;
+      if (rand() < 0.85) for (let x = cx - half + ri(0, 2); x <= cx + half - ri(0, 2); x++) if (tile(x, ry)) place(x, ry, 'road');
+      if (rand() < 0.85) for (let y = cy - half + ri(0, 2); y <= cy + half - ri(0, 2); y++) if (tile(rx, y)) place(rx, y, 'road');
+    }
   }
 
-  // Homes line the streets; towers cluster around the main junction.
+  // Lots along streets. Downtown is dense and busy; the edges of town are leafy houses.
   const nearRoad = (x, y) => DIRS.some((d) => city.isRoad(x + d.dx, y + d.dy));
-  for (const t of city.tiles) {
-    if (!isEmpty(t.x, t.y) || !nearRoad(t.x, t.y)) continue;
-    const toCentre = Math.abs(t.x - ax) + Math.abs(t.y - ay);
-    if (toCentre <= 3 && rand() < 0.5) place(t.x, t.y, 'tower');
-    else if (rand() < 0.72) place(t.x, t.y, 'house');
+  const ring = (x, y) => Math.max(Math.abs(x - cx), Math.abs(y - cy));
+  const lots = city.tiles.filter((t) => isEmpty(t.x, t.y) && nearRoad(t.x, t.y) && inTown(t.x, t.y));
+  for (const t of lots) {
+    const d = ring(t.x, t.y);
+    const onAvenue = t.x === cx + 1 || t.x === cx - 1 || t.y === cy + 1 || t.y === cy - 1;
+    const r = rand();
+    if (d <= 3) {
+      if (r < 0.32) place(t.x, t.y, 'tower');
+      else if (r < 0.6) place(t.x, t.y, 'office');
+      else if (r < 0.86) place(t.x, t.y, 'shop');
+    } else if (d <= 7) {
+      if (onAvenue && r < 0.25) place(t.x, t.y, 'shop');
+      else if (r < 0.12) place(t.x, t.y, 'tower');
+      else if (r < 0.2) place(t.x, t.y, 'office');
+      else if (r < 0.82) place(t.x, t.y, 'house');
+    } else if (r < (onAvenue ? 0.12 : 0.03)) place(t.x, t.y, 'shop');
+    else if (r < 0.74) place(t.x, t.y, 'house');
   }
+
+  // A school and a clinic on opposite sides of downtown.
+  const serviceSpot = (sx, sy) => {
+    const spots = lots
+      .filter((t) => {
+        const s = tile(t.x, t.y).structure?.type;
+        return (!s || s === 'house') && ring(t.x, t.y) >= 3 && ring(t.x, t.y) <= 8 && Math.sign(t.x - cx) === sx && Math.sign(t.y - cy) === sy;
+      })
+      .sort(() => rand() - 0.5);
+    return spots[0];
+  };
+  const corner = rand() < 0.5 ? 1 : -1;
+  const school = serviceSpot(corner, corner);
+  if (school) place(school.x, school.y, 'school');
+  const clinic = serviceSpot(-corner, -corner);
+  if (clinic) place(clinic.x, clinic.y, 'clinic');
 
   // Parks where people live.
-  const homesAround = (x, y) =>
-    city.tiles.filter((n) => n.structure && STRUCTURES[n.structure.type].capacity > 0 && Math.abs(n.x - x) <= 2 && Math.abs(n.y - y) <= 2)
-      .length;
+  const homesAround = (x, y) => {
+    let n = 0;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      const s = tile(x + dx, y + dy)?.structure;
+      if (s && STRUCTURES[s.type].capacity > 0) n++;
+    }
+    return n;
+  };
   const parkSpots = city.tiles
-    .filter((t) => isEmpty(t.x, t.y))
-    .map((t) => ({ t, score: homesAround(t.x, t.y) + rand() * 2 }))
+    .filter((t) => isEmpty(t.x, t.y) && inTown(t.x, t.y))
+    .map((t) => ({ t, score: homesAround(t.x, t.y) + rand() * 3 }))
     .sort((a, b) => b.score - a.score);
-  const parks = ri(2, 3);
+  const parks = Math.max(2, Math.round((half * half) / 18));
   for (let i = 0; i < Math.min(parks, parkSpots.length); i++) place(parkSpots[i].t.x, parkSpots[i].t.y, 'park');
 
-  // Trees along the water, the map edge and in leftover gaps.
+  // Trees: scattered in town, thick woods in the countryside.
+  const forests = Array.from({ length: Math.max(2, Math.round(W / 6)) }, () => ({ x: ri(0, W - 1), y: ri(0, H - 1), r: 2 + rand() * 4 }));
   for (const t of city.tiles) {
     if (!isEmpty(t.x, t.y)) continue;
     const byWater = DIRS.some((d) => tile(t.x + d.dx, t.y + d.dy)?.terrain === 'water');
-    const edge = t.x === 0 || t.y === 0 || t.x === W - 1 || t.y === H - 1;
-    if (rand() < 0.3 + (byWater ? 0.3 : 0) + (edge ? 0.15 : 0)) place(t.x, t.y, 'tree');
+    let p = inTown(t.x, t.y) ? 0.28 : 0.1;
+    if (byWater) p += 0.25;
+    for (const f of forests) if (Math.hypot(t.x - f.x, t.y - f.y) < f.r) p += 0.55;
+    if (rand() < p) place(t.x, t.y, 'tree');
   }
 
   // Some people already live here.
   for (const h of city.homes()) {
-    h.structure.residents = Math.floor(STRUCTURES[h.structure.type].capacity * (0.25 + rand() * 0.35));
+    h.structure.residents = Math.floor(STRUCTURES[h.structure.type].capacity * (0.3 + rand() * 0.35));
   }
 
   city.refreshAllRoadMasks();
   city.dirty = true;
-  city.emit('reset', { seed });
+  city.emit('reset', { seed, focus: { x: cx, y: cy, radius: half } });
 }

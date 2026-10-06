@@ -10,7 +10,7 @@ export class Camera {
     this.tx = 0;
     this.ty = 0;
     this.tzoom = 1;
-    this.minZoom = 0.4;
+    this.minZoom = 0.2;
     this.maxZoom = 3.5;
     this.viewW = 1;
     this.viewH = 1;
@@ -74,14 +74,14 @@ export class Camera {
     }
   }
 
-  // Frame the whole board inside the area left free by the interface.
-  fit(insets = { top: 0, right: 0, bottom: 0, left: 0 }, immediate = false) {
-    const b = this.bounds;
+  // Frame a world-space rectangle (the whole board by default) inside the area left free by the interface.
+  fit(insets = { top: 0, right: 0, bottom: 0, left: 0 }, immediate = false, rect = this.bounds) {
+    const b = rect;
     if (!b) return;
     const availW = Math.max(120, this.viewW - insets.left - insets.right);
     const availH = Math.max(120, this.viewH - insets.top - insets.bottom);
-    const z = clamp(Math.min(availW / (b.right - b.left), availH / (b.bottom - b.top)) * 0.94, 0.3, 2.2);
-    this.minZoom = Math.min(0.4, z * 0.7);
+    const z = clamp(Math.min(availW / (b.right - b.left), availH / (b.bottom - b.top)) * 0.94, 0.15, 2.2);
+    if (rect === this.bounds) this.minZoom = Math.min(0.4, z * 0.8);
     this.tzoom = z;
     this.tx = (b.left + b.right) / 2 - (insets.left - insets.right) / 2 / z;
     this.ty = (b.top + b.bottom) / 2 - (insets.top - insets.bottom) / 2 / z;

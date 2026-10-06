@@ -2,8 +2,8 @@
 
 export const TILE_W = 64;
 export const TILE_H = 32;
-export const DEFAULT_MAP_SIZE = 12;
-export const SAVE_VERSION = 1;
+export const DEFAULT_MAP_SIZE = 32;
+export const SAVE_VERSION = 2;
 export const DAY_LENGTH_SECONDS = 300; // one full day/night cycle
 export const SIM_STEP = 0.25; // fixed simulation tick, in seconds
 
@@ -44,24 +44,76 @@ export const BUILDING_VARIANTS = {
 };
 export const VARIANT_KEYS = Object.keys(BUILDING_VARIANTS);
 
-// Structure definitions. `capacity` > 0 makes a structure housing; `greenery` feeds desirability.
-// Future per-structure data (jobs, upkeep, power draw, pollution, …) belongs here.
+// Structure definitions. `capacity` > 0 makes a structure housing; `jobs` > 0 makes it a workplace;
+// `service` names the coverage it provides; `greenery` feeds desirability.
+// Future per-structure data (upkeep, power draw, pollution, …) belongs here.
 export const STRUCTURES = {
-  house: { label: 'House', capacity: 4, greenery: 0, height: 27 },
-  tower: { label: 'Tower', capacity: 16, greenery: 0, height: 70 },
-  tree: { label: 'Tree', capacity: 0, greenery: 1, walkable: true, height: 26 },
-  park: { label: 'Park', capacity: 0, greenery: 3, walkable: true, height: 0 },
-  road: { label: 'Road', capacity: 0, greenery: 0, walkable: true, road: true, height: 0 },
+  house: { label: 'House', capacity: 4, jobs: 0, greenery: 0, height: 27 },
+  tower: { label: 'Tower', capacity: 16, jobs: 0, greenery: 0, height: 70 },
+  shop: { label: 'Shop', capacity: 0, jobs: 5, greenery: 0, height: 22 },
+  office: { label: 'Office', capacity: 0, jobs: 16, greenery: 0, height: 58 },
+  school: { label: 'School', capacity: 0, jobs: 4, greenery: 0, height: 30, service: 'school', radius: 7 },
+  clinic: { label: 'Clinic', capacity: 0, jobs: 4, greenery: 0, height: 28, service: 'health', radius: 7 },
+  tree: { label: 'Tree', capacity: 0, jobs: 0, greenery: 1, walkable: true, height: 26 },
+  park: { label: 'Park', capacity: 0, jobs: 0, greenery: 3, walkable: true, height: 0 },
+  road: { label: 'Road', capacity: 0, jobs: 0, greenery: 0, walkable: true, road: true, height: 0 },
 };
 
-export const TOOLS = [
-  { id: 'house', label: 'House', key: '1' },
-  { id: 'tower', label: 'Tower', key: '2' },
-  { id: 'tree', label: 'Tree', key: '3' },
-  { id: 'park', label: 'Park', key: '4' },
-  { id: 'road', label: 'Road', key: '5' },
-  { id: 'water', label: 'Water', key: '6' },
-  { id: 'bulldoze', label: 'Bulldoze', key: '7' },
+// Share of residents who go out to work.
+export const WORKER_SHARE = 0.6;
+// Commuters a road tile carries before it counts as fully congested.
+export const ROAD_CAPACITY = 24;
+export const SERVICES = [
+  { id: 'school', label: 'Schools' },
+  { id: 'health', label: 'Clinics' },
+];
+
+// Toolbar: each group is one button; groups with several tools open a small tray.
+export const TOOL_GROUPS = [
+  { id: 'inspect', label: 'Inspect', tools: [{ id: 'inspect', label: 'Inspect', key: 'i' }] },
+  {
+    id: 'homes',
+    label: 'Homes',
+    tools: [
+      { id: 'house', label: 'House', key: '1' },
+      { id: 'tower', label: 'Tower', key: '2' },
+    ],
+  },
+  {
+    id: 'work',
+    label: 'Work',
+    tools: [
+      { id: 'shop', label: 'Shop', key: '3' },
+      { id: 'office', label: 'Office', key: '4' },
+    ],
+  },
+  {
+    id: 'services',
+    label: 'Services',
+    tools: [
+      { id: 'school', label: 'School', key: '5' },
+      { id: 'clinic', label: 'Clinic', key: '6' },
+    ],
+  },
+  {
+    id: 'nature',
+    label: 'Nature',
+    tools: [
+      { id: 'tree', label: 'Tree', key: '7' },
+      { id: 'park', label: 'Park', key: '8' },
+      { id: 'water', label: 'Water', key: '0' },
+    ],
+  },
+  { id: 'road', label: 'Road', tools: [{ id: 'road', label: 'Road', key: '9' }] },
+  { id: 'bulldoze', label: 'Bulldoze', tools: [{ id: 'bulldoze', label: 'Bulldoze', key: 'b' }] },
+];
+export const TOOLS = TOOL_GROUPS.flatMap((g) => g.tools);
+
+export const VIEWS = [
+  { id: 'none', label: 'City' },
+  { id: 'desirability', label: 'Desirability' },
+  { id: 'traffic', label: 'Traffic' },
+  { id: 'services', label: 'Services' },
 ];
 
 export const CAR_COLORS = ['#ff9f8f', '#8fd0bd', '#b49ad1', '#ffd98f', '#9cc4ea', '#f7f3ea', '#f6a9c0'];

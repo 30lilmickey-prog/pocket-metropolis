@@ -37,7 +37,11 @@
         <div class="clock" id="stat-clock">Day 1</div>
       </section>
 
+      <div class="legend glass" id="legend" hidden></div>
+
       <div class="corner">
+        <button type="button" id="btn-speed" class="pill glass" aria-label="Change speed"></button>
+        <button type="button" id="btn-view" class="pill glass" aria-label="Switch map view"></button>
         <button type="button" id="btn-fit" class="pill glass icon-only" aria-label="Recenter the city" title="Recenter">
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/><path d="m12 8.5 3.5 2v3l-3.5 2-3.5-2v-3z"/></svg>
         </button>
@@ -47,6 +51,8 @@
         </button>
       </div>
 
+      <aside class="inspector glass" id="inspector" aria-live="polite" hidden></aside>
+      <div class="tray glass" id="tray" role="menu" hidden></div>
       <nav class="toolbar glass" id="toolbar" aria-label="Build tools"></nav>
       <div class="toast glass" id="toast" role="status"></div>
     </main>

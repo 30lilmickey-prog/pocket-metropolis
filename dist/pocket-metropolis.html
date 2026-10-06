@@ -52,6 +52,9 @@
   color-scheme: dark;
 }
 
+[hidden] {
+  display: none !important;
+}
 html,
 body {
   height: 100%;
@@ -286,13 +289,246 @@ body {
 .tool[aria-pressed='true'] .tool-label {
   color: var(--ink);
 }
-#tool-house { --tint: var(--tint-house); }
-#tool-tower { --tint: var(--tint-tower); }
-#tool-tree { --tint: var(--tint-tree); }
-#tool-park { --tint: var(--tint-park); }
-#tool-road { --tint: var(--tint-road); }
-#tool-water { --tint: var(--tint-water); }
-#tool-bulldoze { --tint: var(--tint-bulldoze); }
+.tint-inspect { --tint: #e8e4f4; }
+.tint-house { --tint: var(--tint-house); }
+.tint-tower { --tint: var(--tint-tower); }
+.tint-shop { --tint: #ffd9a8; }
+.tint-office { --tint: #c9dcf2; }
+.tint-school { --tint: #ffc9b9; }
+.tint-clinic { --tint: #c4ead9; }
+.tint-tree { --tint: var(--tint-tree); }
+.tint-park { --tint: var(--tint-park); }
+.tint-road { --tint: var(--tint-road); }
+.tint-water { --tint: var(--tint-water); }
+.tint-bulldoze { --tint: var(--tint-bulldoze); }
+
+.tool {
+  position: relative;
+}
+.more {
+  position: absolute;
+  top: 5px;
+  right: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-soft);
+  opacity: 0.55;
+}
+
+/* Tool tray: sub-tools for a group, floating above the toolbar */
+.tray {
+  position: absolute;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 100px);
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 22px;
+  z-index: 3;
+}
+.tray-item {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 64px;
+  padding: 6px 0;
+  border-radius: 16px;
+  cursor: pointer;
+  font: 800 11px/1 var(--font-body);
+}
+.tray-item[aria-pressed='true'] {
+  background: var(--press);
+  box-shadow: var(--shadow);
+}
+.tray-item kbd {
+  font: 700 9.5px/1 var(--font-body);
+  color: var(--ink-soft);
+  border: 1px solid var(--meter-track);
+  border-radius: 5px;
+  padding: 2px 4px;
+}
+
+/* Speed and view pills */
+#btn-speed.is-paused,
+#btn-view.is-on {
+  background: var(--press);
+  outline: 2px solid var(--tint-tower);
+}
+
+/* Legend for data views */
+.legend {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 112px);
+  left: calc(env(safe-area-inset-left, 0px) + 16px);
+  display: grid;
+  gap: 4px;
+  width: 210px;
+  padding: 10px 14px;
+  border-radius: 18px;
+  pointer-events: none;
+}
+.legend-title {
+  font: 600 15px/1.1 var(--font-display);
+}
+.legend-sub {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.legend-bar {
+  height: 8px;
+  border-radius: 4px;
+  margin-top: 2px;
+}
+.legend-bar.ramp {
+  background: linear-gradient(90deg, #f68c8c, #ffd678, #6ec896);
+}
+.legend-bar.ramp-rev {
+  background: linear-gradient(90deg, #6ec896, #ffd678, #f68c8c);
+}
+.legend-bar.service {
+  background: linear-gradient(90deg, rgba(70, 60, 110, 0.25), #c8b4ec, #8cdcc0);
+}
+.legend-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+}
+
+/* Inspector card */
+.inspector {
+  position: absolute;
+  left: calc(env(safe-area-inset-left, 0px) + 16px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 104px);
+  width: 290px;
+  max-height: calc(100% - 260px);
+  overflow-y: auto;
+  padding: 14px 16px 12px;
+  border-radius: 22px;
+  display: grid;
+  gap: 10px;
+  z-index: 2;
+}
+.inspector header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+.insp-kicker {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.inspector h2 {
+  margin: 2px 0 0;
+  font: 600 20px/1.1 var(--font-display);
+}
+.insp-close {
+  appearance: none;
+  border: 0;
+  background: var(--meter-track);
+  color: var(--ink);
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex: none;
+}
+.insp-close svg {
+  width: 16px;
+  height: 16px;
+}
+.inspector dl {
+  margin: 0;
+  display: grid;
+  gap: 4px;
+}
+.inspector dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+.inspector dt {
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+.inspector dd {
+  margin: 0;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.insp-score {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-top: 8px;
+  border-top: 1px solid var(--meter-track);
+  font-weight: 800;
+  font-size: 13px;
+}
+.insp-score strong {
+  font: 600 22px/1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+.factors {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+}
+.factors li {
+  display: grid;
+  grid-template-columns: 1fr 70px 30px;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.fbar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--meter-track);
+  overflow: hidden;
+}
+.fbar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+.fbar .pos {
+  background: var(--meter);
+}
+.fbar .neg {
+  background: #f39a9a;
+}
+.fval {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
+.insp-note {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
 
 button:focus-visible {
   outline: 2.5px solid var(--focus);
@@ -344,6 +580,23 @@ button:focus-visible {
   .corner {
     flex-direction: column;
   }
+  .legend {
+    top: calc(env(safe-area-inset-top, 0px) + 100px);
+    width: 180px;
+  }
+  .inspector {
+    left: 12px;
+    right: 12px;
+    width: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 88px);
+    max-height: 46%;
+  }
+  .tray {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 86px);
+  }
+  .tray-item {
+    width: 58px;
+  }
   .toolbar {
     gap: 2px;
     padding: 5px;
@@ -371,6 +624,11 @@ button:focus-visible {
   }
   .tool-label {
     font-size: 9px;
+  }
+}
+@media (pointer: coarse) {
+  .tray-item kbd {
+    display: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -410,7 +668,11 @@ button:focus-visible {
         <div class="clock" id="stat-clock">Day 1</div>
       </section>
 
+      <div class="legend glass" id="legend" hidden></div>
+
       <div class="corner">
+        <button type="button" id="btn-speed" class="pill glass" aria-label="Change speed"></button>
+        <button type="button" id="btn-view" class="pill glass" aria-label="Switch map view"></button>
         <button type="button" id="btn-fit" class="pill glass icon-only" aria-label="Recenter the city" title="Recenter">
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/><path d="m12 8.5 3.5 2v3l-3.5 2-3.5-2v-3z"/></svg>
         </button>
@@ -420,6 +682,8 @@ button:focus-visible {
         </button>
       </div>
 
+      <aside class="inspector glass" id="inspector" aria-live="polite" hidden></aside>
+      <div class="tray glass" id="tray" role="menu" hidden></div>
       <nav class="toolbar glass" id="toolbar" aria-label="Build tools"></nav>
       <div class="toast glass" id="toast" role="status"></div>
     </main>
@@ -432,8 +696,8 @@ const __mod_config = (() => {
 
 const TILE_W = 64;
 const TILE_H = 32;
-const DEFAULT_MAP_SIZE = 12;
-const SAVE_VERSION = 1;
+const DEFAULT_MAP_SIZE = 32;
+const SAVE_VERSION = 2;
 const DAY_LENGTH_SECONDS = 300; // one full day/night cycle
 const SIM_STEP = 0.25; // fixed simulation tick, in seconds
 
@@ -474,31 +738,83 @@ const BUILDING_VARIANTS = {
 };
 const VARIANT_KEYS = Object.keys(BUILDING_VARIANTS);
 
-// Structure definitions. `capacity` > 0 makes a structure housing; `greenery` feeds desirability.
-// Future per-structure data (jobs, upkeep, power draw, pollution, …) belongs here.
+// Structure definitions. `capacity` > 0 makes a structure housing; `jobs` > 0 makes it a workplace;
+// `service` names the coverage it provides; `greenery` feeds desirability.
+// Future per-structure data (upkeep, power draw, pollution, …) belongs here.
 const STRUCTURES = {
-  house: { label: 'House', capacity: 4, greenery: 0, height: 27 },
-  tower: { label: 'Tower', capacity: 16, greenery: 0, height: 70 },
-  tree: { label: 'Tree', capacity: 0, greenery: 1, walkable: true, height: 26 },
-  park: { label: 'Park', capacity: 0, greenery: 3, walkable: true, height: 0 },
-  road: { label: 'Road', capacity: 0, greenery: 0, walkable: true, road: true, height: 0 },
+  house: { label: 'House', capacity: 4, jobs: 0, greenery: 0, height: 27 },
+  tower: { label: 'Tower', capacity: 16, jobs: 0, greenery: 0, height: 70 },
+  shop: { label: 'Shop', capacity: 0, jobs: 5, greenery: 0, height: 22 },
+  office: { label: 'Office', capacity: 0, jobs: 16, greenery: 0, height: 58 },
+  school: { label: 'School', capacity: 0, jobs: 4, greenery: 0, height: 30, service: 'school', radius: 7 },
+  clinic: { label: 'Clinic', capacity: 0, jobs: 4, greenery: 0, height: 28, service: 'health', radius: 7 },
+  tree: { label: 'Tree', capacity: 0, jobs: 0, greenery: 1, walkable: true, height: 26 },
+  park: { label: 'Park', capacity: 0, jobs: 0, greenery: 3, walkable: true, height: 0 },
+  road: { label: 'Road', capacity: 0, jobs: 0, greenery: 0, walkable: true, road: true, height: 0 },
 };
 
-const TOOLS = [
-  { id: 'house', label: 'House', key: '1' },
-  { id: 'tower', label: 'Tower', key: '2' },
-  { id: 'tree', label: 'Tree', key: '3' },
-  { id: 'park', label: 'Park', key: '4' },
-  { id: 'road', label: 'Road', key: '5' },
-  { id: 'water', label: 'Water', key: '6' },
-  { id: 'bulldoze', label: 'Bulldoze', key: '7' },
+// Share of residents who go out to work.
+const WORKER_SHARE = 0.6;
+// Commuters a road tile carries before it counts as fully congested.
+const ROAD_CAPACITY = 24;
+const SERVICES = [
+  { id: 'school', label: 'Schools' },
+  { id: 'health', label: 'Clinics' },
+];
+
+// Toolbar: each group is one button; groups with several tools open a small tray.
+const TOOL_GROUPS = [
+  { id: 'inspect', label: 'Inspect', tools: [{ id: 'inspect', label: 'Inspect', key: 'i' }] },
+  {
+    id: 'homes',
+    label: 'Homes',
+    tools: [
+      { id: 'house', label: 'House', key: '1' },
+      { id: 'tower', label: 'Tower', key: '2' },
+    ],
+  },
+  {
+    id: 'work',
+    label: 'Work',
+    tools: [
+      { id: 'shop', label: 'Shop', key: '3' },
+      { id: 'office', label: 'Office', key: '4' },
+    ],
+  },
+  {
+    id: 'services',
+    label: 'Services',
+    tools: [
+      { id: 'school', label: 'School', key: '5' },
+      { id: 'clinic', label: 'Clinic', key: '6' },
+    ],
+  },
+  {
+    id: 'nature',
+    label: 'Nature',
+    tools: [
+      { id: 'tree', label: 'Tree', key: '7' },
+      { id: 'park', label: 'Park', key: '8' },
+      { id: 'water', label: 'Water', key: '0' },
+    ],
+  },
+  { id: 'road', label: 'Road', tools: [{ id: 'road', label: 'Road', key: '9' }] },
+  { id: 'bulldoze', label: 'Bulldoze', tools: [{ id: 'bulldoze', label: 'Bulldoze', key: 'b' }] },
+];
+const TOOLS = TOOL_GROUPS.flatMap((g) => g.tools);
+
+const VIEWS = [
+  { id: 'none', label: 'City' },
+  { id: 'desirability', label: 'Desirability' },
+  { id: 'traffic', label: 'Traffic' },
+  { id: 'services', label: 'Services' },
 ];
 
 const CAR_COLORS = ['#ff9f8f', '#8fd0bd', '#b49ad1', '#ffd98f', '#9cc4ea', '#f7f3ea', '#f6a9c0'];
 const SHIRT_COLORS = ['#ff8f7e', '#7fc4ad', '#a98bd0', '#ffcf6e', '#86b5e6', '#f49ab8', '#ffffff'];
 const SKIN_TONES = ['#f6d5bd', '#e8b896', '#c98e6a', '#8d5a3f', '#f1c7a5'];
 
-return { TILE_W, TILE_H, DEFAULT_MAP_SIZE, SAVE_VERSION, DAY_LENGTH_SECONDS, SIM_STEP, PALETTE, BUILDING_VARIANTS, VARIANT_KEYS, STRUCTURES, TOOLS, CAR_COLORS, SHIRT_COLORS, SKIN_TONES };
+return { TILE_W, TILE_H, DEFAULT_MAP_SIZE, SAVE_VERSION, DAY_LENGTH_SECONDS, SIM_STEP, PALETTE, BUILDING_VARIANTS, VARIANT_KEYS, STRUCTURES, WORKER_SHARE, ROAD_CAPACITY, SERVICES, TOOL_GROUPS, TOOLS, VIEWS, CAR_COLORS, SHIRT_COLORS, SKIN_TONES };
 })();
 
 // ---- state.js ----
@@ -524,6 +840,10 @@ function createTile(x, y) {
     desirability: 0, // derived by the simulation
     factors: {}, // derived: per-factor desirability breakdown
     housingTarget: 0, // derived: how many residents this home can attract right now
+    employment: 0, // derived: share of this home's workers who have a job (0..1)
+    workersFilled: 0, // derived: jobs filled at this workplace
+    congestion: 0, // derived: road load (0..1)
+    coverage: {}, // derived: service id → coverage (0..1)
   };
 }
 
@@ -536,8 +856,10 @@ class CityState {
     this.day = 1;
     this.nextId = 1;
     this.stats = { population: 0, capacity: 0, occupancy: 0, happiness: 0, homes: 0 };
-    this.systems = {}; // reserved space for future simulation modules (economy, jobs, utilities…)
+    this.systems = {}; // saved per-system data for future modules (economy, utilities…)
+    this.derived = {}; // recomputed every few ticks and never saved (labor market, flows…)
     this.dirty = true; // derived data needs recomputing
+    this.revision = 0; // bumps on every tile change, so caches know when to redraw
     this._listeners = new Set();
     this._buildTiles();
   }
@@ -588,6 +910,16 @@ class CityState {
     return this.tiles.filter((t) => t.structure && STRUCTURES[t.structure.type].capacity > 0);
   }
 
+  workplaces() {
+    return this.tiles.filter((t) => t.structure && STRUCTURES[t.structure.type].jobs > 0);
+  }
+
+  // The road tile a building uses to reach the network: an adjacent road, if any.
+  accessRoad(x, y) {
+    for (const d of DIRS) if (this.isRoad(x + d.dx, y + d.dy)) return this.getTile(x + d.dx, y + d.dy);
+    return null;
+  }
+
   canApply(tool, x, y) {
     const t = this.getTile(x, y);
     if (!t) return false;
@@ -625,14 +957,16 @@ class CityState {
 
   createStructure(type, rand = Math.random) {
     const s = { id: this.nextId++, type, residents: 0 };
-    if (type === 'house' || type === 'tower') s.variant = VARIANT_KEYS[Math.floor(rand() * VARIANT_KEYS.length)];
+    if (type === 'house' || type === 'tower' || type === 'shop' || type === 'office') s.variant = VARIANT_KEYS[Math.floor(rand() * VARIANT_KEYS.length)];
     if (type === 'tower') s.floors = 4 + Math.floor(rand() * 3);
+    if (type === 'office') s.floors = 3 + Math.floor(rand() * 3);
     if (type === 'tree') s.shape = Math.floor(rand() * 4);
     return s;
   }
 
   _changed(x, y) {
     this.dirty = true;
+    this.revision++;
     this.updateRoadMask(x, y);
     for (const d of DIRS) this.updateRoadMask(x + d.dx, y + d.dy);
   }
@@ -646,6 +980,7 @@ class CityState {
   }
 
   refreshAllRoadMasks() {
+    this.revision++;
     for (const t of this.tiles) this.updateRoadMask(t.x, t.y);
   }
 
@@ -653,14 +988,17 @@ class CityState {
   reset() {
     this._buildTiles();
     this.dirty = true;
+    this.revision++;
   }
 
-  // Grow or shrink the map, keeping existing tiles anchored at the origin.
-  resize(width, height) {
-    const old = this;
+  // Grow or shrink the map. Existing tiles move by (offsetX, offsetY), so a town can be re-centred.
+  resize(width, height, offsetX = 0, offsetY = 0) {
     const tiles = [];
     for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) tiles.push(old.getTile(x, y) ?? createTile(x, y));
+      for (let x = 0; x < width; x++) {
+        const old = this.getTile(x - offsetX, y - offsetY);
+        tiles.push(old ? Object.assign(old, { x, y }) : createTile(x, y));
+      }
     }
     this.width = width;
     this.height = height;
@@ -765,9 +1103,9 @@ const __mod_desirability = (() => {
 // Desirability: how much people want to live on a tile. Each factor is an independent, pluggable function.
 // To add a system later (services, jobs, pollution…), implement its `compute` and flip `enabled`.
 
-const { STRUCTURES } = __mod_config;
+const { STRUCTURES, SERVICES } = __mod_config;
 const { clamp } = __mod_utils;
-const BASE = 0.3;
+const BASE = 0.28;
 
 function sumAround(city, tile, radius, valueOf) {
   let sum = 0;
@@ -790,13 +1128,13 @@ const FACTORS = [
     label: 'Parks & trees',
     enabled: true,
     compute: (city, tile) =>
-      Math.min(0.5, sumAround(city, tile, 3, (n) => (n.structure ? STRUCTURES[n.structure.type].greenery * 0.07 : 0))),
+      Math.min(0.35, sumAround(city, tile, 3, (n) => (n.structure ? STRUCTURES[n.structure.type].greenery * 0.06 : 0))),
   },
   {
     id: 'waterfront',
     label: 'Water views',
     enabled: true,
-    compute: (city, tile) => Math.min(0.1, sumAround(city, tile, 2, (n) => (n.terrain === 'water' ? 0.05 : 0))),
+    compute: (city, tile) => Math.min(0.08, sumAround(city, tile, 2, (n) => (n.terrain === 'water' ? 0.04 : 0))),
   },
   {
     id: 'access',
@@ -809,13 +1147,50 @@ const FACTORS = [
           if (city.isRoad(tile.x + dx, tile.y + dy)) best = Math.min(best, Math.abs(dx) + Math.abs(dy));
         }
       }
-      return best <= 1 ? 0.12 : best <= 2 ? 0.05 : -0.08;
+      return best <= 1 ? 0.1 : best <= 2 ? 0.04 : -0.08;
     },
   },
-  // Planned systems. Each will read its own data from city.systems once implemented.
-  { id: 'services', label: 'Public services', enabled: false, compute: () => 0 },
-  { id: 'employment', label: 'Jobs nearby', enabled: false, compute: () => 0 },
-  { id: 'traffic', label: 'Traffic', enabled: false, compute: () => 0 },
+  {
+    id: 'services',
+    label: 'Schools & clinics',
+    enabled: true,
+    compute: (city, tile) => {
+      let sum = 0;
+      for (const s of SERVICES) sum += tile.coverage[s.id] || 0;
+      return 0.16 * (sum / SERVICES.length);
+    },
+  },
+  {
+    id: 'employment',
+    label: 'Jobs',
+    enabled: true,
+    // Homes rate their own residents' job prospects; empty lots rate jobs within reach.
+    compute: (city, tile) => {
+      if (tile.structure && STRUCTURES[tile.structure.type].capacity > 0 && tile.structure.residents > 0) {
+        return 0.16 * tile.employment;
+      }
+      const jobs = city.derived.labor;
+      if (!jobs || !jobs.jobs) return 0;
+      return 0.16 * Math.min(1, (jobs.jobs - jobs.employed) / Math.max(4, jobs.employed * 0.15));
+    },
+  },
+  {
+    id: 'traffic',
+    label: 'Traffic',
+    enabled: true,
+    compute: (city, tile) => {
+      let worst = 0;
+      for (let dy = -2; dy <= 2; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+          const n = city.getTile(tile.x + dx, tile.y + dy);
+          if (!n || !n.roadMask) continue;
+          const d = Math.max(Math.abs(dx), Math.abs(dy));
+          worst = Math.max(worst, n.congestion * (1 - d / 3));
+        }
+      }
+      return -0.14 * worst;
+    },
+  },
   { id: 'pollution', label: 'Pollution', enabled: false, compute: () => 0 },
   { id: 'safety', label: 'Safety', enabled: false, compute: () => 0 },
   { id: 'overcrowding', label: 'Overcrowding', enabled: false, compute: () => 0 },
@@ -843,6 +1218,149 @@ function recomputeDesirability(city) {
 return { FACTORS, recomputeDesirability };
 })();
 
+// ---- labor.js ----
+const __mod_labor = (() => {
+// Labor market and traffic. Residents look for the nearest jobs they can reach by road; each
+// commute then loads the road tiles along its route. Adapted from Cimulity's aggregate
+// nearest-with-overflow matching (MIT, github.com/zeikar/cimulity).
+
+const { STRUCTURES, WORKER_SHARE, ROAD_CAPACITY } = __mod_config;
+function workersIn(home) {
+  return Math.round(home.structure.residents * WORKER_SHARE);
+}
+
+// Returns { flows, employed, unemployed, jobs } and writes per-tile employment, workersFilled
+// and congestion. Each flow is { from, to, count, path } where path lists road tiles.
+function computeLaborMarket(city) {
+  const W = city.width;
+  const size = W * city.height;
+  const homes = city.homes();
+  const workplaces = city.workplaces();
+
+  // Remaining capacity per access road (several workplaces can share one).
+  const capacity = new Map();
+  const destinations = new Map(); // access road index → workplace tiles
+  let jobs = 0;
+  for (const w of workplaces) {
+    const cap = STRUCTURES[w.structure.type].jobs;
+    jobs += cap;
+    w.workersFilled = 0;
+    const road = city.accessRoad(w.x, w.y);
+    if (!road) continue;
+    const k = road.y * W + road.x;
+    capacity.set(k, (capacity.get(k) || 0) + cap);
+    if (!destinations.has(k)) destinations.set(k, []);
+    destinations.get(k).push(w);
+  }
+
+  const load = new Float32Array(size);
+  const flows = [];
+  let employed = 0;
+  let unemployed = 0;
+  const prev = new Int32Array(size);
+  const seen = new Uint32Array(size);
+  let stamp = 0;
+
+  // Process homes in a stable order so results don't jitter between ticks.
+  const origins = homes
+    .map((h) => ({ h, workers: workersIn(h), road: city.accessRoad(h.x, h.y) }))
+    .sort((a, b) => a.h.y * W + a.h.x - (b.h.y * W + b.h.x));
+
+  for (const o of origins) {
+    o.h.employment = 0;
+    if (o.workers <= 0) continue;
+    if (!o.road) {
+      unemployed += o.workers;
+      continue;
+    }
+    let left = o.workers;
+    stamp++;
+    const start = o.road.y * W + o.road.x;
+    const queue = [start];
+    seen[start] = stamp;
+    prev[start] = -1;
+    for (let qi = 0; qi < queue.length && left > 0; qi++) {
+      const k = queue[qi];
+      const cap = capacity.get(k);
+      if (cap > 0) {
+        const take = Math.min(cap, left);
+        capacity.set(k, cap - take);
+        left -= take;
+        const path = [];
+        for (let p = k; p !== -1; p = prev[p]) {
+          path.push(p);
+          load[p] += take;
+        }
+        path.reverse();
+        flows.push({ from: start, to: k, count: take, path });
+        let remaining = take;
+        for (const w of destinations.get(k)) {
+          const room = STRUCTURES[w.structure.type].jobs - w.workersFilled;
+          const add = Math.min(room, remaining);
+          w.workersFilled += add;
+          remaining -= add;
+          if (!remaining) break;
+        }
+      }
+      const x = k % W;
+      const y = (k - x) / W;
+      for (const [dx, dy] of [
+        [0, -1],
+        [1, 0],
+        [0, 1],
+        [-1, 0],
+      ]) {
+        if (!city.isRoad(x + dx, y + dy)) continue;
+        const n = (y + dy) * W + x + dx;
+        if (seen[n] === stamp) continue;
+        seen[n] = stamp;
+        prev[n] = k;
+        queue.push(n);
+      }
+    }
+    employed += o.workers - left;
+    unemployed += left;
+    o.h.employment = (o.workers - left) / o.workers;
+  }
+
+  for (let i = 0; i < size; i++) city.tiles[i].congestion = Math.min(1, load[i] / ROAD_CAPACITY);
+  return { flows, employed, unemployed, jobs };
+}
+
+return { workersIn, computeLaborMarket };
+})();
+
+// ---- coverage.js ----
+const __mod_coverage = (() => {
+// Service coverage: each school or clinic covers the tiles around it, strongest nearby.
+
+const { STRUCTURES, SERVICES } = __mod_config;
+function computeCoverage(city) {
+  for (const t of city.tiles) {
+    const c = {};
+    for (const s of SERVICES) c[s.id] = 0;
+    t.coverage = c;
+  }
+  for (const src of city.tiles) {
+    const def = src.structure && STRUCTURES[src.structure.type];
+    if (!def?.service) continue;
+    const r = def.radius;
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        const t = city.getTile(src.x + dx, src.y + dy);
+        if (!t) continue;
+        const d = Math.hypot(dx, dy);
+        if (d > r) continue;
+        const v = 1 - (d / (r + 1)) ** 2;
+        if (v > t.coverage[def.service]) t.coverage[def.service] = v;
+      }
+    }
+  }
+}
+
+return { computeCoverage };
+})();
+
 // ---- agents.js ----
 const __mod_agents = (() => {
 // Agents: cars and pedestrians that make the simulation visible. They read the city and are never
@@ -851,8 +1369,14 @@ const __mod_agents = (() => {
 const { CAR_COLORS, SHIRT_COLORS, SKIN_TONES } = __mod_config;
 const { DIRS } = __mod_state;
 const { pick, pickWeighted } = __mod_utils;
-const MAX_CARS = 30;
-const MAX_WALKERS = 36;
+const MAX_CARS = 70;
+const MAX_WALKERS = 60;
+
+// How busy commuting is at this time of day: morning and evening rush hours, quiet nights.
+function commuteActivity(clock) {
+  const peak = (c, w) => Math.exp(-(((clock - c) / w) ** 2));
+  return Math.min(1, 0.12 + 0.88 * peak(0.33, 0.05) + 0.88 * peak(0.73, 0.05) + 0.3 * peak(0.52, 0.12));
+}
 
 class AgentSystem {
   constructor(city) {
@@ -880,28 +1404,71 @@ class AgentSystem {
     this.updateWalkers(dt, daylight);
   }
 
+  get commuters() {
+    return this.cars.filter((c) => c.route && !c.leaving).length;
+  }
+
   // ---- Cars -------------------------------------------------------------
 
+  // Cruising cars scale with the road network; commuters follow the labor market's routes.
   desiredCars(daylight) {
     let roads = 0;
     for (const t of this.city.tiles) if (t.roadMask) roads++;
-    if (roads < 2) return 0;
-    const base = Math.min(Math.floor(roads / 3), 2 + Math.floor(this.city.stats.population / 10), MAX_CARS);
-    return Math.round(base * (0.45 + 0.55 * daylight));
+    if (roads < 2) return { cruising: 0, commuting: 0 };
+    const cruising = Math.round(
+      Math.min(Math.floor(roads / 6), 2 + Math.floor(this.city.stats.population / 25), 20) * (0.35 + 0.65 * daylight)
+    );
+    const employed = this.city.derived.labor?.employed || 0;
+    const commuting = Math.round(Math.min(MAX_CARS - 20, employed / 5) * commuteActivity(this.city.clock));
+    return { cruising, commuting };
   }
 
   updateCars(dt, daylight) {
     const want = this.desiredCars(daylight);
     const active = this.cars.filter((c) => !c.leaving);
-    if (active.length < want && this._carTimer <= 0) {
-      this.spawnCar();
-      this._carTimer = 0.4;
-    } else if (active.length > want && this._carTimer <= 0) {
-      active[0].leaving = true;
-      this._carTimer = 0.6;
+    const commuting = active.filter((c) => c.route).length;
+    const cruising = active.length - commuting;
+    if (this._carTimer <= 0) {
+      if (commuting < want.commuting && this.spawnCommuter()) this._carTimer = 0.18;
+      else if (cruising < want.cruising) {
+        this.spawnCar();
+        this._carTimer = 0.4;
+      } else if (cruising > want.cruising) {
+        active.find((c) => !c.route).leaving = true;
+        this._carTimer = 0.6;
+      }
     }
     for (const c of this.cars) this.stepCar(c, dt);
     this.cars = this.cars.filter((c) => !c.dead);
+  }
+
+  // Pick a commute weighted by how many people make it. Mornings head to work, evenings home.
+  spawnCommuter() {
+    const flows = this.city.derived.labor?.flows;
+    if (!flows || !flows.length) return false;
+    const flow = pickWeighted(flows, (f) => (f.path.length > 1 ? f.count : 0));
+    if (!flow) return false;
+    const W = this.city.width;
+    const homeward = this.city.clock > 0.55 || (this.city.clock > 0.42 && Math.random() < 0.5);
+    const route = (homeward ? flow.path.slice().reverse() : flow.path).map((k) => ({ x: k % W, y: Math.floor(k / W) }));
+    const [a, b] = route;
+    this.cars.push({
+      x: a.x,
+      y: a.y,
+      px: a.x,
+      py: a.y,
+      nx: b.x,
+      ny: b.y,
+      route,
+      ri: 1,
+      t: 0,
+      speed: 1.1 + Math.random() * 0.5,
+      color: pick(CAR_COLORS),
+      alpha: 0,
+      leaving: false,
+      dead: false,
+    });
+    return true;
   }
 
   spawnCar() {
@@ -934,13 +1501,32 @@ class AgentSystem {
       return;
     }
     if (!city.isRoad(c.nx, c.ny)) return;
-    c.t += c.speed * dt;
+    // Busy roads slow everyone down.
+    const jam = city.getTile(c.x, c.y)?.congestion || 0;
+    c.t += c.speed * (1 - 0.55 * jam) * dt;
     while (c.t >= 1) {
       c.t -= 1;
       c.px = c.x;
       c.py = c.y;
       c.x = c.nx;
       c.y = c.ny;
+      if (c.route) {
+        const next = c.route[++c.ri];
+        if (!next || !city.isRoad(next.x, next.y)) {
+          c.leaving = true; // arrived
+          c.t = 0;
+          c.nx = c.x + (c.x - c.px);
+          c.ny = c.y + (c.y - c.py);
+          if (!city.isRoad(c.nx, c.ny)) {
+            c.nx = c.x;
+            c.ny = c.y;
+          }
+          break;
+        }
+        c.nx = next.x;
+        c.ny = next.y;
+        continue;
+      }
       const options = city.roadNeighbors(c.x, c.y).filter((n) => !(n.x === c.px && n.y === c.py));
       const next = options.length ? pick(options) : { x: c.px, y: c.py };
       if (!city.isRoad(next.x, next.y)) {
@@ -1103,7 +1689,7 @@ class AgentSystem {
 }
 
 
-return { AgentSystem };
+return { commuteActivity, AgentSystem };
 })();
 
 // ---- time.js ----
@@ -1137,6 +1723,8 @@ const __mod_simulation = (() => {
 
 const { STRUCTURES, DAY_LENGTH_SECONDS, SIM_STEP } = __mod_config;
 const { recomputeDesirability } = __mod_desirability;
+const { computeLaborMarket } = __mod_labor;
+const { computeCoverage } = __mod_coverage;
 const { AgentSystem } = __mod_agents;
 const { daylightAt } = __mod_time;
 const { clamp, pickWeighted } = __mod_utils;
@@ -1144,13 +1732,15 @@ class Simulation {
   constructor(city) {
     this.city = city;
     this.agents = new AgentSystem(city);
-    this.speed = 1;
+    this.speed = 1; // 0 pauses; 1–3 run faster
     this._acc = 0;
+    this._marketTimer = 0;
   }
 
   update(dt) {
     const city = this.city;
     const step = Math.min(dt, 0.25) * this.speed;
+    if (!step) return;
     city.clock += step / DAY_LENGTH_SECONDS;
     if (city.clock >= 1) {
       city.clock -= 1;
@@ -1165,8 +1755,24 @@ class Simulation {
   }
 
   tick() {
-    if (this.city.dirty) recomputeDesirability(this.city);
+    const city = this.city;
+    this._marketTimer -= SIM_STEP;
+    // Jobs, traffic and desirability feed each other, so refresh them together about once a second.
+    if (city.dirty || this._marketTimer <= 0) {
+      if (city.dirty) computeCoverage(city);
+      city.derived.labor = computeLaborMarket(city);
+      recomputeDesirability(city);
+      this._marketTimer = 1;
+    }
     this.updateHousing();
+    this.updateStats();
+  }
+
+  // Run the derived systems immediately, e.g. right after loading or generating a city.
+  refresh() {
+    computeCoverage(this.city);
+    this.city.derived.labor = computeLaborMarket(this.city);
+    recomputeDesirability(this.city);
     this.updateStats();
   }
 
@@ -1218,12 +1824,20 @@ class Simulation {
       desirSum += h.desirability;
     }
     const happiness = population ? weighted / population : homes.length ? desirSum / homes.length : 0;
+    const labor = city.derived.labor || { employed: 0, unemployed: 0, jobs: 0 };
+    const workers = labor.employed + labor.unemployed;
+    let busiest = 0;
+    for (const t of city.tiles) if (t.congestion > busiest) busiest = t.congestion;
     city.stats = {
       population,
       capacity,
       homes: homes.length,
       occupancy: capacity ? population / capacity : 0,
       happiness: Math.round(happiness * 100),
+      jobs: labor.jobs,
+      employed: labor.employed,
+      employment: workers ? labor.employed / workers : 1,
+      traffic: busiest,
     };
   }
 }
@@ -1259,7 +1873,17 @@ function mapBounds(width, height) {
   };
 }
 
-return { HALF_W, HALF_H, gridToWorld, worldToGrid, mapBounds };
+// World-space bounds of a block of tiles, padded for building height.
+function tileRectBounds(x0, y0, x1, y1) {
+  return {
+    left: gridToWorld(x0, y1 + 1).x,
+    right: gridToWorld(x1 + 1, y0).x,
+    top: gridToWorld(x0, y0).y - 70,
+    bottom: gridToWorld(x1 + 1, y1 + 1).y + 10,
+  };
+}
+
+return { HALF_W, HALF_H, gridToWorld, worldToGrid, mapBounds, tileRectBounds };
 })();
 
 // ---- color.js ----
@@ -1280,10 +1904,25 @@ function rgbOf(hex) {
 
 const to255 = (v) => (v < 0 ? 0 : v > 255 ? 255 : v | 0);
 
+// Lit colours are requested thousands of times a frame; cache them per lighting state.
+let litCache = new Map();
+let litKey = null;
+
 function lit(hex, shade, L) {
-  const [r, g, b] = rgbOf(hex);
-  const a = L.ambient;
-  return `rgb(${to255(r * shade * a[0])},${to255(g * shade * a[1])},${to255(b * shade * a[2])})`;
+  if (L !== litKey) {
+    litKey = L;
+    if (litCache.size) litCache = new Map();
+  }
+  shade = Math.round(shade * 100) / 100;
+  const key = hex + shade;
+  let c = litCache.get(key);
+  if (c === undefined) {
+    const [r, g, b] = rgbOf(hex);
+    const a = L.ambient;
+    c = `rgb(${to255(r * shade * a[0])},${to255(g * shade * a[1])},${to255(b * shade * a[2])})`;
+    litCache.set(key, c);
+  }
+  return c;
 }
 
 function litA(hex, shade, L, alpha) {
@@ -1339,7 +1978,16 @@ function skyAt(clock) {
   return [SKY[0][1], SKY[0][2]];
 }
 
+let lastLighting = null;
+
+// Lighting only shifts visibly every few frames; reuse the previous object (and its colour cache) until it does.
 function lightingAt(clock) {
+  if (lastLighting && Math.abs(lastLighting.clock - clock) < 0.0004) return lastLighting;
+  lastLighting = computeLighting(clock);
+  return lastLighting;
+}
+
+function computeLighting(clock) {
   const daylight = daylightAt(clock);
   const sun = sunHeight(clock);
   const warm = Math.exp(-(((sun - 0.05) / 0.2) ** 2)); // golden hour near the horizon
@@ -1381,6 +2029,10 @@ const { lightingAt } = __mod_lighting;
 const { lit, litA, rgba } = __mod_color;
 const { clamp, hash2 } = __mod_utils;
 const SLAB_DEPTH = 18;
+// Unlit lighting for the cached ground layer; the frame's real light is multiplied on afterwards.
+const NEUTRAL_LIGHT = { ambient: [1, 1, 1], daylight: 1, windowLit: 0, lamps: 0, shadow: { alpha: 0 }, clock: 0.5 };
+const GROUND_SCALES = [0.5, 0.75, 1, 1.5, 2, 3];
+const MAX_GROUND_PX = 4096;
 const FLOWER_COLORS = ['#fff4f7', '#ffd3df', '#fff0b3', '#e2d3f5'];
 
 // Tile edges in N, E, S, W order (matching road mask bits). `n` points into the tile.
@@ -1444,6 +2096,37 @@ function convexHull(points) {
   return lower.slice(0, -1).concat(upper.slice(0, -1));
 }
 
+// A soft round shadow drawn once and stamped under every building.
+let contactCanvas = null;
+function contactSprite() {
+  if (contactCanvas) return contactCanvas;
+  contactCanvas = document.createElement('canvas');
+  contactCanvas.width = contactCanvas.height = 64;
+  const c = contactCanvas.getContext('2d');
+  const grad = c.createRadialGradient(32, 32, 9.6, 32, 32, 32);
+  grad.addColorStop(0, 'rgba(52,44,96,0.26)');
+  grad.addColorStop(1, 'rgba(52,44,96,0)');
+  c.fillStyle = grad;
+  c.fillRect(0, 0, 64, 64);
+  return contactCanvas;
+}
+
+// Low → high: blush red, butter yellow, mint green.
+function rampColor(v, alpha) {
+  const t = Math.max(0, Math.min(1, v));
+  const stops = [
+    [0, [246, 140, 140]],
+    [0.5, [255, 214, 120]],
+    [1, [110, 200, 150]],
+  ];
+  const i = t < 0.5 ? 0 : 1;
+  const [a0, c0] = stops[i];
+  const [a1, c1] = stops[i + 1];
+  const k = (t - a0) / (a1 - a0);
+  const c = c0.map((v0, j) => Math.round(v0 + (c1[j] - v0) * k));
+  return `rgba(${c[0]},${c[1]},${c[2]},${alpha})`;
+}
+
 class Renderer {
   constructor(canvas, city, camera, agents) {
     this.canvas = canvas;
@@ -1459,6 +2142,7 @@ class Renderer {
     this.particles = [];
     this.glows = [];
     this.reduceMotion = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    this.ground = { canvas: null, key: '' };
     city.on((ev) => this.onCityEvent(ev));
   }
 
@@ -1588,8 +2272,16 @@ class Renderer {
     };
     const tiles = this.visibleTiles(rect);
 
-    this.drawSlab(ctx, L);
-    for (const t of tiles) this.drawGround(ctx, t, L);
+    if (this.ensureGround()) {
+      this.drawSlabShadow(ctx);
+      this.drawCachedGround(ctx, L);
+      for (const t of tiles) if (t.terrain === 'water') this.drawWaterMotion(ctx, t, L);
+    } else {
+      this.drawSlab(ctx, L);
+      for (const t of tiles) this.drawGround(ctx, t, L);
+    }
+    if (view.overlay && view.overlay !== 'none') for (const t of tiles) this.drawOverlay(ctx, t, view.overlay);
+    if (view.selected) this.drawSelected(ctx, view.selected);
     if (view.hover) this.drawHover(ctx, view.hover);
     for (const t of tiles) if (t.structure) this.drawShadow(ctx, t, L);
 
@@ -1681,11 +2373,87 @@ class Renderer {
     }
   }
 
-  drawSlab(ctx, L) {
+  // ---- Cached ground layer -------------------------------------------------------
+  // Terrain, roads and lawns change only when the player edits the map, so they are drawn once
+  // into an offscreen canvas at a resolution matched to the zoom. Returns false when the view is
+  // zoomed in past what the cache can hold sharply; the caller then draws visible tiles live.
+  ensureGround() {
+    const city = this.city;
+    const W = city.width;
+    const H = city.height;
+    const worldW = (W + H) * HALF_W;
+    const worldH = (W + H) * HALF_H + SLAB_DEPTH + 4;
+    const cap = Math.min(MAX_GROUND_PX / worldW, MAX_GROUND_PX / worldH);
+    const want = this.camera.zoom * this.dpr;
+    if (want > cap * 1.05) return false;
+    const scale = Math.min(cap, GROUND_SCALES.find((s) => s >= want * 0.95) || cap);
+    const key = `${city.revision}|${W}x${H}|${scale.toFixed(3)}`;
+    if (this.ground.key === key) return true;
+    const g = this.ground;
+    if (!g.canvas) g.canvas = document.createElement('canvas');
+    g.canvas.width = Math.ceil(worldW * scale);
+    g.canvas.height = Math.ceil(worldH * scale);
+    g.left = -H * HALF_W;
+    g.top = 0;
+    g.scale = scale;
+    const c = g.canvas.getContext('2d');
+    c.setTransform(scale, 0, 0, scale, -g.left * scale, -g.top * scale);
+    c.clearRect(g.left, g.top, worldW, worldH);
+    this._caching = true;
+    this.drawSlab(c, NEUTRAL_LIGHT, false);
+    for (const t of city.tiles) this.drawGround(c, t, NEUTRAL_LIGHT);
+    this._caching = false;
+    g.key = key;
+    return true;
+  }
+
+  drawCachedGround(ctx, L) {
+    const g = this.ground;
+    const W = this.city.width;
+    const H = this.city.height;
+    ctx.drawImage(g.canvas, g.left, g.top, g.canvas.width / g.scale, g.canvas.height / g.scale);
+    const a = L.ambient;
+    if (a[0] > 0.995 && a[1] > 0.995 && a[2] > 0.995) return;
+    // Apply the frame's light to the whole board in one multiply pass.
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+    const ch = (v) => Math.round(Math.min(1, v) * 255);
+    ctx.fillStyle = `rgb(${ch(a[0])},${ch(a[1])},${ch(a[2])})`;
+    poly(ctx, [
+      [0, 0, 0],
+      [W, 0, 0],
+      [W, 0, -SLAB_DEPTH],
+      [W, H, -SLAB_DEPTH],
+      [0, H, -SLAB_DEPTH],
+      [0, H, 0],
+    ]);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Animated parts of water that can't live in the cache.
+  drawWaterMotion(ctx, t, L) {
+    if (this.camera.zoom < 0.5) return;
+    const { x, y } = t;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < 2; i++) {
+      const ph = this.time * (0.7 + hash2(x, y, 70 + i) * 0.6) + hash2(x, y, 80 + i) * 6.28;
+      const a = (Math.sin(ph) * 0.5 + 0.5) * (L.daylight > 0.3 ? 0.6 : 0.35);
+      const p = gridToWorld(x + 0.25 + hash2(x, y, 90 + i) * 0.5, y + 0.25 + hash2(x, y, 95 + i) * 0.5);
+      const drift = Math.sin(ph * 0.5) * 2;
+      ctx.strokeStyle = `rgba(255,255,255,${a.toFixed(3)})`;
+      ctx.beginPath();
+      ctx.moveTo(p.x - 4 + drift, p.y);
+      ctx.lineTo(p.x + 4 + drift, p.y);
+      ctx.stroke();
+    }
+  }
+
+  drawSlabShadow(ctx) {
     const W = this.city.width;
     const H = this.city.height;
     const D = SLAB_DEPTH;
-    // Soft drop shadow so the board floats like a diorama.
     for (const [pad, a] of [
       [0.9, 0.05],
       [0.45, 0.07],
@@ -1699,6 +2467,14 @@ class Renderer {
       ]);
       ctx.fill();
     }
+  }
+
+  drawSlab(ctx, L, withShadow = true) {
+    const W = this.city.width;
+    const H = this.city.height;
+    const D = SLAB_DEPTH;
+    // Soft drop shadow so the board floats like a diorama.
+    if (withShadow) this.drawSlabShadow(ctx);
     const yTop = gridToWorld(W, H).y;
     const left = ctx.createLinearGradient(0, yTop - (W + H) * HALF_H * 0.5, 0, yTop + D);
     left.addColorStop(0, lit(PALETTE.earth, 0.95, L));
@@ -1825,10 +2601,11 @@ class Renderer {
       poly(ctx, edgeStrip(x, y, e, 0, 0.09));
       ctx.fill();
       ctx.fillStyle = litA('#ffffff', 1, L, 0.55);
-      poly(ctx, edgeStrip(x, y, e, 0.09, 0.13 + Math.sin(this.time * 1.6 + x + y) * 0.02));
+      poly(ctx, edgeStrip(x, y, e, 0.09, this._caching ? 0.13 : 0.13 + Math.sin(this.time * 1.6 + x + y) * 0.02));
       ctx.fill();
     });
     // Shimmer.
+    if (this._caching || this.camera.zoom < 0.5) return;
     ctx.lineCap = 'round';
     ctx.lineWidth = 1.2;
     for (let i = 0; i < 2; i++) {
@@ -1949,11 +2726,55 @@ class Renderer {
     }
   }
 
+  // Data views tint the ground so buildings stay readable on top.
+  drawOverlay(ctx, t, overlay) {
+    let color = null;
+    if (overlay === 'desirability') {
+      if (t.terrain === 'water' || t.roadMask || t.structure?.type === 'road') return;
+      color = rampColor(t.desirability, 0.62);
+    } else if (overlay === 'traffic') {
+      if (t.structure?.type !== 'road') {
+        color = 'rgba(70,60,110,0.28)';
+      } else {
+        color = t.congestion < 0.02 ? 'rgba(255,255,255,0.35)' : rampColor(1 - t.congestion, 0.8);
+      }
+    } else if (overlay === 'services') {
+      if (t.terrain === 'water') return;
+      const c = t.coverage || {};
+      const school = c.school || 0;
+      const health = c.health || 0;
+      if (school < 0.02 && health < 0.02) color = 'rgba(70,60,110,0.22)';
+      else {
+        // Schools tint lavender, clinics tint mint; both together read as a soft blue-violet.
+        const r = Math.round(200 - 60 * health);
+        const g = Math.round(180 + 40 * health - 20 * school);
+        const b = Math.round(200 + 40 * school);
+        color = `rgba(${r},${g},${b},${(0.25 + 0.45 * Math.max(school, health)).toFixed(3)})`;
+      }
+    }
+    if (!color) return;
+    ctx.fillStyle = color;
+    tilePoly(ctx, t.x, t.y);
+    ctx.fill();
+  }
+
+  drawSelected(ctx, sel) {
+    const z = this.camera.zoom;
+    const pulse = 0.6 + 0.4 * Math.sin(this.time * 4);
+    ctx.lineWidth = 2.2 / z;
+    ctx.setLineDash([5 / z, 4 / z]);
+    ctx.lineDashOffset = -this.time * 12;
+    ctx.strokeStyle = `rgba(255,255,255,${pulse.toFixed(3)})`;
+    tilePoly(ctx, sel.x, sel.y, -0.02);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
   drawHover(ctx, hover) {
     const z = this.camera.zoom;
     ctx.lineWidth = 1.6 / z;
     tilePoly(ctx, hover.x, hover.y, 0.02);
-    const warn = hover.tool === 'bulldoze' || !hover.valid;
+    const warn = hover.tool === 'bulldoze' || (!hover.valid && hover.tool !== 'inspect');
     ctx.fillStyle = warn ? 'rgba(255,143,128,0.22)' : 'rgba(255,255,255,0.28)';
     ctx.strokeStyle = warn ? 'rgba(255,128,112,0.95)' : 'rgba(255,255,255,0.95)';
     ctx.fill();
@@ -1967,6 +2788,10 @@ class Renderer {
     if (s.type === 'house') return { inset: 0.2, h: 27 };
     if (s.type === 'tower') return { inset: 0.16, h: 6 + (s.floors || 5) * 11 };
     if (s.type === 'tree') return { inset: 0.32, h: 24, round: true };
+    if (s.type === 'shop') return { inset: 0.16, h: 22 };
+    if (s.type === 'office') return { inset: 0.14, h: 8 + (s.floors || 4) * 12 };
+    if (s.type === 'school') return { inset: 0.12, h: 26 };
+    if (s.type === 'clinic') return { inset: 0.15, h: 24 };
     return null;
   }
 
@@ -1976,20 +2801,10 @@ class Renderer {
     const b = this.bounceFor(t.x, t.y);
     if (b.hidden) return;
     const { x, y } = t;
-    const c = gridToWorld(x + 0.5, y + 0.5);
+    const g = gridToWorld(x + 0.5, y + 0.5);
     // Contact shadow: always present, anchors the object to the ground.
     const r = (1 - f.inset * 2) * HALF_W * 1.25 * b.sx;
-    ctx.save();
-    ctx.translate(c.x, c.y);
-    ctx.scale(1, 0.5);
-    const g = ctx.createRadialGradient(0, 0, r * 0.3, 0, 0, r);
-    g.addColorStop(0, 'rgba(52,44,96,0.26)');
-    g.addColorStop(1, 'rgba(52,44,96,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    ctx.drawImage(contactSprite(), g.x - r, g.y - r / 2, r * 2, r);
 
     const sh = L.shadow;
     if (sh.alpha < 0.01) return;
@@ -2051,6 +2866,14 @@ class Renderer {
         return this.drawHouse(ctx, x, y, s, L, ghost);
       case 'tower':
         return this.drawTower(ctx, x, y, s, L, ghost);
+      case 'shop':
+        return this.drawShop(ctx, x, y, s, L, ghost);
+      case 'office':
+        return this.drawOffice(ctx, x, y, s, L, ghost);
+      case 'school':
+        return this.drawSchool(ctx, x, y, s, L, ghost);
+      case 'clinic':
+        return this.drawClinic(ctx, x, y, s, L, ghost);
       case 'tree':
         return this.drawTree(ctx, x + 0.5, y + 0.5, s.shape || 0, L, hash2(x, y, 12) * 6.28, 1);
       case 'park':
@@ -2299,6 +3122,222 @@ class Renderer {
       ctx.beginPath();
       ctx.arc(a.x, a.y - 12, 1.4, 0, Math.PI * 2);
       ctx.fill();
+    }
+  }
+
+  workFill(x, y, s, ghost) {
+    if (ghost) return 0;
+    const t = this.city.getTile(x, y);
+    return t ? t.workersFilled / STRUCTURES[s.type].jobs : 0;
+  }
+
+  // Shops stay lit through the evening and close late at night.
+  shopOpen(L) {
+    const c = L.clock;
+    return c > 0.29 && c < 0.92;
+  }
+
+  drawShop(ctx, x, y, s, L, ghost) {
+    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.mint;
+    const x0 = x + 0.16;
+    const x1 = x + 0.84;
+    const y0 = y + 0.2;
+    const y1 = y + 0.8;
+    const h = 16;
+    const fill = this.workFill(x, y, s, ghost);
+    this.drawBox(ctx, L, x0, y0, x1, y1, 0, h, v.wall);
+    // Shop window: warm when open after dark.
+    const open = !ghost && fill > 0 && this.shopOpen(L) && L.windowLit > 0.05;
+    this.drawWindow(ctx, L, this.faceQuad('L', x0, y0, x1, y1, 0.08, 0.62, 2.5, 9.5), 0.92, open);
+    ctx.fillStyle = lit(v.roof, 0.72, L);
+    poly(ctx, this.faceQuad('L', x0, y0, x1, y1, 0.7, 0.9, 0, 9.5));
+    ctx.fill();
+    this.drawWindow(ctx, L, this.faceQuad('R', x0, y0, x1, y1, 0.2, 0.8, 4, 10), 0.8, open && hash2(x, y, 31) < 0.7);
+    // Striped awning over the storefront.
+    const segs = 5;
+    for (let i = 0; i < segs; i++) {
+      const a = x0 + ((x1 - x0) * i) / segs;
+      const b = x0 + ((x1 - x0) * (i + 1)) / segs;
+      ctx.fillStyle = lit(i % 2 ? v.trim : v.roof, i % 2 ? 1 : 0.95, L);
+      poly(ctx, [
+        [a, y1, 12],
+        [b, y1, 12],
+        [b, y1 + 0.12, 8.5],
+        [a, y1 + 0.12, 8.5],
+      ]);
+      ctx.fill();
+    }
+    // Rooftop sign.
+    this.drawBox(ctx, L, x0 + 0.12, y1 - 0.1, x1 - 0.12, y1 - 0.04, h, 6, v.trim);
+    ctx.fillStyle = lit(v.roof, 0.85, L);
+    poly(ctx, this.faceQuad('L', x0 + 0.12, y1 - 0.1, x1 - 0.12, y1 - 0.04, 0.12, 0.88, h + 1.6, h + 4.4));
+    ctx.fill();
+  }
+
+  drawOffice(ctx, x, y, s, L, ghost) {
+    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.lavender;
+    const floors = s.floors || 4;
+    const x0 = x + 0.14;
+    const x1 = x + 0.86;
+    const y0 = y + 0.14;
+    const y1 = y + 0.86;
+    const fh = 12;
+    const h = 8 + floors * fh;
+    const fill = this.workFill(x, y, s, ghost);
+    this.drawBox(ctx, L, x0, y0, x1, y1, 0, h, v.trim, false);
+    // Glass ribbon windows; offices light up in the early evening while people work late.
+    const evening = L.clock > 0.7 && L.clock < 0.86 ? 1 : 0.25;
+    let wi = 0;
+    for (let f = 0; f < floors; f++) {
+      const v0 = 9 + f * fh;
+      for (const face of ['L', 'R']) {
+        for (let k = 0; k < 3; k++) {
+          const u0 = 0.06 + k * 0.3;
+          const isLit = !ghost && L.windowLit > 0.05 && hash2(x * 5 + wi, y * 11, 17) < fill * evening;
+          wi++;
+          this.drawWindow(ctx, L, this.faceQuad(face, x0, y0, x1, y1, u0, u0 + 0.28, v0, v0 + 7), face === 'L' ? 0.95 : 0.84, isLit);
+        }
+      }
+    }
+    // Lobby band and entrance.
+    ctx.fillStyle = lit(v.wall, 0.85, L);
+    poly(ctx, this.faceQuad('L', x0, y0, x1, y1, 0, 1, 0, 6));
+    ctx.fill();
+    ctx.fillStyle = lit(PALETTE.glass, 0.85, L);
+    poly(ctx, this.faceQuad('L', x0, y0, x1, y1, 0.38, 0.62, 0, 6));
+    ctx.fill();
+    ctx.fillStyle = lit(v.wall, 0.7, L);
+    poly(ctx, this.faceQuad('R', x0, y0, x1, y1, 0, 1, 0, 6));
+    ctx.fill();
+    // Roof deck in the accent colour with a small plant room.
+    ctx.fillStyle = lit(v.wall, 1.02, L);
+    poly(ctx, [
+      [x0, y0, h],
+      [x1, y0, h],
+      [x1, y1, h],
+      [x0, y1, h],
+    ]);
+    ctx.fill();
+    this.drawBox(ctx, L, x0 + 0.38, y0 + 0.08, x1 - 0.08, y0 + 0.3, h, 6, v.trim);
+  }
+
+  drawSchool(ctx, x, y, s, L, ghost) {
+    const wall = PALETTE.peach;
+    const roof = '#e9968c';
+    const x0 = x + 0.1;
+    const x1 = x + 0.9;
+    const y0 = y + 0.2;
+    const y1 = y + 0.8;
+    const h = 16;
+    const fill = this.workFill(x, y, s, ghost);
+    this.drawBox(ctx, L, x0, y0, x1, y1, 0, h, wall);
+    for (let k = 0; k < 4; k++) {
+      if (k === 2) continue;
+      const u0 = 0.06 + k * 0.23;
+      this.drawWindow(ctx, L, this.faceQuad('L', x0, y0, x1, y1, u0, u0 + 0.15, 5, 11), 0.92, this.isWindowLit(x, y, k, fill * 0.4, L));
+    }
+    ctx.fillStyle = lit(roof, 0.72, L);
+    poly(ctx, this.faceQuad('L', x0, y0, x1, y1, 0.52, 0.66, 0, 10));
+    ctx.fill();
+    this.drawWindow(ctx, L, this.faceQuad('R', x0, y0, x1, y1, 0.15, 0.45, 5, 11), 0.8, false);
+    this.drawWindow(ctx, L, this.faceQuad('R', x0, y0, x1, y1, 0.55, 0.85, 5, 11), 0.8, false);
+    // Bell tower with a pitched cap and a little clock.
+    const bx0 = x + 0.42;
+    const bx1 = x + 0.58;
+    const by0 = y + 0.38;
+    const by1 = y + 0.54;
+    this.drawBox(ctx, L, bx0, by0, bx1, by1, h, 10, PALETTE.blush);
+    const bm = (by0 + by1) / 2;
+    ctx.fillStyle = lit(roof, 1.04, L);
+    poly(ctx, [
+      [bx0 - 0.03, by0 - 0.03, h + 10],
+      [bx0 - 0.03, by1 + 0.03, h + 10],
+      [(bx0 + bx1) / 2, by1 + 0.03, h + 17],
+      [(bx0 + bx1) / 2, by0 - 0.03, h + 17],
+    ]);
+    ctx.fill();
+    ctx.fillStyle = lit(roof, 0.82, L);
+    poly(ctx, [
+      [bx1 + 0.03, by0 - 0.03, h + 10],
+      [bx1 + 0.03, by1 + 0.03, h + 10],
+      [(bx0 + bx1) / 2, by1 + 0.03, h + 17],
+      [(bx0 + bx1) / 2, by0 - 0.03, h + 17],
+    ]);
+    ctx.fill();
+    const c = gridToWorld((bx0 + bx1) / 2, by1, h + 5.5);
+    ctx.fillStyle = lit('#fffaf2', 1, L);
+    ctx.beginPath();
+    ctx.ellipse(c.x, c.y, 2.3, 2.3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Flag.
+    const f = gridToWorld(x0 + 0.06, y0 + 0.06, h);
+    ctx.strokeStyle = lit(PALETTE.pole, 1, L);
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(f.x, f.y);
+    ctx.lineTo(f.x, f.y - 14);
+    ctx.stroke();
+    const wave = this.reduceMotion ? 0 : Math.sin(this.time * 3 + x) * 1.2;
+    ctx.fillStyle = lit(PALETTE.lavender, 0.9, L);
+    ctx.beginPath();
+    ctx.moveTo(f.x, f.y - 14);
+    ctx.quadraticCurveTo(f.x + 4, f.y - 14 + wave, f.x + 7, f.y - 13);
+    ctx.lineTo(f.x + 7, f.y - 9.5);
+    ctx.quadraticCurveTo(f.x + 4, f.y - 10.5 + wave, f.x, f.y - 10.5);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  drawClinic(ctx, x, y, s, L, ghost) {
+    const wall = '#fff6f2';
+    const accent = PALETTE.mint;
+    const x0 = x + 0.15;
+    const x1 = x + 0.85;
+    const y0 = y + 0.15;
+    const y1 = y + 0.85;
+    const h = 20;
+    const fill = this.workFill(x, y, s, ghost);
+    this.drawBox(ctx, L, x0, y0, x1, y1, 0, h, wall);
+    // Mint band and windows.
+    ctx.fillStyle = lit(accent, 0.92, L);
+    poly(ctx, this.faceQuad('L', x0, y0, x1, y1, 0, 1, 12.5, 14.5));
+    ctx.fill();
+    ctx.fillStyle = lit(accent, 0.78, L);
+    poly(ctx, this.faceQuad('R', x0, y0, x1, y1, 0, 1, 12.5, 14.5));
+    ctx.fill();
+    // Clinics keep a few lights on all night.
+    const night = Math.max(0.35, fill);
+    for (let k = 0; k < 3; k++) {
+      const u0 = 0.08 + k * 0.3;
+      this.drawWindow(ctx, L, this.faceQuad('R', x0, y0, x1, y1, u0, u0 + 0.22, 5, 10.5), 0.8, this.isWindowLit(x, y, k, night, L));
+      if (k !== 1) this.drawWindow(ctx, L, this.faceQuad('L', x0, y0, x1, y1, u0, u0 + 0.22, 5, 10.5), 0.92, this.isWindowLit(x, y, k + 3, night, L));
+    }
+    ctx.fillStyle = lit(PALETTE.glass, 0.8, L);
+    poly(ctx, this.faceQuad('L', x0, y0, x1, y1, 0.4, 0.6, 0, 9));
+    ctx.fill();
+    // Rooftop cross.
+    const cx = (x0 + x1) / 2;
+    const cy = (y0 + y1) / 2;
+    const a = 0.06;
+    const b = 0.19;
+    ctx.fillStyle = lit('#ff9a9a', 1, L);
+    poly(ctx, [
+      [cx - a, cy - b, h],
+      [cx + a, cy - b, h],
+      [cx + a, cy + b, h],
+      [cx - a, cy + b, h],
+    ]);
+    ctx.fill();
+    poly(ctx, [
+      [cx - b, cy - a, h],
+      [cx + b, cy - a, h],
+      [cx + b, cy + a, h],
+      [cx - b, cy + a, h],
+    ]);
+    ctx.fill();
+    if (L.lamps > 0.1) {
+      const p = gridToWorld(cx, cy, h);
+      this.glows.push({ x: p.x, y: p.y, r: 14, a: 0.3 * L.lamps, rgb: '255,150,150', flat: true });
     }
   }
 
@@ -2575,7 +3614,7 @@ class Camera {
     this.tx = 0;
     this.ty = 0;
     this.tzoom = 1;
-    this.minZoom = 0.4;
+    this.minZoom = 0.2;
     this.maxZoom = 3.5;
     this.viewW = 1;
     this.viewH = 1;
@@ -2639,14 +3678,14 @@ class Camera {
     }
   }
 
-  // Frame the whole board inside the area left free by the interface.
-  fit(insets = { top: 0, right: 0, bottom: 0, left: 0 }, immediate = false) {
-    const b = this.bounds;
+  // Frame a world-space rectangle (the whole board by default) inside the area left free by the interface.
+  fit(insets = { top: 0, right: 0, bottom: 0, left: 0 }, immediate = false, rect = this.bounds) {
+    const b = rect;
     if (!b) return;
     const availW = Math.max(120, this.viewW - insets.left - insets.right);
     const availH = Math.max(120, this.viewH - insets.top - insets.bottom);
-    const z = clamp(Math.min(availW / (b.right - b.left), availH / (b.bottom - b.top)) * 0.94, 0.3, 2.2);
-    this.minZoom = Math.min(0.4, z * 0.7);
+    const z = clamp(Math.min(availW / (b.right - b.left), availH / (b.bottom - b.top)) * 0.94, 0.15, 2.2);
+    if (rect === this.bounds) this.minZoom = Math.min(0.4, z * 0.8);
     this.tzoom = z;
     this.tx = (b.left + b.right) / 2 - (insets.left - insets.right) / 2 / z;
     this.ty = (b.top + b.bottom) / 2 - (insets.top - insets.bottom) / 2 / z;
@@ -2825,7 +3864,21 @@ const KEY = 'pocket-metropolis:save';
 
 // MIGRATIONS[n] upgrades a save from version n to n + 1.
 const MIGRATIONS = {
-  // 1: (save) => { save.city.systems.economy = { funds: 1000 }; return save; },
+  // v1 → v2: maps grew from 12×12 to 32×32. Old towns keep every tile and move to the middle.
+  1: (save) => {
+    const c = save.city;
+    const size = Math.max(32, c.width | 0, c.height | 0);
+    const ox = Math.floor((size - c.width) / 2);
+    const oy = Math.floor((size - c.height) / 2);
+    const tiles = Array.from({ length: size * size }, () => ({ terrain: 'grass', structure: null }));
+    c.tiles.forEach((t, i) => {
+      const x = i % c.width;
+      const y = Math.floor(i / c.width);
+      tiles[(y + oy) * size + x + ox] = t;
+    });
+    save.city = { ...c, width: size, height: size, tiles };
+    return save;
+  },
 };
 
 function migrate(save) {
@@ -2900,7 +3953,8 @@ return { MIGRATIONS, saveCity, loadCity, AutoSaver };
 
 // ---- generator.js ----
 const __mod_generator = (() => {
-// Random Town: lays out a small, tidy starter city using the same state API the player uses.
+// Random Town: lays out a starter town in the middle of the map with countryside around it,
+// using the same state API the player uses.
 
 const { STRUCTURES } = __mod_config;
 const { DIRS } = __mod_state;
@@ -2924,78 +3978,117 @@ function generateTown(city, seed = (Math.random() * 2 ** 32) >>> 0) {
     return !!t && t.terrain === 'grass' && !t.structure;
   };
 
-  // Roads: one avenue in each direction plus a side street or two.
-  const ax = ri(4, W - 5);
-  const ay = ri(4, H - 5);
-  for (let i = 0; i < W; i++) place(i, ay, 'road');
-  for (let i = 0; i < H; i++) place(ax, i, 'road');
-  if (rand() < 0.75) {
-    const sy = ay + (ay > H / 2 ? -ri(3, 4) : ri(3, 4));
-    const from = ri(0, 2);
-    const to = W - 1 - ri(0, 3);
-    for (let x = from; x <= to; x++) place(x, sy, 'road');
+  // Town footprint: under half the map, centred, so there is room to grow.
+  const cx = Math.floor(W / 2) + ri(-2, 2);
+  const cy = Math.floor(H / 2) + ri(-2, 2);
+  const half = Math.max(5, Math.floor(Math.min(W, H) * 0.23));
+  const inTown = (x, y) => Math.abs(x - cx) <= half && Math.abs(y - cy) <= half;
+
+  // A river winds across one side of the map.
+  const vertical = rand() < 0.5;
+  const span = vertical ? W : H;
+  let pos = rand() < 0.5 ? ri(2, Math.max(3, Math.floor(span * 0.18))) : span - 1 - ri(2, Math.max(3, Math.floor(span * 0.18)));
+  for (let i = 0; i < (vertical ? H : W); i++) {
+    const width = rand() < 0.3 ? 2 : 1;
+    for (let k = 0; k < width; k++) {
+      const t = vertical ? tile(pos + k, i) : tile(i, pos + k);
+      if (t) t.terrain = 'water';
+    }
+    if (rand() < 0.35) pos = Math.max(1, Math.min(span - 3, pos + (rand() < 0.5 ? -1 : 1)));
   }
-  if (rand() < 0.5) {
-    const sx = ax + (ax > W / 2 ? -ri(3, 4) : ri(3, 4));
-    const from = ri(1, 3);
-    const to = H - 1 - ri(0, 2);
-    for (let y = from; y <= to; y++) place(sx, y, 'road');
+  // A pond on the far side, if it fits.
+  if (W >= 20) {
+    const px = vertical ? (pos < W / 2 ? W - 4 : 3) : ri(4, W - 5);
+    const py = vertical ? ri(4, H - 5) : pos < H / 2 ? H - 4 : 3;
+    const r = 1.5 + rand();
+    for (const t of city.tiles) if (Math.hypot(t.x - px, t.y - py) + (rand() - 0.5) * 0.8 < r && !inTown(t.x, t.y)) t.terrain = 'water';
   }
 
-  // A pond tucked into the quietest corner.
-  const corners = [
-    [1, 1],
-    [W - 2, 1],
-    [1, H - 2],
-    [W - 2, H - 2],
-  ];
-  const [cx, cy] = corners.reduce((best, c) => {
-    const d = (p) => Math.abs(p[0] - ax) + Math.abs(p[1] - ay);
-    return d(c) > d(best) ? c : best;
-  });
-  const radius = 1.5 + rand() * 1.1;
-  for (const t of city.tiles) {
-    if (t.structure) continue;
-    const d = Math.hypot(t.x - cx, t.y - cy) + (rand() - 0.5) * 0.9;
-    if (d < radius) t.terrain = 'water';
+  // Streets: two avenues cross downtown and run to the map edge; a grid fills the town.
+  for (let i = 0; i < W; i++) place(i, cy, 'road');
+  for (let i = 0; i < H; i++) place(cx, i, 'road');
+  const step = W >= 24 ? 5 : 4;
+  for (let o = step; o <= half; o += step) {
+    for (const s of [-1, 1]) {
+      const ry = cy + s * o;
+      const rx = cx + s * o;
+      if (rand() < 0.85) for (let x = cx - half + ri(0, 2); x <= cx + half - ri(0, 2); x++) if (tile(x, ry)) place(x, ry, 'road');
+      if (rand() < 0.85) for (let y = cy - half + ri(0, 2); y <= cy + half - ri(0, 2); y++) if (tile(rx, y)) place(rx, y, 'road');
+    }
   }
 
-  // Homes line the streets; towers cluster around the main junction.
+  // Lots along streets. Downtown is dense and busy; the edges of town are leafy houses.
   const nearRoad = (x, y) => DIRS.some((d) => city.isRoad(x + d.dx, y + d.dy));
-  for (const t of city.tiles) {
-    if (!isEmpty(t.x, t.y) || !nearRoad(t.x, t.y)) continue;
-    const toCentre = Math.abs(t.x - ax) + Math.abs(t.y - ay);
-    if (toCentre <= 3 && rand() < 0.5) place(t.x, t.y, 'tower');
-    else if (rand() < 0.72) place(t.x, t.y, 'house');
+  const ring = (x, y) => Math.max(Math.abs(x - cx), Math.abs(y - cy));
+  const lots = city.tiles.filter((t) => isEmpty(t.x, t.y) && nearRoad(t.x, t.y) && inTown(t.x, t.y));
+  for (const t of lots) {
+    const d = ring(t.x, t.y);
+    const onAvenue = t.x === cx + 1 || t.x === cx - 1 || t.y === cy + 1 || t.y === cy - 1;
+    const r = rand();
+    if (d <= 3) {
+      if (r < 0.32) place(t.x, t.y, 'tower');
+      else if (r < 0.6) place(t.x, t.y, 'office');
+      else if (r < 0.86) place(t.x, t.y, 'shop');
+    } else if (d <= 7) {
+      if (onAvenue && r < 0.25) place(t.x, t.y, 'shop');
+      else if (r < 0.12) place(t.x, t.y, 'tower');
+      else if (r < 0.2) place(t.x, t.y, 'office');
+      else if (r < 0.82) place(t.x, t.y, 'house');
+    } else if (r < (onAvenue ? 0.12 : 0.03)) place(t.x, t.y, 'shop');
+    else if (r < 0.74) place(t.x, t.y, 'house');
   }
+
+  // A school and a clinic on opposite sides of downtown.
+  const serviceSpot = (sx, sy) => {
+    const spots = lots
+      .filter((t) => {
+        const s = tile(t.x, t.y).structure?.type;
+        return (!s || s === 'house') && ring(t.x, t.y) >= 3 && ring(t.x, t.y) <= 8 && Math.sign(t.x - cx) === sx && Math.sign(t.y - cy) === sy;
+      })
+      .sort(() => rand() - 0.5);
+    return spots[0];
+  };
+  const corner = rand() < 0.5 ? 1 : -1;
+  const school = serviceSpot(corner, corner);
+  if (school) place(school.x, school.y, 'school');
+  const clinic = serviceSpot(-corner, -corner);
+  if (clinic) place(clinic.x, clinic.y, 'clinic');
 
   // Parks where people live.
-  const homesAround = (x, y) =>
-    city.tiles.filter((n) => n.structure && STRUCTURES[n.structure.type].capacity > 0 && Math.abs(n.x - x) <= 2 && Math.abs(n.y - y) <= 2)
-      .length;
+  const homesAround = (x, y) => {
+    let n = 0;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      const s = tile(x + dx, y + dy)?.structure;
+      if (s && STRUCTURES[s.type].capacity > 0) n++;
+    }
+    return n;
+  };
   const parkSpots = city.tiles
-    .filter((t) => isEmpty(t.x, t.y))
-    .map((t) => ({ t, score: homesAround(t.x, t.y) + rand() * 2 }))
+    .filter((t) => isEmpty(t.x, t.y) && inTown(t.x, t.y))
+    .map((t) => ({ t, score: homesAround(t.x, t.y) + rand() * 3 }))
     .sort((a, b) => b.score - a.score);
-  const parks = ri(2, 3);
+  const parks = Math.max(2, Math.round((half * half) / 18));
   for (let i = 0; i < Math.min(parks, parkSpots.length); i++) place(parkSpots[i].t.x, parkSpots[i].t.y, 'park');
 
-  // Trees along the water, the map edge and in leftover gaps.
+  // Trees: scattered in town, thick woods in the countryside.
+  const forests = Array.from({ length: Math.max(2, Math.round(W / 6)) }, () => ({ x: ri(0, W - 1), y: ri(0, H - 1), r: 2 + rand() * 4 }));
   for (const t of city.tiles) {
     if (!isEmpty(t.x, t.y)) continue;
     const byWater = DIRS.some((d) => tile(t.x + d.dx, t.y + d.dy)?.terrain === 'water');
-    const edge = t.x === 0 || t.y === 0 || t.x === W - 1 || t.y === H - 1;
-    if (rand() < 0.3 + (byWater ? 0.3 : 0) + (edge ? 0.15 : 0)) place(t.x, t.y, 'tree');
+    let p = inTown(t.x, t.y) ? 0.28 : 0.1;
+    if (byWater) p += 0.25;
+    for (const f of forests) if (Math.hypot(t.x - f.x, t.y - f.y) < f.r) p += 0.55;
+    if (rand() < p) place(t.x, t.y, 'tree');
   }
 
   // Some people already live here.
   for (const h of city.homes()) {
-    h.structure.residents = Math.floor(STRUCTURES[h.structure.type].capacity * (0.25 + rand() * 0.35));
+    h.structure.residents = Math.floor(STRUCTURES[h.structure.type].capacity * (0.3 + rand() * 0.35));
   }
 
   city.refreshAllRoadMasks();
   city.dirty = true;
-  city.emit('reset', { seed });
+  city.emit('reset', { seed, focus: { x: cx, y: cy, radius: half } });
 }
 
 return { generateTown };
@@ -3003,16 +4096,24 @@ return { generateTown };
 
 // ---- ui.js ----
 const __mod_ui = (() => {
-// Interface: the toolbar, stats bubble and buttons. Reads stats, never touches the simulation directly.
+// Interface: toolbar, stats bubble, inspector, speed and view controls.
+// Reads city state for display; changes only go through the callbacks main.js provides.
 
-const { TOOLS } = __mod_config;
+const { TOOL_GROUPS, TOOLS, VIEWS, STRUCTURES, SERVICES } = __mod_config;
+const { FACTORS } = __mod_desirability;
 const { formatClock } = __mod_time;
+const { workersIn } = __mod_labor;
 const svg = (body) =>
   `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 
 const ICONS = {
+  inspect: svg('<circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5.5 5.5"/><path d="M10.5 8v5M8 10.5h5"/>'),
   house: svg('<path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/>'),
   tower: svg('<rect x="6.5" y="3" width="11" height="18" rx="1.5"/><path d="M10 7.5h.01M14 7.5h.01M10 11.5h.01M14 11.5h.01M10 15.5h.01M14 15.5h.01" stroke-width="2.6"/>'),
+  shop: svg('<path d="M4 10v10h16V10"/><path d="M3 10h18l-1.5-5h-15z"/><path d="M7.5 10v0a2.25 2.25 0 0 0 4.5 0 2.25 2.25 0 0 0 4.5 0"/><path d="M10 20v-5h4v5"/>'),
+  office: svg('<rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M5 8h14M5 12.5h14M5 17h14"/>'),
+  school: svg('<path d="M3 10 12 5l9 5-9 5z"/><path d="M7 12.2V17c2.8 2 7.2 2 10 0v-4.8"/><path d="M21 10v5"/>'),
+  clinic: svg('<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/>'),
   tree: svg('<circle cx="12" cy="9.5" r="6"/><path d="M12 15.5V21M9 21h6"/>'),
   park: svg('<path d="M4 13.5h16M5.5 13.5v5M18.5 13.5v5"/><path d="M4.5 9.5h15"/><path d="M7 9.5V6.5M17 9.5V6.5"/>'),
   road: svg('<path d="M8.5 3 5 21M15.5 3 19 21"/><path d="M12 4v2.5M12 10.5V13M12 17v3"/>'),
@@ -3020,6 +4121,10 @@ const ICONS = {
   bulldoze: svg(
     '<rect x="2.5" y="10.5" width="10" height="5" rx="1.2"/><path d="M5 10.5V7h4.5l1.5 3.5"/><path d="M12.5 13h3.5"/><path d="M17 8.5c1.7 2.6 1.7 6.4 0 9h3.5"/><rect x="2.5" y="17" width="10" height="3.5" rx="1.75"/>'
   ),
+  pause: svg('<path d="M9 5v14M15 5v14" stroke-width="2.6"/>'),
+  play: svg('<path d="M7 4.5v15l12-7.5z"/>'),
+  layers: svg('<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 12.5 9 5 9-5"/><path d="m3 17 9 5 9-5"/>'),
+  close: svg('<path d="M6 6l12 12M18 6 6 18"/>'),
 };
 
 const MOUTHS = {
@@ -3028,9 +4133,18 @@ const MOUTHS = {
   sad: 'M8.5 16.5c1.9-2.2 5.1-2.2 7 0',
 };
 
+const LEGENDS = {
+  desirability: ['Where people want to live', 'Low', 'High', 'ramp'],
+  traffic: ['Commuters on each road', 'Clear', 'Jammed', 'ramp-rev'],
+  services: ['School and clinic coverage', 'None', 'Covered', 'service'],
+};
+
+const pct = (v) => `${Math.round(v * 100)}%`;
+
 class Interface {
-  constructor({ onTool, onRandom, onFit }) {
+  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect }) {
     this.toolbar = document.getElementById('toolbar');
+    this.tray = document.getElementById('tray');
     this.popEl = document.getElementById('stat-pop');
     this.capEl = document.getElementById('stat-cap');
     this.happyEl = document.getElementById('stat-happy');
@@ -3038,38 +4152,151 @@ class Interface {
     this.meterEl = document.getElementById('happy-meter');
     this.clockEl = document.getElementById('stat-clock');
     this.toastEl = document.getElementById('toast');
+    this.inspectEl = document.getElementById('inspector');
+    this.legendEl = document.getElementById('legend');
+    this.speedBtn = document.getElementById('btn-speed');
+    this.viewBtn = document.getElementById('btn-view');
     this.onTool = onTool;
+    this.onSpeed = onSpeed;
+    this.onView = onView;
     this.tool = 'house';
+    this.groupChoice = Object.fromEntries(TOOL_GROUPS.map((g) => [g.id, g.tools[0].id]));
+    this.speed = 1;
+    this.view = 'none';
     this._last = {};
 
-    for (const t of TOOLS) {
+    for (const g of TOOL_GROUPS) {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'tool';
-      b.id = `tool-${t.id}`;
-      b.dataset.tool = t.id;
-      b.title = `${t.label} (${t.key})`;
+      b.id = `group-${g.id}`;
+      b.dataset.group = g.id;
       b.setAttribute('aria-pressed', 'false');
-      b.innerHTML = `<span class="tool-icon">${ICONS[t.id]}</span><span class="tool-label">${t.label}</span>`;
-      b.addEventListener('click', () => this.setTool(t.id));
+      if (g.tools.length > 1) b.setAttribute('aria-haspopup', 'true');
+      b.addEventListener('click', () => this.pressGroup(g.id));
       this.toolbar.appendChild(b);
     }
     document.getElementById('btn-random').addEventListener('click', onRandom);
     document.getElementById('btn-fit').addEventListener('click', onFit);
+    this.speedBtn.addEventListener('click', () => this.setSpeed(this.speed === 0 ? this._resume || 1 : this.speed >= 3 ? 0 : this.speed + 1));
+    this.viewBtn.addEventListener('click', () => {
+      const i = VIEWS.findIndex((v) => v.id === this.view);
+      this.setView(VIEWS[(i + 1) % VIEWS.length].id);
+    });
+    this.inspectEl.addEventListener('click', (e) => {
+      if (e.target.closest('[data-close]')) onCloseInspect();
+    });
+    document.addEventListener('pointerdown', (e) => {
+      if (!this.tray.hidden && !e.target.closest('#tray') && !e.target.closest('.tool')) this.closeTray();
+    });
     window.addEventListener('keydown', (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const t = TOOLS.find((tool) => tool.key === e.key);
+      if (e.key === ' ') {
+        e.preventDefault();
+        this.speedBtn.click();
+        return;
+      }
+      if (e.key === 'v') return this.viewBtn.click();
+      if (e.key === 'Escape') return this.closeTray();
+      const t = TOOLS.find((tool) => tool.key === e.key.toLowerCase());
       if (t) this.setTool(t.id);
     });
     this.setTool(this.tool);
+    this.renderSpeed();
+    this.renderView();
+  }
+
+  groupOf(toolId) {
+    return TOOL_GROUPS.find((g) => g.tools.some((t) => t.id === toolId));
+  }
+
+  pressGroup(groupId) {
+    const g = TOOL_GROUPS.find((x) => x.id === groupId);
+    if (g.tools.length > 1) {
+      if (!this.tray.hidden && this.trayGroup === groupId) return this.closeTray();
+      this.setTool(this.groupChoice[groupId]);
+      this.openTray(g);
+      return;
+    }
+    this.closeTray();
+    this.setTool(this.groupChoice[groupId]);
+  }
+
+  openTray(g) {
+    this.trayGroup = g.id;
+    this.tray.innerHTML = g.tools
+      .map(
+        (t) =>
+          `<button type="button" class="tray-item" data-tool="${t.id}" aria-pressed="${t.id === this.tool}">` +
+          `<span class="tool-icon tint-${t.id}">${ICONS[t.id]}</span><span>${t.label}</span><kbd>${t.key.toUpperCase()}</kbd></button>`
+      )
+      .join('');
+    for (const b of this.tray.querySelectorAll('.tray-item')) {
+      b.addEventListener('click', () => {
+        this.setTool(b.dataset.tool);
+        this.closeTray();
+      });
+    }
+    const anchor = document.getElementById(`group-${g.id}`).getBoundingClientRect();
+    this.toastEl.classList.remove('show');
+    this.tray.hidden = false;
+    const w = this.tray.offsetWidth;
+    const left = Math.max(12, Math.min(window.innerWidth - w - 12, anchor.left + anchor.width / 2 - w / 2));
+    this.tray.style.left = `${left}px`;
+  }
+
+  closeTray() {
+    this.tray.hidden = true;
   }
 
   setTool(id) {
     this.tool = id;
+    const group = this.groupOf(id);
+    this.groupChoice[group.id] = id;
     for (const b of this.toolbar.querySelectorAll('.tool')) {
-      b.setAttribute('aria-pressed', String(b.dataset.tool === id));
+      const g = TOOL_GROUPS.find((x) => x.id === b.dataset.group);
+      const choice = TOOLS.find((t) => t.id === this.groupChoice[g.id]);
+      b.setAttribute('aria-pressed', String(g.id === group.id));
+      b.title = g.tools.length > 1 ? `${g.label}: ${choice.label} (${choice.key.toUpperCase()})` : `${choice.label} (${choice.key.toUpperCase()})`;
+      b.innerHTML =
+        `<span class="tool-icon tint-${choice.id}">${ICONS[choice.id]}</span>` +
+        `<span class="tool-label">${g.tools.length > 1 ? choice.label : g.label}</span>` +
+        (g.tools.length > 1 ? '<span class="more" aria-hidden="true"></span>' : '');
     }
+    if (!this.tray.hidden) for (const b of this.tray.querySelectorAll('.tray-item')) b.setAttribute('aria-pressed', String(b.dataset.tool === id));
     this.onTool(id);
+  }
+
+  setSpeed(speed) {
+    if (speed > 0) this._resume = speed;
+    this.speed = speed;
+    this.renderSpeed();
+    this.onSpeed(speed);
+  }
+
+  renderSpeed() {
+    const paused = this.speed === 0;
+    this.speedBtn.innerHTML = `${paused ? ICONS.play : ICONS.pause}<span class="pill-text">${paused ? 'Paused' : `${this.speed}×`}</span>`;
+    this.speedBtn.setAttribute('aria-label', paused ? 'Resume time' : `Speed ${this.speed}×, change speed`);
+    this.speedBtn.classList.toggle('is-paused', paused);
+  }
+
+  setView(id) {
+    this.view = id;
+    this.renderView();
+    this.onView(id);
+  }
+
+  renderView() {
+    const v = VIEWS.find((x) => x.id === this.view);
+    this.viewBtn.innerHTML = `${ICONS.layers}<span class="pill-text">${v.label}</span>`;
+    this.viewBtn.setAttribute('aria-label', `Map view: ${v.label}. Switch view`);
+    this.viewBtn.classList.toggle('is-on', this.view !== 'none');
+    const legend = LEGENDS[this.view];
+    this.legendEl.hidden = !legend;
+    if (legend) {
+      this.legendEl.innerHTML = `<span class="legend-title">${v.label}</span><span class="legend-sub">${legend[0]}</span><span class="legend-bar ${legend[3]}"></span><span class="legend-ends"><span>${legend[1]}</span><span>${legend[2]}</span></span>`;
+    }
   }
 
   update(city) {
@@ -3088,7 +4315,54 @@ class Interface {
       this._last.meterW = s.happiness;
       this.meterEl.style.width = `${s.homes ? s.happiness : 0}%`;
     }
-    set('clock', this.clockEl, `Day ${city.day} · ${formatClock(city.clock)}`);
+    const work = s.jobs ? ` · ${pct(s.employment ?? 1)} employed` : '';
+    set('clock', this.clockEl, `Day ${city.day} · ${formatClock(city.clock)}${work}`);
+  }
+
+  // Inspector: what is on a tile and why people do or don't want to live there.
+  inspect(city, sel) {
+    if (!sel) {
+      this.inspectEl.hidden = true;
+      this._inspectKey = null;
+      return;
+    }
+    const t = city.getTile(sel.x, sel.y);
+    if (!t) return;
+    const s = t.structure;
+    const def = s && STRUCTURES[s.type];
+    let title = t.terrain === 'water' ? 'Water' : s ? def.label : 'Open land';
+    const facts = [];
+    if (def?.capacity) {
+      facts.push(['Residents', `${s.residents} of ${def.capacity}`]);
+      const workers = workersIn(t);
+      if (workers) facts.push(['Working', `${Math.round(t.employment * workers)} of ${workers}`]);
+    }
+    if (def?.jobs) facts.push(['Jobs filled', `${t.workersFilled} of ${def.jobs}`]);
+    if (def?.service) facts.push(['Covers', `${def.radius} tiles around it`]);
+    if (s?.type === 'road') facts.push(['Traffic', t.congestion < 0.02 ? 'Clear' : `${pct(t.congestion)} busy`]);
+    if (!city.accessRoad(t.x, t.y) && def && !def.walkable) facts.push(['Road access', 'None nearby']);
+    const showFactors = t.terrain !== 'water' && s?.type !== 'road';
+    const factors = showFactors
+      ? FACTORS.filter((f) => f.enabled).map((f) => ({ label: f.label, v: t.factors[f.id] || 0 }))
+      : [];
+    const coverage = SERVICES.map((sv) => `${sv.label.replace(/s$/, '')} ${pct(t.coverage?.[sv.id] || 0)}`).join(' · ');
+    const key = JSON.stringify([title, facts, factors.map((f) => f.v.toFixed(3)), t.desirability.toFixed(3), coverage]);
+    if (key === this._inspectKey) return;
+    this._inspectKey = key;
+    this.inspectEl.hidden = false;
+    this.inspectEl.innerHTML =
+      `<header><div><span class="insp-kicker">Tile ${t.x}, ${t.y}</span><h2>${title}</h2></div>` +
+      `<button type="button" class="insp-close" data-close aria-label="Close inspector">${ICONS.close}</button></header>` +
+      (facts.length ? `<dl>${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>` : '') +
+      (showFactors
+        ? `<div class="insp-score"><span>Desirability</span><strong>${pct(t.desirability)}</strong></div>` +
+          `<ul class="factors">${factors
+            .map(
+              (f) =>
+                `<li><span>${f.label}</span><span class="fbar"><span class="${f.v < 0 ? 'neg' : 'pos'}" style="width:${Math.min(100, (Math.abs(f.v) / 0.35) * 100).toFixed(0)}%"></span></span><span class="fval">${f.v >= 0 ? '+' : '−'}${Math.round(Math.abs(f.v) * 100)}</span></li>`
+            )
+            .join('')}</ul><p class="insp-note">${coverage}</p>`
+        : '');
   }
 
   toast(message, ms = 2600) {
@@ -3115,7 +4389,7 @@ const { InputController } = __mod_input;
 const { AutoSaver, loadCity } = __mod_persistence;
 const { generateTown } = __mod_generator;
 const { Interface } = __mod_ui;
-const { worldToGrid, mapBounds } = __mod_iso;
+const { worldToGrid, mapBounds, tileRectBounds } = __mod_iso;
 function start(hotData = {}) {
   const canvas = document.getElementById('city');
   let city = null;
@@ -3136,7 +4410,10 @@ function start(hotData = {}) {
 
   let tool = 'house';
   let hover = null; // { x, y } tile under the mouse
+  let selected = null; // { x, y } tile shown in the inspector
+  let overlay = 'none';
   let fitted = false;
+  let framing = 'town'; // what the recenter button framed last
 
   const tileAt = (sx, sy) => {
     const w = camera.screenToWorld(sx, sy);
@@ -3149,13 +4426,26 @@ function start(hotData = {}) {
   const ui = new Interface({
     onTool: (id) => {
       tool = id;
+      if (id !== 'inspect') selected = null;
     },
     onRandom: () => {
       generateTown(city);
+      sim.refresh();
+      selected = null;
       fitView(false);
-      ui.toast('A fresh little town, ready for you');
+      ui.toast('A fresh town, with room to grow');
     },
-    onFit: () => fitView(false),
+    // First press frames the town; pressing again shows the whole map.
+    onFit: () => fitView(false, framing === 'town' ? 'map' : 'town'),
+    onSpeed: (speed) => {
+      sim.speed = speed;
+    },
+    onView: (id) => {
+      overlay = id;
+    },
+    onCloseInspect: () => {
+      selected = null;
+    },
   });
 
   function uiInsets() {
@@ -3163,9 +4453,40 @@ function start(hotData = {}) {
     return { top: narrow ? 96 : 76, bottom: narrow ? 92 : 100, left: narrow ? 4 : 16, right: narrow ? 4 : 16 };
   }
 
-  function fitView(immediate) {
+  // The part of the map that is built up: homes, workplaces and services.
+  function townBounds() {
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (const t of city.tiles) {
+      const s = t.structure;
+      if (!s || s.type === 'tree' || s.type === 'road') continue;
+      x0 = Math.min(x0, t.x);
+      y0 = Math.min(y0, t.y);
+      x1 = Math.max(x1, t.x);
+      y1 = Math.max(y1, t.y);
+    }
+    if (x0 === Infinity) return null;
+    // Portrait phones are narrow; frame the town's core so buildings read at a comfortable size.
+    if (window.innerWidth < 560) {
+      const cx = (x0 + x1) / 2;
+      const cy = (y0 + y1) / 2;
+      const r = Math.max(3, Math.min(x1 - x0, y1 - y0) * 0.3);
+      x0 = Math.round(cx - r);
+      x1 = Math.round(cx + r);
+      y0 = Math.round(cy - r);
+      y1 = Math.round(cy + r);
+    }
+    const pad = 1;
+    return tileRectBounds(Math.max(0, x0 - pad), Math.max(0, y0 - pad), Math.min(city.width - 1, x1 + pad), Math.min(city.height - 1, y1 + pad));
+  }
+
+  function fitView(immediate, target = 'town') {
     camera.setBounds(mapBounds(city.width, city.height));
-    camera.fit(uiInsets(), immediate);
+    const rect = target === 'town' ? townBounds() : null;
+    camera.fit(uiInsets(), immediate, rect || camera.bounds);
+    framing = rect ? 'town' : 'map';
   }
 
   function resize() {
@@ -3174,8 +4495,8 @@ function start(hotData = {}) {
     renderer.resize(w, h);
     camera.setViewport(w, h);
     camera.setBounds(mapBounds(city.width, city.height));
-    if (!fitted || window.innerWidth < 760) {
-      fitView(!fitted);
+    if (!fitted) {
+      fitView(true);
       fitted = true;
     }
   }
@@ -3185,6 +4506,11 @@ function start(hotData = {}) {
   new InputController(canvas, camera, {
     onTap: (sx, sy) => {
       const t = tileAt(sx, sy);
+      if (tool === 'inspect') {
+        selected = t && !(selected && selected.x === t.x && selected.y === t.y) ? t : null;
+        ui.inspect(city, selected);
+        return;
+      }
       if (!t) return;
       if (!city.apply(tool, t.x, t.y)) renderer.nudge(t.x, t.y);
     },
@@ -3199,9 +4525,12 @@ function start(hotData = {}) {
 
   if (fresh) {
     generateTown(city);
+    sim.refresh();
+    fitView(true);
     const touch = window.matchMedia?.('(pointer: coarse)').matches;
     ui.toast(touch ? 'Tap to build · long-press to bulldoze' : 'Click to build · right-click to bulldoze', 5200);
   } else {
+    sim.refresh();
     city.emit('loaded');
     ui.toast('Welcome back to your town', 2400);
   }
@@ -3210,14 +4539,14 @@ function start(hotData = {}) {
   hot?.snapshot?.(() => ({ city: city.toJSON() }));
 
   function viewState() {
-    if (!hover) return {};
+    if (!hover) return { overlay, selected };
     const t = city.getTile(hover.x, hover.y);
-    const valid = city.canApply(tool, hover.x, hover.y);
+    const valid = tool === 'inspect' || city.canApply(tool, hover.x, hover.y);
     const ghost =
       valid && STRUCTURES[tool] && !t.structure && t.terrain === 'grass'
-        ? { x: hover.x, y: hover.y, structure: { type: tool, variant: 'blush', floors: 5, shape: 0, residents: 0 } }
+        ? { x: hover.x, y: hover.y, structure: { type: tool, variant: 'blush', floors: tool === 'office' ? 4 : 5, shape: 0, residents: 0 } }
         : null;
-    return { hover: { ...hover, tool, valid }, ghost };
+    return { hover: { ...hover, tool, valid }, ghost, overlay, selected };
   }
 
   let last = performance.now();
@@ -3232,6 +4561,7 @@ function start(hotData = {}) {
     uiTimer -= dt;
     if (uiTimer <= 0) {
       ui.update(city);
+      ui.inspect(city, selected);
       uiTimer = 0.2;
     }
     requestAnimationFrame(frame);

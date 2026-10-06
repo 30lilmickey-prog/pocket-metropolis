@@ -29,7 +29,16 @@ function skyAt(clock) {
   return [SKY[0][1], SKY[0][2]];
 }
 
+let lastLighting = null;
+
+// Lighting only shifts visibly every few frames; reuse the previous object (and its colour cache) until it does.
 export function lightingAt(clock) {
+  if (lastLighting && Math.abs(lastLighting.clock - clock) < 0.0004) return lastLighting;
+  lastLighting = computeLighting(clock);
+  return lastLighting;
+}
+
+function computeLighting(clock) {
   const daylight = daylightAt(clock);
   const sun = sunHeight(clock);
   const warm = Math.exp(-(((sun - 0.05) / 0.2) ** 2)); // golden hour near the horizon

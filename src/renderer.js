@@ -7,6 +7,10 @@ import { lit, litA, rgba } from './color.js';
 import { clamp, hash2 } from './utils.js';
 
 const SLAB_DEPTH = 18;
+// Unlit lighting for the cached ground layer; the frame's real light is multiplied on afterwards.
+const NEUTRAL_LIGHT = { ambient: [1, 1, 1], daylight: 1, windowLit: 0, lamps: 0, shadow: { alpha: 0 }, clock: 0.5 };
+const GROUND_SCALES = [0.5, 0.75, 1, 1.5, 2, 3];
+const MAX_GROUND_PX = 4096;
 const FLOWER_COLORS = ['#fff4f7', '#ffd3df', '#fff0b3', '#e2d3f5'];
 
 // Tile edges in N, E, S, W order (matching road mask bits). `n` points into the tile.
@@ -70,6 +74,37 @@ function convexHull(points) {
   return lower.slice(0, -1).concat(upper.slice(0, -1));
 }
 
+// A soft round shadow drawn once and stamped under every building.
+let contactCanvas = null;
+function contactSprite() {
+  if (contactCanvas) return contactCanvas;
+  contactCanvas = document.createElement('canvas');
+  contactCanvas.width = contactCanvas.height = 64;
+  const c = contactCanvas.getContext('2d');
+  const grad = c.createRadialGradient(32, 32, 9.6, 32, 32, 32);
+  grad.addColorStop(0, 'rgba(52,44,96,0.26)');
+  grad.addColorStop(1, 'rgba(52,44,96,0)');
+  c.fillStyle = grad;
+  c.fillRect(0, 0, 64, 64);
+  return contactCanvas;
+}
+
+// Low → high: blush red, butter yellow, mint green.
+function rampColor(v, alpha) {
+  const t = Math.max(0, Math.min(1, v));
+  const stops = [
+    [0, [246, 140, 140]],
+    [0.5, [255, 214, 120]],
+    [1, [110, 200, 150]],
+  ];
+  const i = t < 0.5 ? 0 : 1;
+  const [a0, c0] = stops[i];
+  const [a1, c1] = stops[i + 1];
+  const k = (t - a0) / (a1 - a0);
+  const c = c0.map((v0, j) => Math.round(v0 + (c1[j] - v0) * k));
+  return `rgba(${c[0]},${c[1]},${c[2]},${alpha})`;
+}
+
 export class Renderer {
   constructor(canvas, city, camera, agents) {
     this.canvas = canvas;
@@ -85,6 +120,7 @@ export class Renderer {
     this.particles = [];
     this.glows = [];
     this.reduceMotion = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    this.ground = { canvas: null, key: '' };
     city.on((ev) => this.onCityEvent(ev));
   }
 
@@ -214,8 +250,16 @@ export class Renderer {
     };
     const tiles = this.visibleTiles(rect);
 
-    this.drawSlab(ctx, L);
-    for (const t of tiles) this.drawGround(ctx, t, L);
+    if (this.ensureGround()) {
+      this.drawSlabShadow(ctx);
+      this.drawCachedGround(ctx, L);
+      for (const t of tiles) if (t.terrain === 'water') this.drawWaterMotion(ctx, t, L);
+    } else {
+      this.drawSlab(ctx, L);
+      for (const t of tiles) this.drawGround(ctx, t, L);
+    }
+    if (view.overlay && view.overlay !== 'none') for (const t of tiles) this.drawOverlay(ctx, t, view.overlay);
+    if (view.selected) this.drawSelected(ctx, view.selected);
     if (view.hover) this.drawHover(ctx, view.hover);
     for (const t of tiles) if (t.structure) this.drawShadow(ctx, t, L);
 
@@ -307,11 +351,87 @@ export class Renderer {
     }
   }
 
-  drawSlab(ctx, L) {
+  // ---- Cached ground layer -------------------------------------------------------
+  // Terrain, roads and lawns change only when the player edits the map, so they are drawn once
+  // into an offscreen canvas at a resolution matched to the zoom. Returns false when the view is
+  // zoomed in past what the cache can hold sharply; the caller then draws visible tiles live.
+  ensureGround() {
+    const city = this.city;
+    const W = city.width;
+    const H = city.height;
+    const worldW = (W + H) * HALF_W;
+    const worldH = (W + H) * HALF_H + SLAB_DEPTH + 4;
+    const cap = Math.min(MAX_GROUND_PX / worldW, MAX_GROUND_PX / worldH);
+    const want = this.camera.zoom * this.dpr;
+    if (want > cap * 1.05) return false;
+    const scale = Math.min(cap, GROUND_SCALES.find((s) => s >= want * 0.95) || cap);
+    const key = `${city.revision}|${W}x${H}|${scale.toFixed(3)}`;
+    if (this.ground.key === key) return true;
+    const g = this.ground;
+    if (!g.canvas) g.canvas = document.createElement('canvas');
+    g.canvas.width = Math.ceil(worldW * scale);
+    g.canvas.height = Math.ceil(worldH * scale);
+    g.left = -H * HALF_W;
+    g.top = 0;
+    g.scale = scale;
+    const c = g.canvas.getContext('2d');
+    c.setTransform(scale, 0, 0, scale, -g.left * scale, -g.top * scale);
+    c.clearRect(g.left, g.top, worldW, worldH);
+    this._caching = true;
+    this.drawSlab(c, NEUTRAL_LIGHT, false);
+    for (const t of city.tiles) this.drawGround(c, t, NEUTRAL_LIGHT);
+    this._caching = false;
+    g.key = key;
+    return true;
+  }
+
+  drawCachedGround(ctx, L) {
+    const g = this.ground;
+    const W = this.city.width;
+    const H = this.city.height;
+    ctx.drawImage(g.canvas, g.left, g.top, g.canvas.width / g.scale, g.canvas.height / g.scale);
+    const a = L.ambient;
+    if (a[0] > 0.995 && a[1] > 0.995 && a[2] > 0.995) return;
+    // Apply the frame's light to the whole board in one multiply pass.
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+    const ch = (v) => Math.round(Math.min(1, v) * 255);
+    ctx.fillStyle = `rgb(${ch(a[0])},${ch(a[1])},${ch(a[2])})`;
+    poly(ctx, [
+      [0, 0, 0],
+      [W, 0, 0],
+      [W, 0, -SLAB_DEPTH],
+      [W, H, -SLAB_DEPTH],
+      [0, H, -SLAB_DEPTH],
+      [0, H, 0],
+    ]);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Animated parts of water that can't live in the cache.
+  drawWaterMotion(ctx, t, L) {
+    if (this.camera.zoom < 0.5) return;
+    const { x, y } = t;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < 2; i++) {
+      const ph = this.time * (0.7 + hash2(x, y, 70 + i) * 0.6) + hash2(x, y, 80 + i) * 6.28;
+      const a = (Math.sin(ph) * 0.5 + 0.5) * (L.daylight > 0.3 ? 0.6 : 0.35);
+      const p = gridToWorld(x + 0.25 + hash2(x, y, 90 + i) * 0.5, y + 0.25 + hash2(x, y, 95 + i) * 0.5);
+      const drift = Math.sin(ph * 0.5) * 2;
+      ctx.strokeStyle = `rgba(255,255,255,${a.toFixed(3)})`;
+      ctx.beginPath();
+      ctx.moveTo(p.x - 4 + drift, p.y);
+      ctx.lineTo(p.x + 4 + drift, p.y);
+      ctx.stroke();
+    }
+  }
+
+  drawSlabShadow(ctx) {
     const W = this.city.width;
     const H = this.city.height;
     const D = SLAB_DEPTH;
-    // Soft drop shadow so the board floats like a diorama.
     for (const [pad, a] of [
       [0.9, 0.05],
       [0.45, 0.07],
@@ -325,6 +445,14 @@ export class Renderer {
       ]);
       ctx.fill();
     }
+  }
+
+  drawSlab(ctx, L, withShadow = true) {
+    const W = this.city.width;
+    const H = this.city.height;
+    const D = SLAB_DEPTH;
+    // Soft drop shadow so the board floats like a diorama.
+    if (withShadow) this.drawSlabShadow(ctx);
     const yTop = gridToWorld(W, H).y;
     const left = ctx.createLinearGradient(0, yTop - (W + H) * HALF_H * 0.5, 0, yTop + D);
     left.addColorStop(0, lit(PALETTE.earth, 0.95, L));
@@ -451,10 +579,11 @@ export class Renderer {
       poly(ctx, edgeStrip(x, y, e, 0, 0.09));
       ctx.fill();
       ctx.fillStyle = litA('#ffffff', 1, L, 0.55);
-      poly(ctx, edgeStrip(x, y, e, 0.09, 0.13 + Math.sin(this.time * 1.6 + x + y) * 0.02));
+      poly(ctx, edgeStrip(x, y, e, 0.09, this._caching ? 0.13 : 0.13 + Math.sin(this.time * 1.6 + x + y) * 0.02));
       ctx.fill();
     });
     // Shimmer.
+    if (this._caching || this.camera.zoom < 0.5) return;
     ctx.lineCap = 'round';
     ctx.lineWidth = 1.2;
     for (let i = 0; i < 2; i++) {
@@ -575,11 +704,55 @@ export class Renderer {
     }
   }
 
+  // Data views tint the ground so buildings stay readable on top.
+  drawOverlay(ctx, t, overlay) {
+    let color = null;
+    if (overlay === 'desirability') {
+      if (t.terrain === 'water' || t.roadMask || t.structure?.type === 'road') return;
+      color = rampColor(t.desirability, 0.62);
+    } else if (overlay === 'traffic') {
+      if (t.structure?.type !== 'road') {
+        color = 'rgba(70,60,110,0.28)';
+      } else {
+        color = t.congestion < 0.02 ? 'rgba(255,255,255,0.35)' : rampColor(1 - t.congestion, 0.8);
+      }
+    } else if (overlay === 'services') {
+      if (t.terrain === 'water') return;
+      const c = t.coverage || {};
+      const school = c.school || 0;
+      const health = c.health || 0;
+      if (school < 0.02 && health < 0.02) color = 'rgba(70,60,110,0.22)';
+      else {
+        // Schools tint lavender, clinics tint mint; both together read as a soft blue-violet.
+        const r = Math.round(200 - 60 * health);
+        const g = Math.round(180 + 40 * health - 20 * school);
+        const b = Math.round(200 + 40 * school);
+        color = `rgba(${r},${g},${b},${(0.25 + 0.45 * Math.max(school, health)).toFixed(3)})`;
+      }
+    }
+    if (!color) return;
+    ctx.fillStyle = color;
+    tilePoly(ctx, t.x, t.y);
+    ctx.fill();
+  }
+
+  drawSelected(ctx, sel) {
+    const z = this.camera.zoom;
+    const pulse = 0.6 + 0.4 * Math.sin(this.time * 4);
+    ctx.lineWidth = 2.2 / z;
+    ctx.setLineDash([5 / z, 4 / z]);
+    ctx.lineDashOffset = -this.time * 12;
+    ctx.strokeStyle = `rgba(255,255,255,${pulse.toFixed(3)})`;
+    tilePoly(ctx, sel.x, sel.y, -0.02);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
   drawHover(ctx, hover) {
     const z = this.camera.zoom;
     ctx.lineWidth = 1.6 / z;
     tilePoly(ctx, hover.x, hover.y, 0.02);
-    const warn = hover.tool === 'bulldoze' || !hover.valid;
+    const warn = hover.tool === 'bulldoze' || (!hover.valid && hover.tool !== 'inspect');
     ctx.fillStyle = warn ? 'rgba(255,143,128,0.22)' : 'rgba(255,255,255,0.28)';
     ctx.strokeStyle = warn ? 'rgba(255,128,112,0.95)' : 'rgba(255,255,255,0.95)';
     ctx.fill();
@@ -593,6 +766,10 @@ export class Renderer {
     if (s.type === 'house') return { inset: 0.2, h: 27 };
     if (s.type === 'tower') return { inset: 0.16, h: 6 + (s.floors || 5) * 11 };
     if (s.type === 'tree') return { inset: 0.32, h: 24, round: true };
+    if (s.type === 'shop') return { inset: 0.16, h: 22 };
+    if (s.type === 'office') return { inset: 0.14, h: 8 + (s.floors || 4) * 12 };
+    if (s.type === 'school') return { inset: 0.12, h: 26 };
+    if (s.type === 'clinic') return { inset: 0.15, h: 24 };
     return null;
   }
 
@@ -602,20 +779,10 @@ export class Renderer {
     const b = this.bounceFor(t.x, t.y);
     if (b.hidden) return;
     const { x, y } = t;
-    const c = gridToWorld(x + 0.5, y + 0.5);
+    const g = gridToWorld(x + 0.5, y + 0.5);
     // Contact shadow: always present, anchors the object to the ground.
     const r = (1 - f.inset * 2) * HALF_W * 1.25 * b.sx;
-    ctx.save();
-    ctx.translate(c.x, c.y);
-    ctx.scale(1, 0.5);
-    const g = ctx.createRadialGradient(0, 0, r * 0.3, 0, 0, r);
-    g.addColorStop(0, 'rgba(52,44,96,0.26)');
-    g.addColorStop(1, 'rgba(52,44,96,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    ctx.drawImage(contactSprite(), g.x - r, g.y - r / 2, r * 2, r);
 
     const sh = L.shadow;
     if (sh.alpha < 0.01) return;
@@ -677,6 +844,14 @@ export class Renderer {
         return this.drawHouse(ctx, x, y, s, L, ghost);
       case 'tower':
         return this.drawTower(ctx, x, y, s, L, ghost);
+      case 'shop':
+        return this.drawShop(ctx, x, y, s, L, ghost);
+      case 'office':
+        return this.drawOffice(ctx, x, y, s, L, ghost);
+      case 'school':
+        return this.drawSchool(ctx, x, y, s, L, ghost);
+      case 'clinic':
+        return this.drawClinic(ctx, x, y, s, L, ghost);
       case 'tree':
         return this.drawTree(ctx, x + 0.5, y + 0.5, s.shape || 0, L, hash2(x, y, 12) * 6.28, 1);
       case 'park':
@@ -925,6 +1100,222 @@ export class Renderer {
       ctx.beginPath();
       ctx.arc(a.x, a.y - 12, 1.4, 0, Math.PI * 2);
       ctx.fill();
+    }
+  }
+
+  workFill(x, y, s, ghost) {
+    if (ghost) return 0;
+    const t = this.city.getTile(x, y);
+    return t ? t.workersFilled / STRUCTURES[s.type].jobs : 0;
+  }
+
+  // Shops stay lit through the evening and close late at night.
+  shopOpen(L) {
+    const c = L.clock;
+    return c > 0.29 && c < 0.92;
+  }
+
+  drawShop(ctx, x, y, s, L, ghost) {
+    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.mint;
+    const x0 = x + 0.16;
+    const x1 = x + 0.84;
+    const y0 = y + 0.2;
+    const y1 = y + 0.8;
+    const h = 16;
+    const fill = this.workFill(x, y, s, ghost);
+    this.drawBox(ctx, L, x0, y0, x1, y1, 0, h, v.wall);
+    // Shop window: warm when open after dark.
+    const open = !ghost && fill > 0 && this.shopOpen(L) && L.windowLit > 0.05;
+    this.drawWindow(ctx, L, this.faceQuad('L', x0, y0, x1, y1, 0.08, 0.62, 2.5, 9.5), 0.92, open);
+    ctx.fillStyle = lit(v.roof, 0.72, L);
+    poly(ctx, this.faceQuad('L', x0, y0, x1, y1, 0.7, 0.9, 0, 9.5));
+    ctx.fill();
+    this.drawWindow(ctx, L, this.faceQuad('R', x0, y0, x1, y1, 0.2, 0.8, 4, 10), 0.8, open && hash2(x, y, 31) < 0.7);
+    // Striped awning over the storefront.
+    const segs = 5;
+    for (let i = 0; i < segs; i++) {
+      const a = x0 + ((x1 - x0) * i) / segs;
+      const b = x0 + ((x1 - x0) * (i + 1)) / segs;
+      ctx.fillStyle = lit(i % 2 ? v.trim : v.roof, i % 2 ? 1 : 0.95, L);
+      poly(ctx, [
+        [a, y1, 12],
+        [b, y1, 12],
+        [b, y1 + 0.12, 8.5],
+        [a, y1 + 0.12, 8.5],
+      ]);
+      ctx.fill();
+    }
+    // Rooftop sign.
+    this.drawBox(ctx, L, x0 + 0.12, y1 - 0.1, x1 - 0.12, y1 - 0.04, h, 6, v.trim);
+    ctx.fillStyle = lit(v.roof, 0.85, L);
+    poly(ctx, this.faceQuad('L', x0 + 0.12, y1 - 0.1, x1 - 0.12, y1 - 0.04, 0.12, 0.88, h + 1.6, h + 4.4));
+    ctx.fill();
+  }
+
+  drawOffice(ctx, x, y, s, L, ghost) {
+    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.lavender;
+    const floors = s.floors || 4;
+    const x0 = x + 0.14;
+    const x1 = x + 0.86;
+    const y0 = y + 0.14;
+    const y1 = y + 0.86;
+    const fh = 12;
+    const h = 8 + floors * fh;
+    const fill = this.workFill(x, y, s, ghost);
+    this.drawBox(ctx, L, x0, y0, x1, y1, 0, h, v.trim, false);
+    // Glass ribbon windows; offices light up in the early evening while people work late.
+    const evening = L.clock > 0.7 && L.clock < 0.86 ? 1 : 0.25;
+    let wi = 0;
+    for (let f = 0; f < floors; f++) {
+      const v0 = 9 + f * fh;
+      for (const face of ['L', 'R']) {
+        for (let k = 0; k < 3; k++) {
+          const u0 = 0.06 + k * 0.3;
+          const isLit = !ghost && L.windowLit > 0.05 && hash2(x * 5 + wi, y * 11, 17) < fill * evening;
+          wi++;
+          this.drawWindow(ctx, L, this.faceQuad(face, x0, y0, x1, y1, u0, u0 + 0.28, v0, v0 + 7), face === 'L' ? 0.95 : 0.84, isLit);
+        }
+      }
+    }
+    // Lobby band and entrance.
+    ctx.fillStyle = lit(v.wall, 0.85, L);
+    poly(ctx, this.faceQuad('L', x0, y0, x1, y1, 0, 1, 0, 6));
+    ctx.fill();
+    ctx.fillStyle = lit(PALETTE.glass, 0.85, L);
+    poly(ctx, this.faceQuad('L', x0, y0, x1, y1, 0.38, 0.62, 0, 6));
+    ctx.fill();
+    ctx.fillStyle = lit(v.wall, 0.7, L);
+    poly(ctx, this.faceQuad('R', x0, y0, x1, y1, 0, 1, 0, 6));
+    ctx.fill();
+    // Roof deck in the accent colour with a small plant room.
+    ctx.fillStyle = lit(v.wall, 1.02, L);
+    poly(ctx, [
+      [x0, y0, h],
+      [x1, y0, h],
+      [x1, y1, h],
+      [x0, y1, h],
+    ]);
+    ctx.fill();
+    this.drawBox(ctx, L, x0 + 0.38, y0 + 0.08, x1 - 0.08, y0 + 0.3, h, 6, v.trim);
+  }
+
+  drawSchool(ctx, x, y, s, L, ghost) {
+    const wall = PALETTE.peach;
+    const roof = '#e9968c';
+    const x0 = x + 0.1;
+    const x1 = x + 0.9;
+    const y0 = y + 0.2;
+    const y1 = y + 0.8;
+    const h = 16;
+    const fill = this.workFill(x, y, s, ghost);
+    this.drawBox(ctx, L, x0, y0, x1, y1, 0, h, wall);
+    for (let k = 0; k < 4; k++) {
+      if (k === 2) continue;
+      const u0 = 0.06 + k * 0.23;
+      this.drawWindow(ctx, L, this.faceQuad('L', x0, y0, x1, y1, u0, u0 + 0.15, 5, 11), 0.92, this.isWindowLit(x, y, k, fill * 0.4, L));
+    }
+    ctx.fillStyle = lit(roof, 0.72, L);
+    poly(ctx, this.faceQuad('L', x0, y0, x1, y1, 0.52, 0.66, 0, 10));
+    ctx.fill();
+    this.drawWindow(ctx, L, this.faceQuad('R', x0, y0, x1, y1, 0.15, 0.45, 5, 11), 0.8, false);
+    this.drawWindow(ctx, L, this.faceQuad('R', x0, y0, x1, y1, 0.55, 0.85, 5, 11), 0.8, false);
+    // Bell tower with a pitched cap and a little clock.
+    const bx0 = x + 0.42;
+    const bx1 = x + 0.58;
+    const by0 = y + 0.38;
+    const by1 = y + 0.54;
+    this.drawBox(ctx, L, bx0, by0, bx1, by1, h, 10, PALETTE.blush);
+    const bm = (by0 + by1) / 2;
+    ctx.fillStyle = lit(roof, 1.04, L);
+    poly(ctx, [
+      [bx0 - 0.03, by0 - 0.03, h + 10],
+      [bx0 - 0.03, by1 + 0.03, h + 10],
+      [(bx0 + bx1) / 2, by1 + 0.03, h + 17],
+      [(bx0 + bx1) / 2, by0 - 0.03, h + 17],
+    ]);
+    ctx.fill();
+    ctx.fillStyle = lit(roof, 0.82, L);
+    poly(ctx, [
+      [bx1 + 0.03, by0 - 0.03, h + 10],
+      [bx1 + 0.03, by1 + 0.03, h + 10],
+      [(bx0 + bx1) / 2, by1 + 0.03, h + 17],
+      [(bx0 + bx1) / 2, by0 - 0.03, h + 17],
+    ]);
+    ctx.fill();
+    const c = gridToWorld((bx0 + bx1) / 2, by1, h + 5.5);
+    ctx.fillStyle = lit('#fffaf2', 1, L);
+    ctx.beginPath();
+    ctx.ellipse(c.x, c.y, 2.3, 2.3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Flag.
+    const f = gridToWorld(x0 + 0.06, y0 + 0.06, h);
+    ctx.strokeStyle = lit(PALETTE.pole, 1, L);
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(f.x, f.y);
+    ctx.lineTo(f.x, f.y - 14);
+    ctx.stroke();
+    const wave = this.reduceMotion ? 0 : Math.sin(this.time * 3 + x) * 1.2;
+    ctx.fillStyle = lit(PALETTE.lavender, 0.9, L);
+    ctx.beginPath();
+    ctx.moveTo(f.x, f.y - 14);
+    ctx.quadraticCurveTo(f.x + 4, f.y - 14 + wave, f.x + 7, f.y - 13);
+    ctx.lineTo(f.x + 7, f.y - 9.5);
+    ctx.quadraticCurveTo(f.x + 4, f.y - 10.5 + wave, f.x, f.y - 10.5);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  drawClinic(ctx, x, y, s, L, ghost) {
+    const wall = '#fff6f2';
+    const accent = PALETTE.mint;
+    const x0 = x + 0.15;
+    const x1 = x + 0.85;
+    const y0 = y + 0.15;
+    const y1 = y + 0.85;
+    const h = 20;
+    const fill = this.workFill(x, y, s, ghost);
+    this.drawBox(ctx, L, x0, y0, x1, y1, 0, h, wall);
+    // Mint band and windows.
+    ctx.fillStyle = lit(accent, 0.92, L);
+    poly(ctx, this.faceQuad('L', x0, y0, x1, y1, 0, 1, 12.5, 14.5));
+    ctx.fill();
+    ctx.fillStyle = lit(accent, 0.78, L);
+    poly(ctx, this.faceQuad('R', x0, y0, x1, y1, 0, 1, 12.5, 14.5));
+    ctx.fill();
+    // Clinics keep a few lights on all night.
+    const night = Math.max(0.35, fill);
+    for (let k = 0; k < 3; k++) {
+      const u0 = 0.08 + k * 0.3;
+      this.drawWindow(ctx, L, this.faceQuad('R', x0, y0, x1, y1, u0, u0 + 0.22, 5, 10.5), 0.8, this.isWindowLit(x, y, k, night, L));
+      if (k !== 1) this.drawWindow(ctx, L, this.faceQuad('L', x0, y0, x1, y1, u0, u0 + 0.22, 5, 10.5), 0.92, this.isWindowLit(x, y, k + 3, night, L));
+    }
+    ctx.fillStyle = lit(PALETTE.glass, 0.8, L);
+    poly(ctx, this.faceQuad('L', x0, y0, x1, y1, 0.4, 0.6, 0, 9));
+    ctx.fill();
+    // Rooftop cross.
+    const cx = (x0 + x1) / 2;
+    const cy = (y0 + y1) / 2;
+    const a = 0.06;
+    const b = 0.19;
+    ctx.fillStyle = lit('#ff9a9a', 1, L);
+    poly(ctx, [
+      [cx - a, cy - b, h],
+      [cx + a, cy - b, h],
+      [cx + a, cy + b, h],
+      [cx - a, cy + b, h],
+    ]);
+    ctx.fill();
+    poly(ctx, [
+      [cx - b, cy - a, h],
+      [cx + b, cy - a, h],
+      [cx + b, cy + a, h],
+      [cx - b, cy + a, h],
+    ]);
+    ctx.fill();
+    if (L.lamps > 0.1) {
+      const p = gridToWorld(cx, cy, h);
+      this.glows.push({ x: p.x, y: p.y, r: 14, a: 0.3 * L.lamps, rgb: '255,150,150', flat: true });
     }
   }
 

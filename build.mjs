@@ -1,6 +1,6 @@
 // Bundles src/ into a single self-contained HTML file (dist/pocket-metropolis.html).
 // Each module keeps its own scope; imports become destructured reads of the module's exports.
-// Usage: node build.mjs
+// Usage: node build.mjs (or npm run build)
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';

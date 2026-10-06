@@ -20,6 +20,10 @@ function createTile(x, y) {
     desirability: 0, // derived by the simulation
     factors: {}, // derived: per-factor desirability breakdown
     housingTarget: 0, // derived: how many residents this home can attract right now
+    employment: 0, // derived: share of this home's workers who have a job (0..1)
+    workersFilled: 0, // derived: jobs filled at this workplace
+    congestion: 0, // derived: road load (0..1)
+    coverage: {}, // derived: service id → coverage (0..1)
   };
 }
 
@@ -32,8 +36,10 @@ export class CityState {
     this.day = 1;
     this.nextId = 1;
     this.stats = { population: 0, capacity: 0, occupancy: 0, happiness: 0, homes: 0 };
-    this.systems = {}; // reserved space for future simulation modules (economy, jobs, utilities…)
+    this.systems = {}; // saved per-system data for future modules (economy, utilities…)
+    this.derived = {}; // recomputed every few ticks and never saved (labor market, flows…)
     this.dirty = true; // derived data needs recomputing
+    this.revision = 0; // bumps on every tile change, so caches know when to redraw
     this._listeners = new Set();
     this._buildTiles();
   }
@@ -84,6 +90,16 @@ export class CityState {
     return this.tiles.filter((t) => t.structure && STRUCTURES[t.structure.type].capacity > 0);
   }
 
+  workplaces() {
+    return this.tiles.filter((t) => t.structure && STRUCTURES[t.structure.type].jobs > 0);
+  }
+
+  // The road tile a building uses to reach the network: an adjacent road, if any.
+  accessRoad(x, y) {
+    for (const d of DIRS) if (this.isRoad(x + d.dx, y + d.dy)) return this.getTile(x + d.dx, y + d.dy);
+    return null;
+  }
+
   canApply(tool, x, y) {
     const t = this.getTile(x, y);
     if (!t) return false;
@@ -121,14 +137,16 @@ export class CityState {
 
   createStructure(type, rand = Math.random) {
     const s = { id: this.nextId++, type, residents: 0 };
-    if (type === 'house' || type === 'tower') s.variant = VARIANT_KEYS[Math.floor(rand() * VARIANT_KEYS.length)];
+    if (type === 'house' || type === 'tower' || type === 'shop' || type === 'office') s.variant = VARIANT_KEYS[Math.floor(rand() * VARIANT_KEYS.length)];
     if (type === 'tower') s.floors = 4 + Math.floor(rand() * 3);
+    if (type === 'office') s.floors = 3 + Math.floor(rand() * 3);
     if (type === 'tree') s.shape = Math.floor(rand() * 4);
     return s;
   }
 
   _changed(x, y) {
     this.dirty = true;
+    this.revision++;
     this.updateRoadMask(x, y);
     for (const d of DIRS) this.updateRoadMask(x + d.dx, y + d.dy);
   }
@@ -142,6 +160,7 @@ export class CityState {
   }
 
   refreshAllRoadMasks() {
+    this.revision++;
     for (const t of this.tiles) this.updateRoadMask(t.x, t.y);
   }
 
@@ -149,14 +168,17 @@ export class CityState {
   reset() {
     this._buildTiles();
     this.dirty = true;
+    this.revision++;
   }
 
-  // Grow or shrink the map, keeping existing tiles anchored at the origin.
-  resize(width, height) {
-    const old = this;
+  // Grow or shrink the map. Existing tiles move by (offsetX, offsetY), so a town can be re-centred.
+  resize(width, height, offsetX = 0, offsetY = 0) {
     const tiles = [];
     for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) tiles.push(old.getTile(x, y) ?? createTile(x, y));
+      for (let x = 0; x < width; x++) {
+        const old = this.getTile(x - offsetX, y - offsetY);
+        tiles.push(old ? Object.assign(old, { x, y }) : createTile(x, y));
+      }
     }
     this.width = width;
     this.height = height;
