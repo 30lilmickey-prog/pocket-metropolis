@@ -83,14 +83,14 @@ export class CityPanel {
     const p = m.progress();
     this.thoughts = city.derived.thoughts || [];
     const wishes = this.thoughts.filter((t) => t.kind === 'wish').length;
-    this.tierEl.textContent = p.current.label;
+    this.tierEl.textContent = m.sandbox ? `Sandbox · ${p.current.label}` : p.current.label;
     this.meterEl.style.width = `${Math.round((p.next ? p.fraction : 1) * 100)}%`;
     this.badge.hidden = !wishes || this.open;
     this.badge.classList.toggle('caution', !this.thoughts.some((t) => t.severity === 'bad'));
     this.btn.setAttribute('aria-label', `${p.current.label}. ${wishes ? `${wishes} resident wish${wishes > 1 ? 'es' : ''}. ` : ''}Open city panel`);
     if (!this.open) return;
     // Rebuild only when the content changes shape, so buttons stay put under a finger.
-    const key = JSON.stringify([p.tier, this.focusedId, this.thoughts.map((t) => [t.id, t.x, t.y, t.text, t.severity])]);
+    const key = JSON.stringify([p.tier, m.sandbox, this.focusedId, this.thoughts.map((t) => [t.id, t.x, t.y, t.text, t.severity])]);
     if (key !== this._key) {
       this._key = key;
       this.panel.innerHTML = this.html(city, m, p);
@@ -114,7 +114,9 @@ export class CityPanel {
 
   html(city, m, p) {
     const pop = city.stats.population;
-    const next = p.next
+    const next = m.sandbox
+      ? `<p class="tier-done">Sandbox: everything is unlocked. Your town's title still grows with it${p.next ? ` (next: ${p.next.label} at ${p.next.pop.toLocaleString()} residents)` : ''}.</p>`
+      : p.next
       ? `<div class="tier-next"><div class="tier-progress"><span style="width:${Math.round(p.fraction * 100)}%"></span></div>` +
         `<p><b class="tier-pop">${pop.toLocaleString()}</b> of <b>${p.next.pop.toLocaleString()}</b> residents to become a <b>${p.next.label}</b>.</p>` +
         (p.next.unlocks.length ? `<p class="tier-unlocks">Unlocks ${p.next.unlocks.map((u) => `<span class="unlock-chip">${esc(labelOf(u))}</span>`).join('')}</p>` : '') +

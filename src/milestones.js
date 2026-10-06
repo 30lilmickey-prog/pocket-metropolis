@@ -32,8 +32,13 @@ export class Milestones {
     return this.state.reached;
   }
 
+  // Sandbox towns have everything from the start.
+  get sandbox() {
+    return this.city.systems.mode === 'sandbox';
+  }
+
   isUnlocked(tool) {
-    return unlockTier(tool) <= this.reached;
+    return this.sandbox || unlockTier(tool) <= this.reached;
   }
 
   // Quietly grant a title without a celebration, e.g. for a ready-made town. Never lowers it.

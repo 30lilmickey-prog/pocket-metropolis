@@ -2190,3 +2190,18 @@ button:focus-visible {
 :root.city-open .legend {
   display: none;
 }
+
+/* New town sheet */
+.sheet-hint {
+  margin: -2px 0 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.sheet-hint.center {
+  text-align: center;
+}
+#newtown-sheet .primary-btn {
+  margin-top: 6px;
+  min-height: 48px;
+}
