@@ -6,7 +6,10 @@ import { Simulation } from './simulation.js';
 import { Renderer } from './renderer.js';
 import { Camera } from './camera.js';
 import { InputController } from './input.js';
-import { AutoSaver, loadCity } from './persistence.js';
+import { AutoSaver, loadCity, saveCity, saveBackup, loadBackup, clearBackup } from './persistence.js';
+import { encodeCity, decodeCity, shareUrl, codeFromHash } from './share.js';
+import { Minimap } from './minimap.js';
+import { settings, loadSettings, setSetting, onSettings } from './settings.js';
 import { generateTown } from './generator.js';
 import { Interface } from './ui.js';
 import { LifeInterface } from './lifeUI.js';
@@ -39,6 +42,7 @@ const STROKE_LABELS = { road: 'road', water: 'water', bulldoze: 'bulldozing', tr
 const FEEDBACK_RADIUS = 7;
 
 function start(hotData = {}) {
+  loadSettings();
   const canvas = document.getElementById('city');
   let city = null;
   try {
@@ -57,6 +61,10 @@ function start(hotData = {}) {
   const saver = new AutoSaver(city);
   const history = new History(city);
   const audio = new Audio();
+  const minimap = new Minimap(document.getElementById('minimap'), city, camera);
+  // Automatic minimap: on for roomy screens, off on phones, unless the player chose.
+  const minimapOn = () => settings.minimap ?? (window.innerWidth >= 760 && window.innerHeight >= 560);
+  let hasBackup = !!loadBackup();
 
   let tool = 'house';
   let hover = null; // { x, y } tile under the mouse
@@ -105,6 +113,13 @@ function start(hotData = {}) {
     locks: {
       isUnlocked: (id) => sim.milestones.isUnlocked(id),
       unlockLabel: (id) => MILESTONES[unlockTier(id)]?.label || '',
+    },
+    onShare: () => shareTown(),
+    onBackHome: () => backHome(),
+    hasBackup: () => hasBackup,
+    display: {
+      get: (k) => (k === 'minimap' ? minimapOn() : settings[k]),
+      set: (k, v) => setSetting(k, v),
     },
     sound: {
       muted: () => audio.muted,
@@ -301,6 +316,81 @@ function start(hotData = {}) {
     framing = rect ? 'town' : 'map';
   }
 
+  // ---- Sharing -----------------------------------------------------------------
+  async function shareTown() {
+    try {
+      const url = shareUrl(await encodeCity(city));
+      const touch = window.matchMedia?.('(pointer: coarse)').matches;
+      if (touch && navigator.share) {
+        await navigator.share({ title: 'My Pocket Metropolis town', text: 'Come and see my little town!', url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      ui.toast('Link copied. Anyone who opens it gets a copy of your town to play with', 4200);
+    } catch (err) {
+      if (err?.name === 'AbortError') return; // closed the share sheet
+      window.prompt('Copy this link to share your town:', shareUrl(await encodeCity(city)));
+    }
+  }
+
+  // Swap in another town (shared or your own back), keeping every system attached to this city.
+  function swapCity(other) {
+    city.copyFrom(other);
+    history.clear();
+    sim.refresh();
+    selected = null;
+    city.emit('loaded');
+    fitView(false);
+  }
+
+  async function visitShared(code) {
+    let other;
+    try {
+      other = await decodeCity(code);
+    } catch {
+      ui.toast('That town link is broken or incomplete', 3600);
+      return;
+    }
+    if (!hasBackup) hasBackup = saveBackup(city); // keep your own town (and Life Story) safe
+    swapCity(other);
+    sim.milestones.settleForCapacity();
+    ui.refreshLocks();
+    saveCity(city);
+    ui.toast(hasBackup ? 'Visiting a shared town. Your own town is saved: ☰ → Back to my town' : 'Visiting a shared town', 6000);
+  }
+
+  function backHome() {
+    const own = loadBackup();
+    if (!own) {
+      hasBackup = false;
+      return;
+    }
+    swapCity(own);
+    ui.refreshLocks();
+    saveCity(city);
+    clearBackup();
+    hasBackup = false;
+    ui.toast('Welcome back to your town', 2400);
+  }
+
+  const sharedCode = codeFromHash(window.location.hash);
+  if (sharedCode) {
+    window.history.replaceState(null, '', window.location.pathname + window.location.search); // a reload won't re-import
+    queueMicrotask(() => visitShared(sharedCode));
+  }
+  window.addEventListener('hashchange', () => {
+    const code = codeFromHash(window.location.hash);
+    if (!code) return;
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    visitShared(code);
+  });
+
+  onSettings(() => {
+    minimap.setVisible(minimapOn());
+    renderer.textScale = settings.largeText ? 1.2 : 1;
+    ui.renderMore();
+  });
+
   function resize() {
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
@@ -312,8 +402,13 @@ function start(hotData = {}) {
       fitted = true;
     }
   }
-  window.addEventListener('resize', resize);
+  window.addEventListener('resize', () => {
+    resize();
+    minimap.setVisible(minimapOn());
+  });
   resize();
+  minimap.setVisible(minimapOn());
+  renderer.textScale = settings.largeText ? 1.2 : 1;
 
   const lifeUI = new LifeInterface({
     life: sim.life,
@@ -510,6 +605,7 @@ function start(hotData = {}) {
     camera.update(dt);
     audio.ambient(dt, { daylight: daylightAt(city.clock), rain: city.derived.weather?.rain || 0 });
     renderer.render(dt, viewState());
+    minimap.render();
     saver.tick(dt);
     uiTimer -= dt;
     if (uiTimer <= 0) {

@@ -55,6 +55,35 @@ export function loadCity() {
   }
 }
 
+// A copy of your own town, kept while you visit a shared one.
+const BACKUP_KEY = `${KEY}:backup`;
+
+export function saveBackup(city) {
+  try {
+    localStorage.setItem(BACKUP_KEY, JSON.stringify({ version: SAVE_VERSION, savedAt: Date.now(), city: city.toJSON() }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function loadBackup() {
+  try {
+    const raw = localStorage.getItem(BACKUP_KEY);
+    return raw ? CityState.fromJSON(migrate(JSON.parse(raw)).city) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearBackup() {
+  try {
+    localStorage.removeItem(BACKUP_KEY);
+  } catch {
+    // Nothing to clear.
+  }
+}
+
 // Saves shortly after each edit, every so often while the city lives, and when the page is hidden.
 export class AutoSaver {
   constructor(city, { delayMs = 800, intervalS = 15 } = {}) {

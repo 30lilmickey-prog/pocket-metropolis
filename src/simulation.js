@@ -13,6 +13,9 @@ import { computeThoughts } from './advisor.js';
 import { daylightAt } from './time.js';
 import { clamp, pickWeighted } from './utils.js';
 
+export const TREND_SAMPLES_PER_DAY = 8;
+const TREND_KEEP = 48;
+
 export class Simulation {
   constructor(city) {
     this.city = city;
@@ -59,6 +62,7 @@ export class Simulation {
     }
     this.updateHousing();
     this.updateStats();
+    this.updateTrends();
     this.milestones.update();
     this._thoughtTimer -= SIM_STEP;
     if (this._thoughtTimer <= 0) {
@@ -77,6 +81,23 @@ export class Simulation {
     this.updateStats();
     void this.milestones.state; // settle the starting title without a celebration
     this.city.derived.thoughts = computeThoughts(this.city, this.milestones);
+  }
+
+  // Trends for the City panel: a sample every three in-game hours, the last six days kept.
+  // Saved with the city (a few hundred numbers), so the charts survive a reload.
+  updateTrends() {
+    const city = this.city;
+    const slot = Math.floor((city.day + city.clock) * TREND_SAMPLES_PER_DAY);
+    const tr = (city.systems.trends ||= { slot: -1, t: [], pop: [], happy: [], employ: [], traffic: [] });
+    if (tr.slot === slot) return;
+    tr.slot = slot;
+    const s = city.stats;
+    tr.t.push(Math.round((city.day + city.clock) * 1000) / 1000);
+    tr.pop.push(s.population);
+    tr.happy.push(s.homes ? s.happiness : 0);
+    tr.employ.push(Math.round((s.employment ?? 1) * 100));
+    tr.traffic.push(Math.round((s.traffic || 0) * 100));
+    for (const k of ['t', 'pop', 'happy', 'employ', 'traffic']) if (tr[k].length > TREND_KEEP) tr[k].splice(0, tr[k].length - TREND_KEEP);
   }
 
   // Street names and addresses follow the map; recompute only when a tile changed.

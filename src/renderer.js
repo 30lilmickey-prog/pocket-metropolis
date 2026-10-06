@@ -6,6 +6,7 @@ import { lightingAt } from './lighting.js';
 import { lit, litA, rgba, mixHex } from './color.js';
 import { clamp, hash2 } from './utils.js';
 import { shortName, addressOf } from './streets.js';
+import { rampStops, settings } from './settings.js';
 
 const SLAB_DEPTH = 18;
 // Unlit lighting for the cached ground layer; the frame's real light is multiplied on afterwards.
@@ -126,11 +127,7 @@ function contactSprite() {
 // Low → high: blush red, butter yellow, mint green.
 function rampColor(v, alpha) {
   const t = Math.max(0, Math.min(1, v));
-  const stops = [
-    [0, [246, 140, 140]],
-    [0.5, [255, 214, 120]],
-    [1, [110, 200, 150]],
-  ];
+  const stops = rampStops();
   const i = t < 0.5 ? 0 : 1;
   const [a0, c0] = stops[i];
   const [a1, c1] = stops[i + 1];
@@ -164,6 +161,7 @@ export class Renderer {
     this.confettiBits = [];
     this.thoughtRects = []; // screen-space hit boxes for the resident thought bubbles
     this.showThoughts = true;
+    this.textScale = 1;
     city.on((ev) => this.onCityEvent(ev));
   }
 
@@ -404,7 +402,8 @@ export class Renderer {
     const phase = (this.time % 6) / 6;
     const fade = Math.min(1, phase * 8, (1 - phase) * 8);
     ctx.save();
-    ctx.font = '600 11px system-ui, -apple-system, "Segoe UI", sans-serif';
+    const k = this.textScale || 1; // larger text setting
+    ctx.font = `600 ${11 * k}px system-ui, -apple-system, "Segoe UI", sans-serif`;
     ctx.textBaseline = 'middle';
     for (const th of new Set(shown)) {
       const tile = this.city.getTile(th.x, th.y);
@@ -415,8 +414,8 @@ export class Renderer {
       const text = th.text.length > 34 ? `${th.text.slice(0, 32)}…` : th.text;
       const icon = th.kind === 'happy' ? '♥' : '!';
       const tw = ctx.measureText(text).width;
-      const w = tw + 34;
-      const h = 24;
+      const w = tw + 34 * k;
+      const h = 24 * k;
       const x = clamp(s.x - w / 2, 6, this.w - w - 6);
       let y = clamp(s.y - h - 10 + bob, 6, this.h - h - 6);
       // Keep clear of the Life Story home tag: hop above it.
@@ -445,14 +444,14 @@ export class Renderer {
       ctx.fill();
       ctx.fillStyle = sev;
       ctx.beginPath();
-      ctx.arc(x + 13, y + h / 2, 8, 0, Math.PI * 2);
+      ctx.arc(x + 13 * k, y + h / 2, 8 * k, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
-      ctx.fillText(icon, x + 13, y + h / 2 + 0.5);
+      ctx.fillText(icon, x + 13 * k, y + h / 2 + 0.5);
       ctx.textAlign = 'left';
       ctx.fillStyle = '#4a4270';
-      ctx.fillText(text, x + 26, y + h / 2 + 0.5);
+      ctx.fillText(text, x + 26 * k, y + h / 2 + 0.5);
       this.thoughtRects.push({ x, y, w, h: h + 6, thought: th });
     }
     ctx.restore();
@@ -1149,7 +1148,7 @@ export class Renderer {
     const runs = this.city.derived.streets;
     const z = this.camera.zoom;
     if (!runs || z < 0.7) return;
-    const size = clamp(10 / z, 6.5, 11);
+    const size = clamp(10 / z, 6.5, 11) * (this.textScale || 1);
     const len = Math.hypot(HALF_W, HALF_H);
     const ux = HALF_W / len;
     const uy = HALF_H / len;
