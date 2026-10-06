@@ -281,6 +281,7 @@ export class Renderer {
     if (view.ghost) items.push({ d: view.ghost.x + view.ghost.y + 1.01, kind: 'ghost', ghost: view.ghost });
     items.sort((a, b) => a.d - b.d);
     for (const it of items) this.drawItem(ctx, it, L);
+    this.drawLifePins(ctx, L);
 
     this.drawParticles(ctx, dt, L);
     this.drawGlows(ctx, L);
@@ -1515,6 +1516,59 @@ export class Renderer {
     ctx.arc(p.x, p.y - 7.8 - bob, 1.7, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+  }
+
+  // Pins over the Life Story character's home and workplace, drawn above everything else.
+  drawLifePins(ctx, L) {
+    const c = this.city.systems.life?.char;
+    if (!c?.alive) return;
+    const pin = (spot, color, size, icon) => {
+      const t = this.city.getTile(spot.x, spot.y);
+      if (!t) return;
+      const f = t.structure ? this.footprint(t) : null;
+      const bob = this.reduceMotion ? 0 : Math.sin(this.time * 2.4 + spot.x) * 2;
+      const p = gridToWorld(spot.x + 0.5, spot.y + 0.5, (f?.h || 10) + 14 + bob);
+      const z = Math.max(0.7, 1 / Math.sqrt(this.camera.zoom));
+      const r = size * z;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.fillStyle = 'rgba(52,44,96,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(0, r * 1.9, r * 0.5, r * 0.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = color;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.6 * z;
+      ctx.beginPath();
+      ctx.moveTo(0, r * 1.6);
+      ctx.bezierCurveTo(-r * 0.6, r * 0.6, -r, r * 0.1, -r, -r * 0.2);
+      ctx.arc(0, -r * 0.2, r, Math.PI, 0);
+      ctx.bezierCurveTo(r, r * 0.1, r * 0.6, r * 0.6, 0, r * 1.6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      if (icon === 'home') {
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.5, -r * 0.1);
+        ctx.lineTo(0, -r * 0.6);
+        ctx.lineTo(r * 0.5, -r * 0.1);
+        ctx.lineTo(r * 0.35, -r * 0.1);
+        ctx.lineTo(r * 0.35, r * 0.35);
+        ctx.lineTo(-r * 0.35, r * 0.35);
+        ctx.lineTo(-r * 0.35, -r * 0.1);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        ctx.fillRect(-r * 0.42, -r * 0.35, r * 0.84, r * 0.62);
+        ctx.fillStyle = color;
+        ctx.fillRect(-r * 0.18, -r * 0.5, r * 0.36, r * 0.18);
+      }
+      ctx.restore();
+      if (L.lamps > 0.1) this.glows.push({ x: p.x, y: p.y, r: r * 2.4, a: 0.35 * L.lamps, rgb: '255,240,220' });
+    };
+    if (c.job) pin(c.job, '#a98bd0', 7.5, 'work');
+    if (c.home) pin(c.home, c.look?.outfit || '#ff8f7e', 9.5, 'home');
   }
 
   // ---- Particles and light ----------------------------------------------------------

@@ -64,7 +64,7 @@ export class AutoSaver {
     this.pending = -1;
     this.since = 0;
     city.on((ev) => {
-      if (ev.type === 'placed' || ev.type === 'removed' || ev.type === 'watered' || ev.type === 'reset') {
+      if (['placed', 'removed', 'watered', 'reset', 'lifeChanged', 'lifeEvent'].includes(ev.type)) {
         this.pending = this.delayMs;
       }
     });

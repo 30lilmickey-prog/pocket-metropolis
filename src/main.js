@@ -9,7 +9,8 @@ import { InputController } from './input.js';
 import { AutoSaver, loadCity } from './persistence.js';
 import { generateTown } from './generator.js';
 import { Interface } from './ui.js';
-import { worldToGrid, mapBounds, tileRectBounds } from './iso.js';
+import { LifeInterface } from './lifeUI.js';
+import { worldToGrid, mapBounds, tileRectBounds, gridToWorld } from './iso.js';
 
 function start(hotData = {}) {
   const canvas = document.getElementById('city');
@@ -124,6 +125,42 @@ function start(hotData = {}) {
   window.addEventListener('resize', resize);
   resize();
 
+  const lifeUI = new LifeInterface({
+    life: sim.life,
+    onCreate: (draft) => {
+      sim.life.create(draft);
+      ui.toast(`${draft.first} was born. Watch for life events as the years go by.`, 3600);
+    },
+    onAgeUp: () => sim.life.ageUp(),
+    onChoose: (i) => sim.life.choose(i),
+    onContinue: () => sim.life.continueAsChild(),
+    onNewLife: () => {
+      const s = city.systems.life;
+      if (s?.char) s.history = [...(s.history || []), { name: `${s.char.first} ${s.char.last}`, age: s.char.age }];
+      city.systems.life = s ? { char: null, history: s.history } : null;
+    },
+    onFocus: () => {
+      const home = sim.life.char?.home;
+      if (!home) return;
+      const w = gridToWorld(home.x + 0.5, home.y + 0.5);
+      camera.tx = w.x;
+      camera.ty = w.y - 20;
+      camera.tzoom = Math.max(camera.tzoom, 1.1);
+      camera.clampTarget();
+    },
+  });
+  city.on((ev) => {
+    if (ev.type === 'lifeEvent') lifeUI.eventArrived();
+    else if (ev.type === 'lifeChanged') lifeUI.render();
+    else if (ev.type === 'removed' || ev.type === 'watered' || ev.type === 'placed' || ev.type === 'reset') {
+      // A bulldozed home or workplace changes the character's life right away.
+      if (sim.life.char?.alive) {
+        sim.life.syncWithCity();
+        lifeUI.render();
+      }
+    }
+  });
+
   new InputController(canvas, camera, {
     onTap: (sx, sy) => {
       const t = tileAt(sx, sy);
@@ -183,6 +220,7 @@ function start(hotData = {}) {
     if (uiTimer <= 0) {
       ui.update(city);
       ui.inspect(city, selected);
+      lifeUI.tick();
       uiTimer = 0.2;
     }
     requestAnimationFrame(frame);
