@@ -47,9 +47,10 @@ Events are plain data in `src/lifeEvents.js`; see the comment at the top of that
 | Pan | Drag | Drag |
 | Zoom | Mouse wheel | Pinch |
 | Pick a tool | 1 House · 2 Tower · 3 Shop · 4 Office · 5 School · 6 Clinic · 7 Tree · 8 Park · 9 Road · 0 Water | Toolbar; buttons with a dot open more choices |
-| Pause / change speed | Space, or the speed button | Speed button |
-| Switch map view | V, or the layers button | Layers button |
-| Recenter | Recenter button (press again for the whole map) | Recenter button |
+| Pause / change speed | Space, or the speed button | ☰ City controls |
+| Switch map view | V, or the layers button | ☰ City controls |
+| Recenter | Recenter button (press again for the whole map) | ☰ City controls |
+| Random Town | Random Town button | ☰ City controls (tap twice to confirm) |
 
 ## Architecture
 

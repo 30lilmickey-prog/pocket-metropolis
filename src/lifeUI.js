@@ -91,7 +91,7 @@ export class LifeInterface {
     this.btn.querySelector('.badge').hidden = !c?.pending || (!this.cardMinimized && !this.card.hidden);
     this.renderCard();
     // On phones the event card and the panel share the same space; the card wins.
-    const narrow = window.innerWidth < 560;
+    const narrow = window.innerWidth < 560 || window.innerHeight < 520;
     this.panel.hidden = !this.open || (narrow && !this.card.hidden);
     if (!this.panel.hidden) {
       this.panel.innerHTML = !c ? this.createHTML() : c.alive ? this.lifeHTML(c) : this.deathHTML(c);

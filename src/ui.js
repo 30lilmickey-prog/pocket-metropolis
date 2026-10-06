@@ -58,6 +58,10 @@ export class Interface {
     this.inspectEl = document.getElementById('inspector');
     this.legendEl = document.getElementById('legend');
     this.speedBtn = document.getElementById('btn-speed');
+    this.moreBtn = document.getElementById('btn-more');
+    this.moreSheet = document.getElementById('more-sheet');
+    this.onRandom = onRandom;
+    this.onFit = onFit;
     this.viewBtn = document.getElementById('btn-view');
     this.onTool = onTool;
     this.onSpeed = onSpeed;
@@ -89,8 +93,11 @@ export class Interface {
     this.inspectEl.addEventListener('click', (e) => {
       if (e.target.closest('[data-close]')) onCloseInspect();
     });
+    this.moreBtn.addEventListener('click', () => this.toggleMore());
+    this.moreSheet.addEventListener('click', (e) => this.onMoreClick(e));
     document.addEventListener('pointerdown', (e) => {
       if (!this.tray.hidden && !e.target.closest('#tray') && !e.target.closest('.tool')) this.closeTray();
+      if (!this.moreSheet.hidden && !e.target.closest('#more-sheet') && !e.target.closest('#btn-more')) this.toggleMore(false);
     });
     window.addEventListener('keydown', (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -100,7 +107,10 @@ export class Interface {
         return;
       }
       if (e.key === 'v') return this.viewBtn.click();
-      if (e.key === 'Escape') return this.closeTray();
+      if (e.key === 'Escape') {
+        this.toggleMore(false);
+        return this.closeTray();
+      }
       const t = TOOLS.find((tool) => tool.key === e.key.toLowerCase());
       if (t) this.setTool(t.id);
     });
@@ -170,6 +180,67 @@ export class Interface {
     this.onTool(id);
   }
 
+  // ---- City controls sheet (phones and short screens) ------------------------
+
+  toggleMore(force) {
+    const open = force ?? this.moreSheet.hidden;
+    this._confirmRandom = false;
+    this.moreSheet.hidden = !open;
+    this.moreBtn.setAttribute('aria-expanded', String(open));
+    this.moreBtn.classList.toggle('is-on', open);
+    if (open) {
+      this.closeTray();
+      this.renderMore();
+    }
+  }
+
+  renderMore() {
+    if (this.moreSheet.hidden) return;
+    const speeds = [
+      [0, 'Pause'],
+      [1, '1×'],
+      [2, '2×'],
+      [3, '3×'],
+    ];
+    this.moreSheet.innerHTML =
+      `<header><h2>City controls</h2><button type="button" class="insp-close" data-more="close" aria-label="Close">${ICONS.close}</button></header>` +
+      `<span class="sheet-label">Speed</span><div class="seg big">${speeds
+        .map(([v, l]) => `<button type="button" data-speed="${v}" aria-pressed="${this.speed === v}">${l}</button>`)
+        .join('')}</div>` +
+      `<span class="sheet-label">Map view</span><div class="seg big views">${VIEWS.map(
+        (v) => `<button type="button" data-view="${v.id}" aria-pressed="${this.view === v.id}">${v.label}</button>`
+      ).join('')}</div>` +
+      `<div class="sheet-actions"><button type="button" class="ghost-btn" data-more="fit">Recenter</button>` +
+      `<button type="button" class="${this._confirmRandom ? 'primary-btn danger' : 'ghost-btn'}" data-more="random">${this._confirmRandom ? 'Tap again to replace your city' : 'Random Town'}</button></div>`;
+  }
+
+  onMoreClick(e) {
+    const t = e.target.closest('button');
+    if (!t) return;
+    if (t.dataset.speed != null) this.setSpeed(Number(t.dataset.speed));
+    else if (t.dataset.view) this.setView(t.dataset.view);
+    else if (t.dataset.more === 'close') return this.toggleMore(false);
+    else if (t.dataset.more === 'fit') {
+      this.onFit();
+      return this.toggleMore(false);
+    } else if (t.dataset.more === 'random') {
+      // Replacing the city can't be undone, so it takes a second tap.
+      if (!this._confirmRandom) {
+        this._confirmRandom = true;
+        clearTimeout(this._confirmTimer);
+        this._confirmTimer = setTimeout(() => {
+          this._confirmRandom = false;
+          this.renderMore();
+        }, 3500);
+      } else {
+        this._confirmRandom = false;
+        this.onRandom();
+        return this.toggleMore(false);
+      }
+    }
+    this.renderMore();
+  }
+
   setSpeed(speed) {
     if (speed > 0) this._resume = speed;
     this.speed = speed;
@@ -182,6 +253,7 @@ export class Interface {
     this.speedBtn.innerHTML = `${paused ? ICONS.play : ICONS.pause}<span class="pill-text">${paused ? 'Paused' : `${this.speed}×`}</span>`;
     this.speedBtn.setAttribute('aria-label', paused ? 'Resume time' : `Speed ${this.speed}×, change speed`);
     this.speedBtn.classList.toggle('is-paused', paused);
+    this.moreBtn?.classList.toggle('is-paused', paused);
   }
 
   setView(id) {
