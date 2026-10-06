@@ -104,6 +104,7 @@ body {
 
 /* Stats bubble */
 .stats {
+  box-sizing: border-box;
   position: absolute;
   top: calc(env(safe-area-inset-top, 0px) + 16px);
   left: calc(env(safe-area-inset-left, 0px) + 16px);
@@ -537,6 +538,77 @@ body {
   font-size: 11.5px;
   font-weight: 700;
   color: var(--ink-soft);
+}
+
+button {
+  touch-action: manipulation;
+}
+#btn-more {
+  display: none;
+}
+#btn-more.is-on,
+#btn-more.is-paused {
+  background: var(--press);
+  outline: 2px solid var(--tint-tower);
+}
+
+/* City controls sheet: speed, map view, recenter and Random Town on phones */
+.more-sheet {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
+  width: min(440px, calc(100vw - 24px));
+  max-height: calc(100% - 120px);
+  overflow-y: auto;
+  padding: 14px 16px 16px;
+  border-radius: 24px;
+  z-index: 7;
+  display: grid;
+  gap: 8px;
+  animation: card-in 0.3s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.more-sheet header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.more-sheet h2 {
+  margin: 0;
+  font: 600 19px/1.1 var(--font-display);
+}
+.sheet-label {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.seg.big button {
+  padding: 12px 4px;
+  font-size: 13.5px;
+  font-weight: 800;
+  min-height: 44px;
+}
+.seg.views {
+  flex-wrap: wrap;
+}
+.seg.views button {
+  flex: 1 1 40%;
+}
+.sheet-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 6px;
+}
+.sheet-actions button {
+  min-height: 46px;
+}
+.primary-btn.danger {
+  background: #f6a3a3;
+  color: #5a2323;
 }
 
 button:focus-visible {
@@ -1129,6 +1201,182 @@ button:focus-visible {
     bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
   }
 }
+/* Phones (portrait or landscape) and short windows: two buttons up top, everything else in the sheet */
+@media (max-width: 760px), (max-height: 520px) {
+  #btn-speed,
+  #btn-view,
+  #btn-fit,
+  #btn-random {
+    display: none;
+  }
+  #btn-more {
+    display: inline-flex;
+  }
+  .corner {
+    flex-direction: row;
+    gap: 8px;
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+    right: calc(env(safe-area-inset-right, 0px) + 12px);
+  }
+  .corner .pill {
+    width: 46px;
+    height: 46px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 23px;
+  }
+  #btn-life .pill-text {
+    display: none;
+  }
+  .stats {
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+    left: calc(env(safe-area-inset-left, 0px) + 12px);
+    max-width: calc(100vw - 144px);
+    column-gap: 10px;
+    padding: 8px 12px 8px 9px;
+  }
+  .stat-badge {
+    width: 28px;
+    height: 28px;
+    border-radius: 10px;
+  }
+  .stat-badge svg {
+    width: 17px;
+    height: 17px;
+  }
+  .stat-value {
+    font-size: 17px;
+  }
+  .stat-label {
+    font-size: 9.5px;
+  }
+  .clock {
+    font-size: 10.5px;
+  }
+}
+@media (max-width: 400px) {
+  .stat-value small {
+    display: none;
+  }
+  .stat-label {
+    letter-spacing: 0.02em;
+    font-size: 9px;
+  }
+  .stat {
+    gap: 6px;
+  }
+}
+@media (max-width: 340px) {
+  .stat-label {
+    display: none;
+  }
+  .stats {
+    max-width: calc(100vw - 132px);
+    column-gap: 8px;
+    padding: 6px 10px 6px 7px;
+  }
+  .stat-badge {
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+  }
+  .stat-value {
+    font-size: 15px;
+  }
+}
+
+/* Landscape phones: slim toolbar, panels fit between the top bar and the toolbar */
+@media (max-height: 520px) {
+  .toolbar {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+    gap: 2px;
+    padding: 4px;
+    border-radius: 20px;
+  }
+  .tool {
+    width: 46px;
+    padding: 4px 0;
+    border-radius: 16px;
+  }
+  .tool-label {
+    display: none;
+  }
+  .tool-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+  }
+  .tool[aria-pressed='true'] {
+    transform: translateY(-2px);
+  }
+  .tray {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 62px);
+  }
+  .toast {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 66px);
+  }
+  .more-sheet {
+    left: auto;
+    right: calc(env(safe-area-inset-right, 0px) + 12px);
+    top: calc(env(safe-area-inset-top, 0px) + 66px);
+    bottom: auto;
+    transform: none;
+    width: min(400px, calc(100vw - 24px));
+    max-height: calc(100% - 140px);
+    gap: 6px;
+    padding: 10px 14px 12px;
+  }
+  .more-sheet .sheet-label {
+    display: none;
+  }
+  .more-sheet h2 {
+    font-size: 16px;
+  }
+  .seg.big button {
+    min-height: 38px;
+    padding: 8px 2px;
+    font-size: 12.5px;
+  }
+  .seg.views {
+    flex-wrap: nowrap;
+  }
+  .seg.views button {
+    flex: 1 1 0;
+  }
+  .sheet-actions {
+    margin-top: 0;
+  }
+  .sheet-actions button {
+    min-height: 40px;
+  }
+  .legend {
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 66px);
+    left: calc(env(safe-area-inset-left, 0px) + 12px);
+    width: 180px;
+  }
+  .inspector,
+  .life-panel {
+    top: calc(env(safe-area-inset-top, 0px) + 70px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 62px);
+    max-height: none;
+  }
+  .inspector {
+    left: calc(env(safe-area-inset-left, 0px) + 12px);
+    right: auto;
+    width: 280px;
+  }
+  .life-panel {
+    left: auto;
+    right: calc(env(safe-area-inset-right, 0px) + 12px);
+    width: min(360px, 48vw);
+  }
+  .life-card {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 62px);
+    max-height: calc(100% - 76px);
+  }
+}
+
 @media (max-width: 360px) {
   .tool {
     width: 40px;
@@ -1138,6 +1386,10 @@ button:focus-visible {
   }
 }
 @media (pointer: coarse) {
+  /* 16px stops iPhone Safari zooming in when a field is focused */
+  .field input {
+    font-size: 16px;
+  }
   .choice kbd,
   .tray-item kbd {
     display: none;
@@ -1192,6 +1444,9 @@ button:focus-visible {
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20.5c.8-4 3.6-6.5 7-6.5s6.2 2.5 7 6.5"/></svg>
           <span class="pill-text">Life</span><span class="badge" hidden></span>
         </button>
+        <button type="button" id="btn-more" class="pill glass icon-only" aria-label="City controls" aria-haspopup="dialog" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
         <button type="button" id="btn-speed" class="pill glass" aria-label="Change speed"></button>
         <button type="button" id="btn-view" class="pill glass" aria-label="Switch map view"></button>
         <button type="button" id="btn-fit" class="pill glass icon-only" aria-label="Recenter the city" title="Recenter">
@@ -1203,6 +1458,7 @@ button:focus-visible {
         </button>
       </div>
 
+      <section class="more-sheet glass" id="more-sheet" role="dialog" aria-label="City controls" hidden></section>
       <aside class="inspector glass" id="inspector" aria-live="polite" hidden></aside>
       <aside class="life-panel glass" id="life-panel" aria-label="Life Story" hidden></aside>
       <section class="life-card glass" id="life-card" role="dialog" aria-live="polite" aria-label="Life event" hidden></section>
@@ -5989,6 +6245,10 @@ class Interface {
     this.inspectEl = document.getElementById('inspector');
     this.legendEl = document.getElementById('legend');
     this.speedBtn = document.getElementById('btn-speed');
+    this.moreBtn = document.getElementById('btn-more');
+    this.moreSheet = document.getElementById('more-sheet');
+    this.onRandom = onRandom;
+    this.onFit = onFit;
     this.viewBtn = document.getElementById('btn-view');
     this.onTool = onTool;
     this.onSpeed = onSpeed;
@@ -6020,8 +6280,11 @@ class Interface {
     this.inspectEl.addEventListener('click', (e) => {
       if (e.target.closest('[data-close]')) onCloseInspect();
     });
+    this.moreBtn.addEventListener('click', () => this.toggleMore());
+    this.moreSheet.addEventListener('click', (e) => this.onMoreClick(e));
     document.addEventListener('pointerdown', (e) => {
       if (!this.tray.hidden && !e.target.closest('#tray') && !e.target.closest('.tool')) this.closeTray();
+      if (!this.moreSheet.hidden && !e.target.closest('#more-sheet') && !e.target.closest('#btn-more')) this.toggleMore(false);
     });
     window.addEventListener('keydown', (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -6031,7 +6294,10 @@ class Interface {
         return;
       }
       if (e.key === 'v') return this.viewBtn.click();
-      if (e.key === 'Escape') return this.closeTray();
+      if (e.key === 'Escape') {
+        this.toggleMore(false);
+        return this.closeTray();
+      }
       const t = TOOLS.find((tool) => tool.key === e.key.toLowerCase());
       if (t) this.setTool(t.id);
     });
@@ -6101,6 +6367,67 @@ class Interface {
     this.onTool(id);
   }
 
+  // ---- City controls sheet (phones and short screens) ------------------------
+
+  toggleMore(force) {
+    const open = force ?? this.moreSheet.hidden;
+    this._confirmRandom = false;
+    this.moreSheet.hidden = !open;
+    this.moreBtn.setAttribute('aria-expanded', String(open));
+    this.moreBtn.classList.toggle('is-on', open);
+    if (open) {
+      this.closeTray();
+      this.renderMore();
+    }
+  }
+
+  renderMore() {
+    if (this.moreSheet.hidden) return;
+    const speeds = [
+      [0, 'Pause'],
+      [1, '1×'],
+      [2, '2×'],
+      [3, '3×'],
+    ];
+    this.moreSheet.innerHTML =
+      `<header><h2>City controls</h2><button type="button" class="insp-close" data-more="close" aria-label="Close">${ICONS.close}</button></header>` +
+      `<span class="sheet-label">Speed</span><div class="seg big">${speeds
+        .map(([v, l]) => `<button type="button" data-speed="${v}" aria-pressed="${this.speed === v}">${l}</button>`)
+        .join('')}</div>` +
+      `<span class="sheet-label">Map view</span><div class="seg big views">${VIEWS.map(
+        (v) => `<button type="button" data-view="${v.id}" aria-pressed="${this.view === v.id}">${v.label}</button>`
+      ).join('')}</div>` +
+      `<div class="sheet-actions"><button type="button" class="ghost-btn" data-more="fit">Recenter</button>` +
+      `<button type="button" class="${this._confirmRandom ? 'primary-btn danger' : 'ghost-btn'}" data-more="random">${this._confirmRandom ? 'Tap again to replace your city' : 'Random Town'}</button></div>`;
+  }
+
+  onMoreClick(e) {
+    const t = e.target.closest('button');
+    if (!t) return;
+    if (t.dataset.speed != null) this.setSpeed(Number(t.dataset.speed));
+    else if (t.dataset.view) this.setView(t.dataset.view);
+    else if (t.dataset.more === 'close') return this.toggleMore(false);
+    else if (t.dataset.more === 'fit') {
+      this.onFit();
+      return this.toggleMore(false);
+    } else if (t.dataset.more === 'random') {
+      // Replacing the city can't be undone, so it takes a second tap.
+      if (!this._confirmRandom) {
+        this._confirmRandom = true;
+        clearTimeout(this._confirmTimer);
+        this._confirmTimer = setTimeout(() => {
+          this._confirmRandom = false;
+          this.renderMore();
+        }, 3500);
+      } else {
+        this._confirmRandom = false;
+        this.onRandom();
+        return this.toggleMore(false);
+      }
+    }
+    this.renderMore();
+  }
+
   setSpeed(speed) {
     if (speed > 0) this._resume = speed;
     this.speed = speed;
@@ -6113,6 +6440,7 @@ class Interface {
     this.speedBtn.innerHTML = `${paused ? ICONS.play : ICONS.pause}<span class="pill-text">${paused ? 'Paused' : `${this.speed}×`}</span>`;
     this.speedBtn.setAttribute('aria-label', paused ? 'Resume time' : `Speed ${this.speed}×, change speed`);
     this.speedBtn.classList.toggle('is-paused', paused);
+    this.moreBtn?.classList.toggle('is-paused', paused);
   }
 
   setView(id) {
@@ -6304,7 +6632,7 @@ class LifeInterface {
     this.btn.querySelector('.badge').hidden = !c?.pending || (!this.cardMinimized && !this.card.hidden);
     this.renderCard();
     // On phones the event card and the panel share the same space; the card wins.
-    const narrow = window.innerWidth < 560;
+    const narrow = window.innerWidth < 560 || window.innerHeight < 520;
     this.panel.hidden = !this.open || (narrow && !this.card.hidden);
     if (!this.panel.hidden) {
       this.panel.innerHTML = !c ? this.createHTML() : c.alive ? this.lifeHTML(c) : this.deathHTML(c);

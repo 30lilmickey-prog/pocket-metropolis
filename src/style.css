@@ -99,6 +99,7 @@ body {
 
 /* Stats bubble */
 .stats {
+  box-sizing: border-box;
   position: absolute;
   top: calc(env(safe-area-inset-top, 0px) + 16px);
   left: calc(env(safe-area-inset-left, 0px) + 16px);
@@ -532,6 +533,77 @@ body {
   font-size: 11.5px;
   font-weight: 700;
   color: var(--ink-soft);
+}
+
+button {
+  touch-action: manipulation;
+}
+#btn-more {
+  display: none;
+}
+#btn-more.is-on,
+#btn-more.is-paused {
+  background: var(--press);
+  outline: 2px solid var(--tint-tower);
+}
+
+/* City controls sheet: speed, map view, recenter and Random Town on phones */
+.more-sheet {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
+  width: min(440px, calc(100vw - 24px));
+  max-height: calc(100% - 120px);
+  overflow-y: auto;
+  padding: 14px 16px 16px;
+  border-radius: 24px;
+  z-index: 7;
+  display: grid;
+  gap: 8px;
+  animation: card-in 0.3s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.more-sheet header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.more-sheet h2 {
+  margin: 0;
+  font: 600 19px/1.1 var(--font-display);
+}
+.sheet-label {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.seg.big button {
+  padding: 12px 4px;
+  font-size: 13.5px;
+  font-weight: 800;
+  min-height: 44px;
+}
+.seg.views {
+  flex-wrap: wrap;
+}
+.seg.views button {
+  flex: 1 1 40%;
+}
+.sheet-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 6px;
+}
+.sheet-actions button {
+  min-height: 46px;
+}
+.primary-btn.danger {
+  background: #f6a3a3;
+  color: #5a2323;
 }
 
 button:focus-visible {
@@ -1124,6 +1196,182 @@ button:focus-visible {
     bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
   }
 }
+/* Phones (portrait or landscape) and short windows: two buttons up top, everything else in the sheet */
+@media (max-width: 760px), (max-height: 520px) {
+  #btn-speed,
+  #btn-view,
+  #btn-fit,
+  #btn-random {
+    display: none;
+  }
+  #btn-more {
+    display: inline-flex;
+  }
+  .corner {
+    flex-direction: row;
+    gap: 8px;
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+    right: calc(env(safe-area-inset-right, 0px) + 12px);
+  }
+  .corner .pill {
+    width: 46px;
+    height: 46px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 23px;
+  }
+  #btn-life .pill-text {
+    display: none;
+  }
+  .stats {
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+    left: calc(env(safe-area-inset-left, 0px) + 12px);
+    max-width: calc(100vw - 144px);
+    column-gap: 10px;
+    padding: 8px 12px 8px 9px;
+  }
+  .stat-badge {
+    width: 28px;
+    height: 28px;
+    border-radius: 10px;
+  }
+  .stat-badge svg {
+    width: 17px;
+    height: 17px;
+  }
+  .stat-value {
+    font-size: 17px;
+  }
+  .stat-label {
+    font-size: 9.5px;
+  }
+  .clock {
+    font-size: 10.5px;
+  }
+}
+@media (max-width: 400px) {
+  .stat-value small {
+    display: none;
+  }
+  .stat-label {
+    letter-spacing: 0.02em;
+    font-size: 9px;
+  }
+  .stat {
+    gap: 6px;
+  }
+}
+@media (max-width: 340px) {
+  .stat-label {
+    display: none;
+  }
+  .stats {
+    max-width: calc(100vw - 132px);
+    column-gap: 8px;
+    padding: 6px 10px 6px 7px;
+  }
+  .stat-badge {
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+  }
+  .stat-value {
+    font-size: 15px;
+  }
+}
+
+/* Landscape phones: slim toolbar, panels fit between the top bar and the toolbar */
+@media (max-height: 520px) {
+  .toolbar {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+    gap: 2px;
+    padding: 4px;
+    border-radius: 20px;
+  }
+  .tool {
+    width: 46px;
+    padding: 4px 0;
+    border-radius: 16px;
+  }
+  .tool-label {
+    display: none;
+  }
+  .tool-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+  }
+  .tool[aria-pressed='true'] {
+    transform: translateY(-2px);
+  }
+  .tray {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 62px);
+  }
+  .toast {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 66px);
+  }
+  .more-sheet {
+    left: auto;
+    right: calc(env(safe-area-inset-right, 0px) + 12px);
+    top: calc(env(safe-area-inset-top, 0px) + 66px);
+    bottom: auto;
+    transform: none;
+    width: min(400px, calc(100vw - 24px));
+    max-height: calc(100% - 140px);
+    gap: 6px;
+    padding: 10px 14px 12px;
+  }
+  .more-sheet .sheet-label {
+    display: none;
+  }
+  .more-sheet h2 {
+    font-size: 16px;
+  }
+  .seg.big button {
+    min-height: 38px;
+    padding: 8px 2px;
+    font-size: 12.5px;
+  }
+  .seg.views {
+    flex-wrap: nowrap;
+  }
+  .seg.views button {
+    flex: 1 1 0;
+  }
+  .sheet-actions {
+    margin-top: 0;
+  }
+  .sheet-actions button {
+    min-height: 40px;
+  }
+  .legend {
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 66px);
+    left: calc(env(safe-area-inset-left, 0px) + 12px);
+    width: 180px;
+  }
+  .inspector,
+  .life-panel {
+    top: calc(env(safe-area-inset-top, 0px) + 70px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 62px);
+    max-height: none;
+  }
+  .inspector {
+    left: calc(env(safe-area-inset-left, 0px) + 12px);
+    right: auto;
+    width: 280px;
+  }
+  .life-panel {
+    left: auto;
+    right: calc(env(safe-area-inset-right, 0px) + 12px);
+    width: min(360px, 48vw);
+  }
+  .life-card {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 62px);
+    max-height: calc(100% - 76px);
+  }
+}
+
 @media (max-width: 360px) {
   .tool {
     width: 40px;
@@ -1133,6 +1381,10 @@ button:focus-visible {
   }
 }
 @media (pointer: coarse) {
+  /* 16px stops iPhone Safari zooming in when a field is focused */
+  .field input {
+    font-size: 16px;
+  }
   .choice kbd,
   .tray-item kbd {
     display: none;

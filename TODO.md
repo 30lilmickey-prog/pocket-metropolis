@@ -9,6 +9,7 @@
 - [x] Versioned saves with migrations; Random Town; deployed on Vercel
 - [x] 32×32 map, jobs (shop, office), services (school, clinic), traffic, Inspect tool, map views, speed controls
 - [x] Life Story, first version (see section 1)
+- [x] Phone layout: Life and a controls sheet up top instead of a column of side buttons; compact landscape layout
 
 ## 1. Life Story: live one resident's life
 
