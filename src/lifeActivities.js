@@ -8,9 +8,10 @@
 
 import { STRUCTURES } from './config.js';
 import { CAREERS } from './lifeData.js';
+import { addressOf } from './streets.js';
 
 const o = (text, effects = {}, extra = {}) => ({ text, effects, ...extra });
-const where = (t) => `the ${STRUCTURES[t.structure.type].label.toLowerCase()} at ${t.x}, ${t.y}`;
+const where = (t) => `the ${STRUCTURES[t.structure.type].label.toLowerCase()} at ${addressOf(t)}`;
 const chance = (rng, p) => rng() < p;
 
 export const ACTIVITY_GROUPS = [
@@ -54,7 +55,7 @@ export const ACTIVITIES = [
       if (field) return 'Play sport at the field';
       return ctx.facts.greenery > 0.1 ? 'Go for a run in the park' : 'Go for a jog';
     },
-    hint: (ctx) => (ctx.nearest('field', 10) ? `Sports field at ${ctx.nearest('field', 10).x}, ${ctx.nearest('field', 10).y}: +Health` : '+Health'),
+    hint: (ctx) => (ctx.nearest('field', 10) ? `Sports field at ${addressOf(ctx.nearest('field', 10))}: +Health` : '+Health'),
     run: (ctx, rng) => {
       const field = ctx.nearest('field', 10);
       const sporty = ctx.has('sporty') ? 2 : 0;
@@ -146,7 +147,7 @@ export const ACTIVITIES = [
       const n = ctx.neighbour();
       const odds = 0.55 + (ctx.has('outgoing') ? 0.25 : 0) + (ctx.char.stats.looks - 50) / 250;
       if (!chance(rng, odds)) return o('{name} said hello to a few people, but nothing clicked.', { happiness: -1 });
-      if (n) return o(`{name} got chatting with ${n.person} from ${n.family} at ${n.x}, ${n.y}. A new friend!`, { happiness: 4 }, { do: (c) => c.addFriend(55, n.person) });
+      if (n) return o(`{name} got chatting with ${n.person} from ${n.family} at ${n.address}. A new friend!`, { happiness: 4 }, { do: (c) => c.addFriend(55, n.person) });
       return o('{name} met someone nice and swapped numbers.', { happiness: 4 }, { do: (c) => c.addFriend(50) });
     },
   },
@@ -194,7 +195,7 @@ export const ACTIVITIES = [
     label: () => 'Go to the playground',
     hint: (ctx) => {
       const pg = ctx.nearest('playground', 8);
-      return pg ? `At ${pg.x}, ${pg.y}` : 'None nearby: build a playground';
+      return pg ? `At ${addressOf(pg)}` : 'None nearby: build a playground';
     },
     when: (ctx) => ctx.nearest('playground', 8),
     run: (ctx, rng) => {
@@ -212,7 +213,7 @@ export const ACTIVITIES = [
     label: () => 'Walk in the park',
     hint: (ctx) => {
       const p = ctx.nearest('park', 10);
-      return p ? `At ${p.x}, ${p.y}` : 'None nearby: build a park';
+      return p ? `At ${addressOf(p)}` : 'None nearby: build a park';
     },
     when: (ctx) => ctx.nearest('park', 10),
     run: (ctx) => {
@@ -229,7 +230,7 @@ export const ACTIVITIES = [
     label: () => 'Go shopping',
     hint: (ctx) => {
       const s = ctx.nearest('shop', 40);
-      return s ? `Shop at ${s.x}, ${s.y}` : 'No shops in town yet';
+      return s ? `Shop at ${addressOf(s)}` : 'No shops in town yet';
     },
     when: (ctx) => ctx.nearest('shop', 40),
     cost: () => 150,
@@ -266,8 +267,8 @@ export const ACTIVITIES = [
     run: (ctx, rng) => {
       const n = ctx.neighbour();
       return chance(rng, 0.2)
-        ? o(`The ${n.family.replace(/^the /, '')} kids at ${n.x}, ${n.y} painted the cat. {name} still got paid.`, { money: 150, happiness: -2 })
-        : o(`{name} babysat for ${n.family} at ${n.x}, ${n.y}. Easy money.`, { money: 150, happiness: 1 });
+        ? o(`The ${n.family.replace(/^the /, '')} kids at ${n.address} painted the cat. {name} still got paid.`, { money: 150, happiness: -2 })
+        : o(`{name} babysat for ${n.family} at ${n.address}. Easy money.`, { money: 150, happiness: 1 });
     },
   },
   {

@@ -5,6 +5,7 @@ import { HALF_W, HALF_H, gridToWorld, worldToGrid } from './iso.js';
 import { lightingAt } from './lighting.js';
 import { lit, litA, rgba, mixHex } from './color.js';
 import { clamp, hash2 } from './utils.js';
+import { shortName, addressOf } from './streets.js';
 
 const SLAB_DEPTH = 18;
 // Unlit lighting for the cached ground layer; the frame's real light is multiplied on afterwards.
@@ -339,6 +340,7 @@ export class Renderer {
     }
     if (view.overlay && view.overlay !== 'none') for (const t of tiles) this.drawOverlay(ctx, t, view.overlay);
     if (view.issues?.length) this.drawIssues(ctx, view.issues);
+    this.drawStreetNames(ctx, rect);
     if (view.selected) this.drawSelected(ctx, view.selected);
     if (view.hover) this.drawHover(ctx, view.hover);
     if (view.plan) this.drawPlan(ctx, view.plan);
@@ -416,7 +418,10 @@ export class Renderer {
       const w = tw + 34;
       const h = 24;
       const x = clamp(s.x - w / 2, 6, this.w - w - 6);
-      const y = clamp(s.y - h - 10 + bob, 6, this.h - h - 6);
+      let y = clamp(s.y - h - 10 + bob, 6, this.h - h - 6);
+      // Keep clear of the Life Story home tag: hop above it.
+      const tag = this.homeTag;
+      if (tag && x < tag.x + tag.w && x + w > tag.x && y < tag.y + tag.h && y + h > tag.y) y = Math.max(6, tag.y - h - 8);
       if (s.x < -40 || s.x > this.w + 40 || s.y < -20 || s.y > this.h + 60) continue;
       ctx.globalAlpha = fade;
       ctx.fillStyle = 'rgba(52,44,96,0.18)';
@@ -1137,6 +1142,47 @@ export class Renderer {
     ctx.fillStyle = color;
     tilePoly(ctx, t.x, t.y);
     ctx.fill();
+  }
+
+  // Street names painted along the roads, like a map. Hidden when zoomed far out.
+  drawStreetNames(ctx, rect) {
+    const runs = this.city.derived.streets;
+    const z = this.camera.zoom;
+    if (!runs || z < 0.7) return;
+    const size = clamp(10 / z, 6.5, 11);
+    const len = Math.hypot(HALF_W, HALF_H);
+    const ux = HALF_W / len;
+    const uy = HALF_H / len;
+    const dark = (this.L?.daylight ?? 1) < 0.35;
+    ctx.save();
+    ctx.font = `800 ${size.toFixed(1)}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = size * 0.32;
+    ctx.strokeStyle = dark ? 'rgba(40,36,70,0.75)' : 'rgba(255,255,255,0.85)';
+    ctx.fillStyle = dark ? 'rgba(255,244,214,0.92)' : 'rgba(98,88,130,0.9)';
+    for (const r of runs) {
+      if (r.tiles.length < 3) continue;
+      const label = shortName(r.name);
+      // One label per stretch of about ten tiles, centred in it.
+      const every = 10;
+      const count = Math.max(1, Math.round(r.tiles.length / every));
+      for (let k = 0; k < count; k++) {
+        const mid = r.tiles[Math.min(r.tiles.length - 1, Math.floor(((k + 0.5) * r.tiles.length) / count))];
+        const p = gridToWorld(mid.x + 0.5, mid.y + 0.5);
+        if (p.x < rect.left || p.x > rect.right || p.y < rect.top || p.y > rect.bottom) continue;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        // Lay the text flat on the road: along the road, and squashed onto the ground the other way.
+        if (r.dir === 'h') ctx.transform(ux, uy, -ux, uy, 0, 0);
+        else ctx.transform(ux, -uy, ux, uy, 0, 0);
+        ctx.strokeText(label, 0, 0);
+        ctx.fillText(label, 0, 0);
+        ctx.restore();
+      }
+    }
+    ctx.restore();
   }
 
   // The ground under each resident thought's area, tinted red, yellow or green. The one being
@@ -2197,9 +2243,10 @@ export class Renderer {
 
   // Pins over the Life Story character's home and workplace, drawn above everything else.
   drawLifePins(ctx, L) {
+    this.homeTag = null;
     const c = this.city.systems.life?.char;
     if (!c?.alive) return;
-    const pin = (spot, color, size, icon) => {
+    const pin = (spot, color, size, icon, label = null) => {
       const t = this.city.getTile(spot.x, spot.y);
       if (!t) return;
       const f = t.structure ? this.footprint(t) : null;
@@ -2242,10 +2289,41 @@ export class Renderer {
         ctx.fillRect(-r * 0.18, -r * 0.5, r * 0.36, r * 0.18);
       }
       ctx.restore();
+      if (label) {
+        // An address tag over the pin, so the home is easy to find and name.
+        const fs = 9 * z;
+        ctx.save();
+        ctx.font = `800 ${fs.toFixed(1)}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+        const tw = ctx.measureText(label).width;
+        const w = tw + fs * 1.4;
+        const h = fs * 1.9;
+        const x = p.x - w / 2;
+        const y = p.y - r * 1.4 - h - 3 * z;
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.4 * z;
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, h / 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#4a4270';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, p.x, y + h / 2 + 0.5);
+        ctx.restore();
+        // Remember where the tag is on screen so thought bubbles can keep clear of it.
+        const a = this.worldToScreen({ x, y });
+        const zz = this.camera.zoom;
+        this.homeTag = { x: a.x, y: a.y, w: w * zz, h: (h + r * 3) * zz };
+      }
       if (L.lamps > 0.1) this.glows.push({ x: p.x, y: p.y, r: r * 2.4, a: 0.35 * L.lamps, rgb: '255,240,220' });
     };
     if (c.job) pin(c.job, '#a98bd0', 7.5, 'work');
-    if (c.home) pin(c.home, c.look?.outfit || '#ff8f7e', 9.5, 'home');
+    if (c.home) {
+      const t = this.city.getTile(c.home.x, c.home.y);
+      const addr = t?.address ? shortName(addressOf(t)) : null;
+      pin(c.home, c.look?.outfit || '#ff8f7e', 9.5, 'home', addr && this.camera.zoom >= 0.6 ? addr : null);
+    }
     // A small marker bobbing over the character when they're out, so they're easy to spot.
     const h = this.agents.hero;
     if (h && !h.dead && h.alpha > 0.2) {

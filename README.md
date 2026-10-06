@@ -11,7 +11,8 @@ A relaxing isometric tiny-city builder. You plan the city; residents decide for 
 - **Resident thoughts:** residents say what they wish for ("Our kids have no school nearby") in bubbles over their homes and in the City panel, with a **Show me** button that flies to the spot. Issues are colour-coded: **red** needs fixing, **yellow** is worth a look, **green** is going well. While the City panel is open the affected tiles are tinted on the map in the same colour, and the issue you're looking at pulses with a marker over each tile
 - Placing something shows how much nearby homes gained or lost (+6%), and a new home shows how appealing its lot is
 - A labor market matches workers to the nearest jobs they can reach by road. Commutes load the roads they use, and cars follow those routes at morning and evening rush hour
-- Inspect any tile to see its residents or jobs and a breakdown of its desirability
+- **Street names and addresses:** every straight road gets a name (Maple Street, Lavender Avenue…) painted on the map when you zoom in, and every building gets a house number, odd on one side and even on the other. Names stay put as roads grow, and when a road is cut in two the longer part keeps the name. Life Story, the inspector and events all use addresses ("14 Maple Street") instead of map coordinates
+- Inspect any tile to see its address, residents or jobs and a breakdown of its desirability
 - Map views for desirability, traffic and services; pause and 1×–3× speed
 - A slow day/night cycle with lit windows, street lights and headlights
 - Seasons (two in-game days each) and weather: rain with umbrellas and ripples, winter snow, morning fog
@@ -42,7 +43,7 @@ Open **Life** to create a character: name, pronouns, look and two traits. They a
 - The city shapes the life: schools and clinics near home, parks and trees, traffic on the commute, which workplaces are hiring and which homes have room. Bulldozing their home or workplace changes their story too.
 - Stages run from baby to senior. When a life ends you can continue as your child, or start a new life.
 - **Things to do:** between events, pick activities (two a year as a child, three from 13): study, exercise, see a doctor, hang out with friends and family, go on dates, visit the playground or park, go shopping, volunteer, babysit, work overtime, look for a job. Many use real places: the nearest sports field, playground, park, shop, school or clinic. Gains shrink as a stat gets high, so variety pays.
-- **Buy a home:** save up and buy a real house or flat in your city. Prices follow desirability, so the homes you make lovely cost more.
+- **Buy a home:** save up and buy a real house or flat in your city. Prices follow desirability, so the homes you make lovely cost more. After a move the camera flies to the new home, the home pin shows its address, and tapping the address in the Life panel shows it on the map.
 - **Neighbours** are the families living in real homes near yours, and they keep the same names. Events follow the city too: snow days, heatwaves, cherry blossom, a festival when your town reaches a new milestone, and nudges when there's no playground or school nearby.
 - **Your character on the map:** from age 3 they walk their real routes, to work by day if they have a job or out to the park, with a ring and a marker so you can spot them.
 - **Achievements** (18, kept across every life in the city) and a **life ribbon** for each finished life, such as Centenarian, Tycoon, Genius or Family first.
@@ -82,6 +83,7 @@ Each system lives in its own module under `src/` and talks to the others only th
 | Persistence | `persistence.js` | Versioned localStorage saves with a migration table; autosave. |
 | Weather | `weather.js` | Seasons from the day count; weather spells with seasonal odds; smoothed rain, snow, fog and snow cover for the renderer and agents. |
 | Audio | `audio.js` | Synthesised effects (ZzFX-based) and ambience through one master volume. |
+| Streets | `streets.js` | Names straight runs of road and numbers the buildings along them; names are saved in `city.systems.streets` by tile. Writes `street` and `address` on tiles. |
 | History | `history.js` | Undo and redo of tile edits, plus the L-shaped road and brush stroke paths. |
 | Milestones | `milestones.js`, `advisor.js`, `cityUI.js` | Town titles and permanent unlocks (saved in `city.systems.milestones`); resident thoughts computed from the city every few seconds into `city.derived.thoughts`; the City panel. |
 | Glue | `main.js`, `ui.js`, `generator.js` | Wires systems together, the toolbar (with lock badges) and stats bubble, placement feedback, Random Town. |
@@ -94,7 +96,7 @@ Derived data (labor market, commute routes, congestion, coverage, resident thoug
 npm test   # node --test, no dependencies
 ```
 
-The tests cover the labor market, road reachability, service and play coverage, milestones and unlocks, resident thoughts, save migration, town generation, pausing, and Life Story (aging, events, jobs and homes from the city, bulldozed homes, activities, buying a home, neighbours, achievements and ribbons, the character's walker, whole lives start to finish, saving).
+The tests cover street names and addresses, the labor market, road reachability, service and play coverage, milestones and unlocks, resident thoughts, save migration, town generation, pausing, and Life Story (aging, events, jobs and homes from the city, bulldozed homes, activities, buying a home, neighbours, achievements and ribbons, the character's walker, whole lives start to finish, saving).
 
 ### Extending it
 

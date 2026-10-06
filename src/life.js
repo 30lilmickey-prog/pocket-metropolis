@@ -9,6 +9,7 @@ import { LIFE_EVENTS } from './lifeEvents.js';
 import { ACTIVITIES, energyFor } from './lifeActivities.js';
 import { ACHIEVEMENTS, ribbonFor } from './lifeAchievements.js';
 import { pick, hash2 } from './utils.js';
+import { addressOf } from './streets.js';
 
 // One year of life passes per in-game day; Age up skips ahead.
 export const YEAR_SECONDS = DAY_LENGTH_SECONDS;
@@ -26,7 +27,7 @@ export function homePrice(tile) {
 export function familyAt(tile) {
   const last = LAST_NAMES[Math.floor(hash2(tile.x, tile.y, 77) * LAST_NAMES.length)];
   const first = FIRST_NAMES[Math.floor(hash2(tile.x, tile.y, 78) * FIRST_NAMES.length)];
-  return { family: `the ${last} family`, person: `${first} ${last}`, x: tile.x, y: tile.y };
+  return { family: `the ${last} family`, person: `${first} ${last}`, x: tile.x, y: tile.y, address: addressOf(tile) };
 }
 
 export class LifeSystem {
@@ -90,7 +91,7 @@ export class LifeSystem {
       generation: (prev?.char?.generation || 0) + 1,
     };
     this.city.systems.life = { char, history: prev?.history || [], achievements: prev?.achievements || {} };
-    const where = home ? `a ${STRUCTURES[home.structure.type].label.toLowerCase()} at ${home.x}, ${home.y}` : 'a city with no homes yet';
+    const where = home ? `a ${STRUCTURES[home.structure.type].label.toLowerCase()} at ${addressOf(home)}` : 'a city with no homes yet';
     this.log(`${first} ${last} was born in ${where}.`);
     this.planYear();
     this.checkAchievements();
@@ -235,7 +236,7 @@ export class LifeSystem {
       const next = this.bestHome({ occupiedOk: c.livesWithParents });
       if (next) {
         c.home = { x: next.x, y: next.y };
-        this.log(`${c.first}'s home was demolished. ${c.livesWithParents ? 'The family' : c.first} moved to ${next.x}, ${next.y}.`);
+        this.log(`${c.first}'s home was demolished. ${c.livesWithParents ? 'The family' : c.first} moved to ${addressOf(next)}.`);
       } else {
         c.home = null;
         this.log(`${c.first}'s home was demolished and there was nowhere free to move.`);
@@ -414,7 +415,8 @@ export class LifeSystem {
       money: `$${c.money.toLocaleString()}`,
       neighbour: this.neighbour()?.family || 'the neighbours',
       neighbourperson: this.neighbour()?.person || 'a neighbour',
-      nspot: this.neighbour() ? `${this.neighbour().x}, ${this.neighbour().y}` : 'next door',
+      nspot: this.neighbour()?.address || 'next door',
+      address: c.home ? addressOf(this.city.getTile(c.home.x, c.home.y)) : 'no fixed address',
       job: c.job ? CAREERS[c.job.type].titles[c.job.level].toLowerCase() : 'job',
       workplace: c.job ? STRUCTURES[c.job.type].label.toLowerCase() : 'work',
     };

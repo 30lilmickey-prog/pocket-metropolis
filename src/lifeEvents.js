@@ -7,11 +7,12 @@
 
 import { STRUCTURES } from './config.js';
 import { CAREERS } from './lifeData.js';
+import { addressOf } from './streets.js';
 import { MORE_EVENTS } from './lifeEventsMore.js';
 
 const o = (text, effects = {}, extra = {}) => ({ text, effects, ...extra });
 
-const place = (t) => `the ${STRUCTURES[t.structure.type].label.toLowerCase()} at ${t.x}, ${t.y}`;
+const place = (t) => `the ${STRUCTURES[t.structure.type].label.toLowerCase()} at ${addressOf(t)}`;
 
 export const LIFE_EVENTS = [
   // ---- Baby ---------------------------------------------------------------
@@ -328,7 +329,7 @@ export const LIFE_EVENTS = [
       ...ctx
         .openHomes()
         .slice(0, 3)
-        .map((t) => ({ label: `${STRUCTURES[t.structure.type].label} at ${t.x}, ${t.y} · ${Math.round(t.desirability * 100)}% desirable`, data: { x: t.x, y: t.y } })),
+        .map((t) => ({ label: `${STRUCTURES[t.structure.type].label} at ${addressOf(t)} · ${Math.round(t.desirability * 100)}% desirable`, data: { x: t.x, y: t.y } })),
       { label: 'Stay with {mother} and {father} a while longer', data: null },
     ],
     outcome: (ctx, data) => {

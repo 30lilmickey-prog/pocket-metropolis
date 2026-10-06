@@ -4,6 +4,7 @@
 import { STRUCTURES } from './config.js';
 import { PRONOUNS, SKIN_TONES, HAIR_COLORS, OUTFIT_COLORS, TRAITS, CAREERS, stageFor } from './lifeData.js';
 import { STAT_LABELS } from './lifeEngine.js';
+import { addressOf } from './streets.js';
 import { ACTIVITY_GROUPS, energyFor } from './lifeActivities.js';
 import { ACHIEVEMENTS } from './lifeAchievements.js';
 
@@ -148,7 +149,7 @@ export class LifeInterface {
       .join('');
     const career = c.job && CAREERS[c.job.type];
     const occupation = c.job
-      ? `${career.titles[c.job.level]} at the ${STRUCTURES[c.job.type].label.toLowerCase()} (${c.job.x}, ${c.job.y})`
+      ? `${career.titles[c.job.level]} at the ${STRUCTURES[c.job.type].label.toLowerCase()}, ${addressOf(life.city.getTile(c.job.x, c.job.y))}`
       : c.age >= 6 && c.age <= 17
         ? f.schoolCoverage > 0.25
           ? 'At school'
@@ -185,7 +186,7 @@ export class LifeInterface {
       <ul class="stat-bars">${bars}<li><span>Money</span><span></span><b>${money(c.money)}</b></li></ul>
       ${this.activitiesHTML(c)}
       <dl class="life-facts">
-        <div><dt>Home</dt><dd>${c.home ? `${c.livesWithParents ? 'With family' : 'Own place'} at ${c.home.x}, ${c.home.y} · ${Math.round(f.desirability * 100)}% desirable` : 'No home'}</dd></div>
+        <div><dt>Home</dt><dd>${c.home ? `<button type="button" class="address-link" data-act="focus" title="Show on the map">${esc(addressOf(f.home))}</button><small>${c.livesWithParents ? 'With family' : c.flags.ownsHome ? 'Owned' : 'Own place'} · ${Math.round(f.desirability * 100)}% desirable</small>` : 'No home'}</dd></div>
         <div><dt>Daily life</dt><dd>${esc(occupation)}</dd></div>
         <div><dt>Traits</dt><dd>${c.traits.map((t) => TRAITS.find((x) => x.id === t)?.label).join(', ')}</dd></div>
       </dl>

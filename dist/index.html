@@ -1318,6 +1318,27 @@ button:focus-visible {
   background: color-mix(in srgb, var(--ribbon) 55%, transparent);
 }
 
+.address-link {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  text-decoration-color: var(--stat-rel);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.life-facts dd small {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
 .life-hint {
   margin: -4px 0 0;
   font-size: 11.5px;
@@ -2392,6 +2413,7 @@ class CityState {
   // Wipe every tile but keep time of day.
   reset() {
     this._buildTiles();
+    delete this.systems.streets; // a new town gets new street names
     this.dirty = true;
     this.revision++;
   }
@@ -2769,6 +2791,134 @@ function computeCoverage(city) {
 }
 
 return { computeCoverage };
+})();
+
+// ---- streets.js ----
+const __mod_streets = (() => {
+// Streets: every straight run of road gets a name, and every building facing a road gets a house
+// number on it ("14 Maple Street"). Names are saved in city.systems.streets by tile, so they stay put
+// when roads grow, and a split road keeps its name on the longer half.
+//
+// Writes derived data on tiles: `street` (road tiles: the name of their main run) and `address`
+// (buildings with road access). Recomputed whenever the map changes.
+
+const { STRUCTURES } = __mod_config;
+const { hash2 } = __mod_utils;
+const NAMES = [
+  'Maple', 'Willow', 'Blossom', 'Clover', 'Juniper', 'Peach', 'Lavender', 'Honey', 'Meadow', 'Sparrow',
+  'Bluebell', 'Cherry', 'Hazel', 'Birch', 'Rosemary', 'Poppy', 'Linden', 'Primrose', 'Thistle', 'Elder',
+  'Fern', 'Marigold', 'Orchard', 'Chestnut', 'Acorn', 'Pebble', 'Brook', 'Lantern', 'Harbour', 'Sunny',
+  'Dove', 'Robin', 'Wren', 'Lark', 'Saffron', 'Cinnamon', 'Pumpkin', 'Daisy', 'Tulip', 'Ivy',
+  'Moss', 'Cedar', 'Aspen', 'Magnolia', 'Lilac', 'Sage', 'Mint', 'Plum', 'Apricot', 'Biscuit',
+  'Velvet', 'Cobble', 'Kite', 'Puddle', 'Teacup', 'Ribbon', 'Button', 'Marble', 'Feather', 'Cloud',
+];
+// Roads running along x read as streets and lanes, roads along y as avenues and ways.
+const SUFFIX = { h: ['Street', 'Road', 'Lane'], v: ['Avenue', 'Way', 'Row'] };
+const SHORT = { Street: 'St', Road: 'Rd', Lane: 'Ln', Avenue: 'Ave', Way: 'Way', Row: 'Row' };
+
+function shortName(name) {
+  const i = name.lastIndexOf(' ');
+  return i < 0 ? name : `${name.slice(0, i)} ${SHORT[name.slice(i + 1)] || name.slice(i + 1)}`;
+}
+
+// Straight runs of road: { dir: 'h'|'v', tiles: [tile…] }. Runs of one tile are kept only when
+// the tile isn't already part of a longer run the other way (a lone road stub still gets a name).
+function findRuns(city) {
+  const runs = [];
+  const longest = new Map(); // tile → its longest run
+  for (const dir of ['h', 'v']) {
+    const dx = dir === 'h' ? 1 : 0;
+    const dy = dir === 'h' ? 0 : 1;
+    for (const t of city.tiles) {
+      if (!city.isRoad(t.x, t.y) || city.isRoad(t.x - dx, t.y - dy)) continue; // start of a run only
+      const tiles = [];
+      for (let x = t.x, y = t.y; city.isRoad(x, y); x += dx, y += dy) tiles.push(city.getTile(x, y));
+      runs.push({ dir, tiles });
+    }
+  }
+  for (const r of runs) for (const t of r.tiles) if (!longest.has(t) || longest.get(t).tiles.length < r.tiles.length) longest.set(t, r);
+  return runs.filter((r) => r.tiles.length > 1 || longest.get(r.tiles[0]) === r);
+}
+
+// Name every run, reusing saved names where the run overlaps tiles that had one.
+function computeStreets(city) {
+  const saved = city.systems.streets || { h: {}, v: {} };
+  const runs = findRuns(city);
+  const W = city.width;
+  const next = { h: {}, v: {} };
+  const used = new Set();
+  // Longer runs choose first, so when a street is cut in two the longer part keeps the name.
+  runs.sort((a, b) => b.tiles.length - a.tiles.length);
+  for (const r of runs) {
+    const votes = new Map();
+    for (const t of r.tiles) {
+      const n = saved[r.dir]?.[t.y * W + t.x];
+      if (n && !used.has(n)) votes.set(n, (votes.get(n) || 0) + 1);
+    }
+    let name = [...votes.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+    if (!name) name = freshName(r, used);
+    used.add(name);
+    r.name = name;
+    for (const t of r.tiles) next[r.dir][t.y * W + t.x] = name;
+  }
+  city.systems.streets = next;
+
+  // Road tiles show the name of their longest run.
+  for (const t of city.tiles) {
+    t.street = null;
+    t.address = null;
+  }
+  const onTile = new Map(); // road tile → [{ run, index }] (two entries at a crossing)
+  for (const r of runs) {
+    r.tiles.forEach((t, index) => {
+      if (!onTile.has(t)) onTile.set(t, []);
+      onTile.get(t).push({ run: r, index });
+    });
+  }
+  for (const [t, list] of onTile) t.street = list.reduce((a, b) => (b.run.tiles.length > a.run.tiles.length ? b : a)).run.name;
+
+  // Buildings take a number on the road they face: odd on one side, even on the other.
+  for (const t of city.tiles) {
+    if (!t.structure || STRUCTURES[t.structure.type].road) continue;
+    let best = null;
+    for (const [ox, oy] of [
+      [0, 1],
+      [1, 0],
+      [0, -1],
+      [-1, 0],
+    ]) {
+      const road = city.getTile(t.x + ox, t.y + oy);
+      for (const { run, index } of (road && onTile.get(road)) || []) {
+        // Prefer a road the building sits beside (not at the end of), then the longer street.
+        const beside = (run.dir === 'h' && oy !== 0) || (run.dir === 'v' && ox !== 0);
+        const score = (beside ? 1000 : 0) + run.tiles.length;
+        if (!best || score > best.score) best = { score, run, index, side: run.dir === 'h' ? oy : ox };
+      }
+    }
+    if (best) t.address = `${best.index * 2 + (best.side > 0 ? 1 : 2)} ${best.run.name}`;
+  }
+  city.derived.streets = runs;
+  return runs;
+}
+
+function freshName(run, used) {
+  const t = run.tiles[0];
+  for (let attempt = 0; attempt < 400; attempt++) {
+    const base = NAMES[Math.floor(hash2(t.x, t.y, 900 + attempt) * NAMES.length)];
+    const suffixes = SUFFIX[run.dir];
+    const suffix = suffixes[Math.floor(hash2(t.x, t.y, 950 + attempt) * suffixes.length)];
+    const name = `${base} ${suffix}`;
+    if (!used.has(name)) return name;
+  }
+  return `Road ${used.size + 1}`;
+}
+
+// "14 Maple Street", or the grid position for a lot with no road.
+function addressOf(tile) {
+  return tile?.address || (tile ? `${tile.x}, ${tile.y}` : '');
+}
+
+return { shortName, findRuns, computeStreets, addressOf };
 })();
 
 // ---- agents.js ----
@@ -3365,8 +3515,9 @@ const __mod_lifeEventsMore = (() => {
 
 const { STRUCTURES, MILESTONES } = __mod_config;
 const { CAREERS } = __mod_lifeData;
+const { addressOf } = __mod_streets;
 const o = (text, effects = {}, extra = {}) => ({ text, effects, ...extra });
-const where = (t) => `the ${STRUCTURES[t.structure.type].label.toLowerCase()} at ${t.x}, ${t.y}`;
+const where = (t) => `the ${STRUCTURES[t.structure.type].label.toLowerCase()} at ${addressOf(t)}`;
 const season = (ctx) => ctx.city.derived.weather?.season;
 const weather = (ctx) => ctx.city.derived.weather || {};
 
@@ -3389,7 +3540,7 @@ const MORE_EVENTS = [
         .slice(0, 3)
         .sort((a, b) => a.price - b.price);
       const out = affordable.map((h) => ({
-        label: `${STRUCTURES[h.tile.structure.type].label} at ${h.tile.x}, ${h.tile.y} · ${Math.round(h.tile.desirability * 100)}% desirable · $${h.price.toLocaleString()}`,
+        label: `${STRUCTURES[h.tile.structure.type].label} at ${addressOf(h.tile)} · ${Math.round(h.tile.desirability * 100)}% desirable · $${h.price.toLocaleString()}`,
         data: { x: h.tile.x, y: h.tile.y, price: h.price },
       }));
       if (!affordable.length && sale.length) {
@@ -3472,7 +3623,7 @@ const MORE_EVENTS = [
     when: (ctx) => ctx.neighbour(),
     text: (ctx) => {
       const n = ctx.neighbour();
-      return `${n.family[0].toUpperCase() + n.family.slice(1)} at ${n.x}, ${n.y} has lost their cat, Mittens. There are posters everywhere.`;
+      return `${n.family[0].toUpperCase() + n.family.slice(1)} at ${n.address} has lost their cat, Mittens. There are posters everywhere.`;
     },
     choices: [
       {
@@ -3633,7 +3784,7 @@ const MORE_EVENTS = [
     when: (ctx) => !ctx.char.livesWithParents && ctx.neighbour(),
     text: (ctx) => {
       const n = ctx.neighbour();
-      return `${n.family[0].toUpperCase() + n.family.slice(1)} at ${n.x}, ${n.y} just moved in next door.`;
+      return `${n.family[0].toUpperCase() + n.family.slice(1)} at ${n.address} just moved in next door.`;
     },
     choices: [
       { label: 'Bring them cookies', outcomes: [o('{name} met {neighbourperson}, who turned out to be lovely.', { happiness: 5 }, { do: (c) => c.addFriend(55, c.neighbour()?.person) })] },
@@ -3645,7 +3796,7 @@ const MORE_EVENTS = [
     stages: ['young', 'adult', 'senior'],
     cooldown: 6,
     when: (ctx) => ctx.neighbour() && ctx.facts.home?.structure?.type === 'tower',
-    text: (ctx) => `The flat above {name} at ${ctx.char.home.x}, ${ctx.char.home.y} is having its third party this week.`,
+    text: (ctx) => `The flat above {name}'s place at ${addressOf(ctx.facts.home)} is having its third party this week.`,
     choices: [
       { label: 'Join the party', outcomes: [o('Best night in ages. {name} knows everyone upstairs now.', { happiness: 6, health: -2 }, { do: (c) => c.addFriend(50) })] },
       { label: 'Knock and complain', outcomes: [o('They turned it down. Mostly.', { happiness: 1 })] },
@@ -3851,10 +4002,11 @@ const __mod_lifeEvents = (() => {
 
 const { STRUCTURES } = __mod_config;
 const { CAREERS } = __mod_lifeData;
+const { addressOf } = __mod_streets;
 const { MORE_EVENTS } = __mod_lifeEventsMore;
 const o = (text, effects = {}, extra = {}) => ({ text, effects, ...extra });
 
-const place = (t) => `the ${STRUCTURES[t.structure.type].label.toLowerCase()} at ${t.x}, ${t.y}`;
+const place = (t) => `the ${STRUCTURES[t.structure.type].label.toLowerCase()} at ${addressOf(t)}`;
 
 const LIFE_EVENTS = [
   // ---- Baby ---------------------------------------------------------------
@@ -4171,7 +4323,7 @@ const LIFE_EVENTS = [
       ...ctx
         .openHomes()
         .slice(0, 3)
-        .map((t) => ({ label: `${STRUCTURES[t.structure.type].label} at ${t.x}, ${t.y} · ${Math.round(t.desirability * 100)}% desirable`, data: { x: t.x, y: t.y } })),
+        .map((t) => ({ label: `${STRUCTURES[t.structure.type].label} at ${addressOf(t)} · ${Math.round(t.desirability * 100)}% desirable`, data: { x: t.x, y: t.y } })),
       { label: 'Stay with {mother} and {father} a while longer', data: null },
     ],
     outcome: (ctx, data) => {
@@ -4534,8 +4686,9 @@ const __mod_lifeActivities = (() => {
 
 const { STRUCTURES } = __mod_config;
 const { CAREERS } = __mod_lifeData;
+const { addressOf } = __mod_streets;
 const o = (text, effects = {}, extra = {}) => ({ text, effects, ...extra });
-const where = (t) => `the ${STRUCTURES[t.structure.type].label.toLowerCase()} at ${t.x}, ${t.y}`;
+const where = (t) => `the ${STRUCTURES[t.structure.type].label.toLowerCase()} at ${addressOf(t)}`;
 const chance = (rng, p) => rng() < p;
 
 const ACTIVITY_GROUPS = [
@@ -4579,7 +4732,7 @@ const ACTIVITIES = [
       if (field) return 'Play sport at the field';
       return ctx.facts.greenery > 0.1 ? 'Go for a run in the park' : 'Go for a jog';
     },
-    hint: (ctx) => (ctx.nearest('field', 10) ? `Sports field at ${ctx.nearest('field', 10).x}, ${ctx.nearest('field', 10).y}: +Health` : '+Health'),
+    hint: (ctx) => (ctx.nearest('field', 10) ? `Sports field at ${addressOf(ctx.nearest('field', 10))}: +Health` : '+Health'),
     run: (ctx, rng) => {
       const field = ctx.nearest('field', 10);
       const sporty = ctx.has('sporty') ? 2 : 0;
@@ -4671,7 +4824,7 @@ const ACTIVITIES = [
       const n = ctx.neighbour();
       const odds = 0.55 + (ctx.has('outgoing') ? 0.25 : 0) + (ctx.char.stats.looks - 50) / 250;
       if (!chance(rng, odds)) return o('{name} said hello to a few people, but nothing clicked.', { happiness: -1 });
-      if (n) return o(`{name} got chatting with ${n.person} from ${n.family} at ${n.x}, ${n.y}. A new friend!`, { happiness: 4 }, { do: (c) => c.addFriend(55, n.person) });
+      if (n) return o(`{name} got chatting with ${n.person} from ${n.family} at ${n.address}. A new friend!`, { happiness: 4 }, { do: (c) => c.addFriend(55, n.person) });
       return o('{name} met someone nice and swapped numbers.', { happiness: 4 }, { do: (c) => c.addFriend(50) });
     },
   },
@@ -4719,7 +4872,7 @@ const ACTIVITIES = [
     label: () => 'Go to the playground',
     hint: (ctx) => {
       const pg = ctx.nearest('playground', 8);
-      return pg ? `At ${pg.x}, ${pg.y}` : 'None nearby: build a playground';
+      return pg ? `At ${addressOf(pg)}` : 'None nearby: build a playground';
     },
     when: (ctx) => ctx.nearest('playground', 8),
     run: (ctx, rng) => {
@@ -4737,7 +4890,7 @@ const ACTIVITIES = [
     label: () => 'Walk in the park',
     hint: (ctx) => {
       const p = ctx.nearest('park', 10);
-      return p ? `At ${p.x}, ${p.y}` : 'None nearby: build a park';
+      return p ? `At ${addressOf(p)}` : 'None nearby: build a park';
     },
     when: (ctx) => ctx.nearest('park', 10),
     run: (ctx) => {
@@ -4754,7 +4907,7 @@ const ACTIVITIES = [
     label: () => 'Go shopping',
     hint: (ctx) => {
       const s = ctx.nearest('shop', 40);
-      return s ? `Shop at ${s.x}, ${s.y}` : 'No shops in town yet';
+      return s ? `Shop at ${addressOf(s)}` : 'No shops in town yet';
     },
     when: (ctx) => ctx.nearest('shop', 40),
     cost: () => 150,
@@ -4791,8 +4944,8 @@ const ACTIVITIES = [
     run: (ctx, rng) => {
       const n = ctx.neighbour();
       return chance(rng, 0.2)
-        ? o(`The ${n.family.replace(/^the /, '')} kids at ${n.x}, ${n.y} painted the cat. {name} still got paid.`, { money: 150, happiness: -2 })
-        : o(`{name} babysat for ${n.family} at ${n.x}, ${n.y}. Easy money.`, { money: 150, happiness: 1 });
+        ? o(`The ${n.family.replace(/^the /, '')} kids at ${n.address} painted the cat. {name} still got paid.`, { money: 150, happiness: -2 })
+        : o(`{name} babysat for ${n.family} at ${n.address}. Easy money.`, { money: 150, happiness: 1 });
     },
   },
   {
@@ -4908,6 +5061,7 @@ const { LIFE_EVENTS } = __mod_lifeEvents;
 const { ACTIVITIES, energyFor } = __mod_lifeActivities;
 const { ACHIEVEMENTS, ribbonFor } = __mod_lifeAchievements;
 const { pick, hash2 } = __mod_utils;
+const { addressOf } = __mod_streets;
 // One year of life passes per in-game day; Age up skips ahead.
 const YEAR_SECONDS = DAY_LENGTH_SECONDS;
 const MAX_LOG = 200;
@@ -4924,7 +5078,7 @@ function homePrice(tile) {
 function familyAt(tile) {
   const last = LAST_NAMES[Math.floor(hash2(tile.x, tile.y, 77) * LAST_NAMES.length)];
   const first = FIRST_NAMES[Math.floor(hash2(tile.x, tile.y, 78) * FIRST_NAMES.length)];
-  return { family: `the ${last} family`, person: `${first} ${last}`, x: tile.x, y: tile.y };
+  return { family: `the ${last} family`, person: `${first} ${last}`, x: tile.x, y: tile.y, address: addressOf(tile) };
 }
 
 class LifeSystem {
@@ -4988,7 +5142,7 @@ class LifeSystem {
       generation: (prev?.char?.generation || 0) + 1,
     };
     this.city.systems.life = { char, history: prev?.history || [], achievements: prev?.achievements || {} };
-    const where = home ? `a ${STRUCTURES[home.structure.type].label.toLowerCase()} at ${home.x}, ${home.y}` : 'a city with no homes yet';
+    const where = home ? `a ${STRUCTURES[home.structure.type].label.toLowerCase()} at ${addressOf(home)}` : 'a city with no homes yet';
     this.log(`${first} ${last} was born in ${where}.`);
     this.planYear();
     this.checkAchievements();
@@ -5133,7 +5287,7 @@ class LifeSystem {
       const next = this.bestHome({ occupiedOk: c.livesWithParents });
       if (next) {
         c.home = { x: next.x, y: next.y };
-        this.log(`${c.first}'s home was demolished. ${c.livesWithParents ? 'The family' : c.first} moved to ${next.x}, ${next.y}.`);
+        this.log(`${c.first}'s home was demolished. ${c.livesWithParents ? 'The family' : c.first} moved to ${addressOf(next)}.`);
       } else {
         c.home = null;
         this.log(`${c.first}'s home was demolished and there was nowhere free to move.`);
@@ -5312,7 +5466,8 @@ class LifeSystem {
       money: `$${c.money.toLocaleString()}`,
       neighbour: this.neighbour()?.family || 'the neighbours',
       neighbourperson: this.neighbour()?.person || 'a neighbour',
-      nspot: this.neighbour() ? `${this.neighbour().x}, ${this.neighbour().y}` : 'next door',
+      nspot: this.neighbour()?.address || 'next door',
+      address: c.home ? addressOf(this.city.getTile(c.home.x, c.home.y)) : 'no fixed address',
       job: c.job ? CAREERS[c.job.type].titles[c.job.level].toLowerCase() : 'job',
       workplace: c.job ? STRUCTURES[c.job.type].label.toLowerCase() : 'work',
     };
@@ -5829,6 +5984,7 @@ const { STRUCTURES, DAY_LENGTH_SECONDS, SIM_STEP } = __mod_config;
 const { recomputeDesirability } = __mod_desirability;
 const { computeLaborMarket } = __mod_labor;
 const { computeCoverage } = __mod_coverage;
+const { computeStreets } = __mod_streets;
 const { AgentSystem } = __mod_agents;
 const { LifeSystem } = __mod_life;
 const { WeatherSystem } = __mod_weather;
@@ -5844,6 +6000,7 @@ class Simulation {
     this.weather = new WeatherSystem(city);
     this.milestones = new Milestones(city);
     this._thoughtTimer = 0;
+    this._streetsRev = -1;
     this.speed = 1; // 0 pauses; 1–3 run faster
     this._acc = 0;
     this._marketTimer = 0;
@@ -5871,6 +6028,7 @@ class Simulation {
   tick() {
     const city = this.city;
     this._marketTimer -= SIM_STEP;
+    this.updateStreets();
     // Jobs, traffic and desirability feed each other, so refresh them together about once a second.
     if (city.dirty || this._marketTimer <= 0) {
       if (city.dirty) computeCoverage(city);
@@ -5890,12 +6048,21 @@ class Simulation {
 
   // Run the derived systems immediately, e.g. right after loading or generating a city.
   refresh() {
+    this._streetsRev = -1;
+    this.updateStreets();
     computeCoverage(this.city);
     this.city.derived.labor = computeLaborMarket(this.city);
     recomputeDesirability(this.city);
     this.updateStats();
     void this.milestones.state; // settle the starting title without a celebration
     this.city.derived.thoughts = computeThoughts(this.city, this.milestones);
+  }
+
+  // Street names and addresses follow the map; recompute only when a tile changed.
+  updateStreets() {
+    if (this._streetsRev === this.city.revision) return;
+    this._streetsRev = this.city.revision;
+    computeStreets(this.city);
   }
 
   // Desirability maps to how full a home can get: a bare lot fills a little, a leafy one fills up.
@@ -6150,6 +6317,7 @@ const { HALF_W, HALF_H, gridToWorld, worldToGrid } = __mod_iso;
 const { lightingAt } = __mod_lighting;
 const { lit, litA, rgba, mixHex } = __mod_color;
 const { clamp, hash2 } = __mod_utils;
+const { shortName, addressOf } = __mod_streets;
 const SLAB_DEPTH = 18;
 // Unlit lighting for the cached ground layer; the frame's real light is multiplied on afterwards.
 const NEUTRAL_LIGHT = { ambient: [1, 1, 1], daylight: 1, windowLit: 0, lamps: 0, shadow: { alpha: 0 }, clock: 0.5 };
@@ -6483,6 +6651,7 @@ class Renderer {
     }
     if (view.overlay && view.overlay !== 'none') for (const t of tiles) this.drawOverlay(ctx, t, view.overlay);
     if (view.issues?.length) this.drawIssues(ctx, view.issues);
+    this.drawStreetNames(ctx, rect);
     if (view.selected) this.drawSelected(ctx, view.selected);
     if (view.hover) this.drawHover(ctx, view.hover);
     if (view.plan) this.drawPlan(ctx, view.plan);
@@ -6560,7 +6729,10 @@ class Renderer {
       const w = tw + 34;
       const h = 24;
       const x = clamp(s.x - w / 2, 6, this.w - w - 6);
-      const y = clamp(s.y - h - 10 + bob, 6, this.h - h - 6);
+      let y = clamp(s.y - h - 10 + bob, 6, this.h - h - 6);
+      // Keep clear of the Life Story home tag: hop above it.
+      const tag = this.homeTag;
+      if (tag && x < tag.x + tag.w && x + w > tag.x && y < tag.y + tag.h && y + h > tag.y) y = Math.max(6, tag.y - h - 8);
       if (s.x < -40 || s.x > this.w + 40 || s.y < -20 || s.y > this.h + 60) continue;
       ctx.globalAlpha = fade;
       ctx.fillStyle = 'rgba(52,44,96,0.18)';
@@ -7281,6 +7453,47 @@ class Renderer {
     ctx.fillStyle = color;
     tilePoly(ctx, t.x, t.y);
     ctx.fill();
+  }
+
+  // Street names painted along the roads, like a map. Hidden when zoomed far out.
+  drawStreetNames(ctx, rect) {
+    const runs = this.city.derived.streets;
+    const z = this.camera.zoom;
+    if (!runs || z < 0.7) return;
+    const size = clamp(10 / z, 6.5, 11);
+    const len = Math.hypot(HALF_W, HALF_H);
+    const ux = HALF_W / len;
+    const uy = HALF_H / len;
+    const dark = (this.L?.daylight ?? 1) < 0.35;
+    ctx.save();
+    ctx.font = `800 ${size.toFixed(1)}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = size * 0.32;
+    ctx.strokeStyle = dark ? 'rgba(40,36,70,0.75)' : 'rgba(255,255,255,0.85)';
+    ctx.fillStyle = dark ? 'rgba(255,244,214,0.92)' : 'rgba(98,88,130,0.9)';
+    for (const r of runs) {
+      if (r.tiles.length < 3) continue;
+      const label = shortName(r.name);
+      // One label per stretch of about ten tiles, centred in it.
+      const every = 10;
+      const count = Math.max(1, Math.round(r.tiles.length / every));
+      for (let k = 0; k < count; k++) {
+        const mid = r.tiles[Math.min(r.tiles.length - 1, Math.floor(((k + 0.5) * r.tiles.length) / count))];
+        const p = gridToWorld(mid.x + 0.5, mid.y + 0.5);
+        if (p.x < rect.left || p.x > rect.right || p.y < rect.top || p.y > rect.bottom) continue;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        // Lay the text flat on the road: along the road, and squashed onto the ground the other way.
+        if (r.dir === 'h') ctx.transform(ux, uy, -ux, uy, 0, 0);
+        else ctx.transform(ux, -uy, ux, uy, 0, 0);
+        ctx.strokeText(label, 0, 0);
+        ctx.fillText(label, 0, 0);
+        ctx.restore();
+      }
+    }
+    ctx.restore();
   }
 
   // The ground under each resident thought's area, tinted red, yellow or green. The one being
@@ -8341,9 +8554,10 @@ class Renderer {
 
   // Pins over the Life Story character's home and workplace, drawn above everything else.
   drawLifePins(ctx, L) {
+    this.homeTag = null;
     const c = this.city.systems.life?.char;
     if (!c?.alive) return;
-    const pin = (spot, color, size, icon) => {
+    const pin = (spot, color, size, icon, label = null) => {
       const t = this.city.getTile(spot.x, spot.y);
       if (!t) return;
       const f = t.structure ? this.footprint(t) : null;
@@ -8386,10 +8600,41 @@ class Renderer {
         ctx.fillRect(-r * 0.18, -r * 0.5, r * 0.36, r * 0.18);
       }
       ctx.restore();
+      if (label) {
+        // An address tag over the pin, so the home is easy to find and name.
+        const fs = 9 * z;
+        ctx.save();
+        ctx.font = `800 ${fs.toFixed(1)}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+        const tw = ctx.measureText(label).width;
+        const w = tw + fs * 1.4;
+        const h = fs * 1.9;
+        const x = p.x - w / 2;
+        const y = p.y - r * 1.4 - h - 3 * z;
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.4 * z;
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, h / 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#4a4270';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, p.x, y + h / 2 + 0.5);
+        ctx.restore();
+        // Remember where the tag is on screen so thought bubbles can keep clear of it.
+        const a = this.worldToScreen({ x, y });
+        const zz = this.camera.zoom;
+        this.homeTag = { x: a.x, y: a.y, w: w * zz, h: (h + r * 3) * zz };
+      }
       if (L.lamps > 0.1) this.glows.push({ x: p.x, y: p.y, r: r * 2.4, a: 0.35 * L.lamps, rgb: '255,240,220' });
     };
     if (c.job) pin(c.job, '#a98bd0', 7.5, 'work');
-    if (c.home) pin(c.home, c.look?.outfit || '#ff8f7e', 9.5, 'home');
+    if (c.home) {
+      const t = this.city.getTile(c.home.x, c.home.y);
+      const addr = t?.address ? shortName(addressOf(t)) : null;
+      pin(c.home, c.look?.outfit || '#ff8f7e', 9.5, 'home', addr && this.camera.zoom >= 0.6 ? addr : null);
+    }
     // A small marker bobbing over the character when they're out, so they're easy to spot.
     const h = this.agents.hero;
     if (h && !h.dead && h.alpha > 0.2) {
@@ -9438,7 +9683,7 @@ class Interface {
     this._inspectKey = key;
     this.inspectEl.hidden = false;
     this.inspectEl.innerHTML =
-      `<header><div><span class="insp-kicker">Tile ${t.x}, ${t.y}</span><h2>${title}</h2></div>` +
+      `<header><div><span class="insp-kicker">${t.address || t.street || `Tile ${t.x}, ${t.y}`}</span><h2>${title}</h2></div>` +
       `<button type="button" class="insp-close" data-close aria-label="Close inspector">${ICONS.close}</button></header>` +
       (facts.length ? `<dl>${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>` : '') +
       (showFactors
@@ -9471,6 +9716,7 @@ const __mod_lifeUI = (() => {
 const { STRUCTURES } = __mod_config;
 const { PRONOUNS, SKIN_TONES, HAIR_COLORS, OUTFIT_COLORS, TRAITS, CAREERS, stageFor } = __mod_lifeData;
 const { STAT_LABELS } = __mod_lifeEngine;
+const { addressOf } = __mod_streets;
 const { ACTIVITY_GROUPS, energyFor } = __mod_lifeActivities;
 const { ACHIEVEMENTS } = __mod_lifeAchievements;
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -9614,7 +9860,7 @@ class LifeInterface {
       .join('');
     const career = c.job && CAREERS[c.job.type];
     const occupation = c.job
-      ? `${career.titles[c.job.level]} at the ${STRUCTURES[c.job.type].label.toLowerCase()} (${c.job.x}, ${c.job.y})`
+      ? `${career.titles[c.job.level]} at the ${STRUCTURES[c.job.type].label.toLowerCase()}, ${addressOf(life.city.getTile(c.job.x, c.job.y))}`
       : c.age >= 6 && c.age <= 17
         ? f.schoolCoverage > 0.25
           ? 'At school'
@@ -9651,7 +9897,7 @@ class LifeInterface {
       <ul class="stat-bars">${bars}<li><span>Money</span><span></span><b>${money(c.money)}</b></li></ul>
       ${this.activitiesHTML(c)}
       <dl class="life-facts">
-        <div><dt>Home</dt><dd>${c.home ? `${c.livesWithParents ? 'With family' : 'Own place'} at ${c.home.x}, ${c.home.y} · ${Math.round(f.desirability * 100)}% desirable` : 'No home'}</dd></div>
+        <div><dt>Home</dt><dd>${c.home ? `<button type="button" class="address-link" data-act="focus" title="Show on the map">${esc(addressOf(f.home))}</button><small>${c.livesWithParents ? 'With family' : c.flags.ownsHome ? 'Owned' : 'Own place'} · ${Math.round(f.desirability * 100)}% desirable</small>` : 'No home'}</dd></div>
         <div><dt>Daily life</dt><dd>${esc(occupation)}</dd></div>
         <div><dt>Traits</dt><dd>${c.traits.map((t) => TRAITS.find((x) => x.id === t)?.label).join(', ')}</dd></div>
       </dl>
@@ -10367,6 +10613,7 @@ const { generateTown } = __mod_generator;
 const { Interface } = __mod_ui;
 const { LifeInterface } = __mod_lifeUI;
 const { summaryOf } = __mod_life;
+const { addressOf } = __mod_streets;
 const { CityPanel } = __mod_cityUI;
 const { unlockTier } = __mod_milestones;
 const { computeCoverage } = __mod_coverage;
@@ -10677,7 +10924,9 @@ function start(hotData = {}) {
     },
     onAgeUp: () => sim.life.ageUp(),
     onChoose: (i) => {
+      const before = homeKey();
       const result = sim.life.choose(i);
+      if (homeKey() !== before) showNewHome();
       if (result) {
         const score = result.changes.reduce((n, c) => n + Math.sign(c.delta), 0);
         audio.play(score >= 0 ? 'good' : 'bad');
@@ -10711,8 +10960,21 @@ function start(hotData = {}) {
       camera.ty = w.y - 20;
       camera.tzoom = Math.max(camera.tzoom, 1.1);
       camera.clampTarget();
+      renderer.ring(home.x, home.y, '#ffffff');
     },
   });
+  // After a move, fly to the new home and say its address.
+  const homeKey = () => {
+    const h = sim.life.char?.home;
+    return h ? `${h.x},${h.y}` : '';
+  };
+  function showNewHome() {
+    const h = sim.life.char?.home;
+    if (!h) return;
+    sim.updateStreets();
+    lifeUI.h.onFocus();
+    ui.toast(`${sim.life.char.first}'s new home: ${addressOf(city.getTile(h.x, h.y))}`, 4200);
+  }
   city.on((ev) => {
     // Sounds. Strokes fire many events; only the first few make a sound.
     const d = ev.delay || 0;
