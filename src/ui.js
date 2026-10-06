@@ -51,8 +51,12 @@ const LEGENDS = {
 const pct = (v) => `${Math.round(v * 100)}%`;
 
 export class Interface {
-  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect, sound, locks }) {
+  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect, sound, locks, onShare, onBackHome, hasBackup, display }) {
     this.sound = sound;
+    this.onShare = onShare;
+    this.onBackHome = onBackHome;
+    this.hasBackup = hasBackup || (() => false);
+    this.display = display; // { get(key), set(key, value) } for minimap, colour-blind and large text
     this.locks = locks; // { isUnlocked(tool), unlockLabel(tool) }
     this.soundBtn = document.getElementById('btn-sound');
     this.toolbar = document.getElementById('toolbar');
@@ -258,7 +262,7 @@ export class Interface {
       [3, '3×'],
     ];
     this.moreSheet.innerHTML =
-      `<header><h2>City controls</h2><button type="button" class="insp-close" data-more="close" aria-label="Close">${ICONS.close}</button></header>` +
+      `<header><h2>Settings &amp; more</h2><button type="button" class="insp-close" data-more="close" aria-label="Close">${ICONS.close}</button></header>` +
       `<span class="sheet-label">Speed</span><div class="seg big">${speeds
         .map(([v, l]) => `<button type="button" data-speed="${v}" aria-pressed="${this.speed === v}">${l}</button>`)
         .join('')}</div>` +
@@ -266,6 +270,21 @@ export class Interface {
         (v) => `<button type="button" data-view="${v.id}" aria-pressed="${this.view === v.id}">${v.label}</button>`
       ).join('')}</div>` +
       `<span class="sheet-label">Sound</span><div class="seg big"><button type="button" data-sound="on" aria-pressed="${!this.sound.muted()}">On</button><button type="button" data-sound="off" aria-pressed="${this.sound.muted()}">Off</button></div>` +
+      (this.display
+        ? [
+            ['minimap', 'Minimap'],
+            ['colorBlind', 'Colour-blind friendly colours'],
+            ['largeText', 'Larger text'],
+          ]
+            .map(([k, label]) => {
+              const on = !!this.display.get(k);
+              return `<span class="sheet-label">${label}</span><div class="seg big"><button type="button" data-display="${k}" data-value="1" aria-pressed="${on}">On</button><button type="button" data-display="${k}" data-value="0" aria-pressed="${!on}">Off</button></div>`;
+            })
+            .join('')
+        : '') +
+      `<div class="sheet-actions"><button type="button" class="ghost-btn" data-more="share">Share town link</button>` +
+      (this.hasBackup() ? '<button type="button" class="ghost-btn" data-more="home">Back to my town</button>' : '<span></span>') +
+      '</div>' +
       `<div class="sheet-actions"><button type="button" class="ghost-btn" data-more="fit">Recenter</button>` +
       `<button type="button" class="${this._confirmRandom ? 'primary-btn danger' : 'ghost-btn'}" data-more="random">${this._confirmRandom ? 'Tap again to replace your city' : 'Random Town'}</button></div>`;
   }
@@ -279,7 +298,14 @@ export class Interface {
       if ((t.dataset.sound === 'off') !== this.sound.muted()) this.sound.toggle();
       return this.renderSound();
     }
-    else if (t.dataset.more === 'close') return this.toggleMore(false);
+    else if (t.dataset.display) this.display.set(t.dataset.display, t.dataset.value === '1');
+    else if (t.dataset.more === 'share') {
+      this.onShare?.();
+      return this.toggleMore(false);
+    } else if (t.dataset.more === 'home') {
+      this.onBackHome?.();
+      return this.toggleMore(false);
+    } else if (t.dataset.more === 'close') return this.toggleMore(false);
     else if (t.dataset.more === 'fit') {
       this.onFit();
       return this.toggleMore(false);

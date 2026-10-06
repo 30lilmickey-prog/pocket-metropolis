@@ -197,6 +197,7 @@ export class CityState {
   reset() {
     this._buildTiles();
     delete this.systems.streets; // a new town gets new street names
+    delete this.systems.trends;
     this.dirty = true;
     this.revision++;
   }
@@ -216,6 +217,25 @@ export class CityState {
     this.refreshAllRoadMasks();
     this.dirty = true;
     this.emit('resized', { width, height });
+  }
+
+  // Become a copy of another city (a shared town, or your own town coming back), keeping this object
+  // so every system that holds it carries on.
+  copyFrom(other) {
+    this.width = other.width;
+    this.height = other.height;
+    this._buildTiles();
+    other.tiles.forEach((t, i) => {
+      this.tiles[i].terrain = t.terrain;
+      this.tiles[i].structure = t.structure ? { ...t.structure } : null;
+    });
+    this.clock = other.clock;
+    this.day = other.day;
+    this.nextId = Math.max(other.nextId, 1);
+    this.systems = JSON.parse(JSON.stringify(other.systems || {}));
+    this.refreshAllRoadMasks();
+    this.dirty = true;
+    this.revision++;
   }
 
   toJSON() {

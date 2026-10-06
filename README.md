@@ -20,6 +20,10 @@ A relaxing isometric tiny-city builder. You plan the city; residents decide for 
 - Gentle synthesised sound effects and ambience (birds by day, crickets at night, rain), with a mute switch
 - Drag to build lines of road or paint trees, water and buildings; undo and redo every edit
 - Autosave with versioned saves; older 12×12 towns open centred on the larger map
+- **Share your town as a link** (☰ → Share town link). The map is packed into the link itself, so no server is needed. Opening a link gives the visitor a copy to play with; their own town is kept safe and comes back with ☰ → Back to my town
+- **Minimap** in the corner: tap or drag to jump around the city (on by default on bigger screens, switchable in ☰)
+- **Trends** in the City panel: population, happiness, employment and the busiest road over the last six in-game days, with a readout on hover or tap and a table view
+- **Comfort settings** in ☰: colour-blind friendly colours (Okabe–Ito severity colours and blue-to-yellow map ramps) and larger text. They're remembered on this device
 - **Life Story:** create a character who is born in your city and live their life through text events (see below)
 
 Open `index.html` through any static server (ES modules need one, e.g. `npx serve .`), or build the single-file version:
@@ -66,6 +70,8 @@ Events are plain data in `src/lifeEvents.js` and `src/lifeEventsMore.js` (78 in 
 | Pause / change speed | Space, or the speed button | ☰ City controls |
 | Switch map view | V, or the layers button | ☰ City controls |
 | Recenter | Recenter button (press again for the whole map) | ☰ City controls |
+| Share, minimap, colour-blind colours, larger text | ☰ Settings & more | ☰ Settings & more |
+| Jump around the map | Click or drag on the minimap | Tap or drag on the minimap |
 | Random Town | Random Town button | ☰ City controls (tap twice to confirm) |
 | Milestones and resident wishes | Click the stats bubble, or a thought bubble | Tap the stats bubble, or a thought bubble |
 
@@ -83,6 +89,7 @@ Each system lives in its own module under `src/` and talks to the others only th
 | Persistence | `persistence.js` | Versioned localStorage saves with a migration table; autosave. |
 | Weather | `weather.js` | Seasons from the day count; weather spells with seasonal odds; smoothed rain, snow, fog and snow cover for the renderer and agents. |
 | Audio | `audio.js` | Synthesised effects (ZzFX-based) and ambience through one master volume. |
+| Sharing and settings | `share.js`, `settings.js`, `minimap.js`, `trendsUI.js` | Town links (pack, deflate, base64url), viewer settings in localStorage, the minimap, and the trend tiles. Trend samples are saved in `city.systems.trends`. |
 | Streets | `streets.js` | Names straight runs of road and numbers the buildings along them; names are saved in `city.systems.streets` by tile. Writes `street` and `address` on tiles. |
 | History | `history.js` | Undo and redo of tile edits, plus the L-shaped road and brush stroke paths. |
 | Milestones | `milestones.js`, `advisor.js`, `cityUI.js` | Town titles and permanent unlocks (saved in `city.systems.milestones`); resident thoughts computed from the city every few seconds into `city.derived.thoughts`; the City panel. |
@@ -96,7 +103,7 @@ Derived data (labor market, commute routes, congestion, coverage, resident thoug
 npm test   # node --test, no dependencies
 ```
 
-The tests cover street names and addresses, the labor market, road reachability, service and play coverage, milestones and unlocks, resident thoughts, save migration, town generation, pausing, and Life Story (aging, events, jobs and homes from the city, bulldozed homes, activities, buying a home, neighbours, achievements and ribbons, the character's walker, whole lives start to finish, saving).
+The tests cover share links, trends, colour-blind colours, street names and addresses, the labor market, road reachability, service and play coverage, milestones and unlocks, resident thoughts, save migration, town generation, pausing, and Life Story (aging, events, jobs and homes from the city, bulldozed homes, activities, buying a home, neighbours, achievements and ribbons, the character's walker, whole lives start to finish, saving).
 
 ### Extending it
 

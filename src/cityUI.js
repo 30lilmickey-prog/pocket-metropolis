@@ -2,6 +2,7 @@
 // are wishing for. Opened from the stats bubble. Reads state only; actions go through handlers.
 
 import { MILESTONES, STRUCTURES, TOOLS } from './config.js';
+import { trendsHTML, bindTrendHover } from './trendsUI.js';
 
 const SEVERITY_LABEL = { bad: 'Needs fixing', caution: 'Worth a look', good: 'Going well' };
 
@@ -20,6 +21,9 @@ export class CityPanel {
     this.tierEl = document.getElementById('tier-name');
     this.meterEl = document.getElementById('tier-meter');
     this.open = false;
+    this._trendSlot = null;
+    this.city = null;
+    bindTrendHover(this.panel, () => this.city?.systems.trends);
     this.focusedId = null; // the thought being looked at: its tiles pulse on the map
     this.focusUntil = 0; // with the panel closed, the highlight fades after this time (ms)
     this._key = '';
@@ -65,10 +69,12 @@ export class CityPanel {
     this.btn.setAttribute('aria-expanded', String(this.open));
     this._key = '';
     this.panel.hidden = !this.open;
+    document.documentElement.classList.toggle('city-open', this.open);
   }
 
   // Called a few times a second: refreshes the stats-bubble tier line and, when open, the panel.
   update(city) {
+    this.city = city;
     const m = this.milestones();
     const p = m.progress();
     this.thoughts = city.derived.thoughts || [];
@@ -84,6 +90,17 @@ export class CityPanel {
     if (key !== this._key) {
       this._key = key;
       this.panel.innerHTML = this.html(city, m, p);
+      this._trendSlot = null;
+    }
+    // Charts redraw only when a new sample arrives, so a hover isn't interrupted.
+    const tr = city.systems.trends;
+    const box = this.panel.querySelector('.trends');
+    if (box && tr?.slot !== this._trendSlot) {
+      this._trendSlot = tr?.slot;
+      const table = box.querySelector('.trend-table');
+      const wasOpen = !!table?.open;
+      box.innerHTML = trendsHTML(tr);
+      if (wasOpen) box.querySelector('.trend-table').open = true;
     }
     const bar = this.panel.querySelector('.tier-progress span');
     if (bar) bar.style.width = `${Math.round(p.fraction * 100)}%`;
@@ -119,6 +136,7 @@ export class CityPanel {
       `<button type="button" class="insp-close" data-close aria-label="Close city panel">${CLOSE}</button></header>` +
       next +
       ladder +
+      `<h3>Trends</h3><div class="trends"></div>` +
       `<h3>What residents are saying</h3>` +
       (this.thoughts.length
         ? '<p class="sev-legend"><span class="sev-dot bad"></span>Needs fixing <span class="sev-dot caution"></span>Worth a look <span class="sev-dot good"></span>Going well<br><small>The areas are tinted on the map. Tap Show me to fly there.</small></p>'

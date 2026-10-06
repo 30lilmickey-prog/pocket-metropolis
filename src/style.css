@@ -1,5 +1,15 @@
 /* Layout: the city fills the screen edge to edge; the interface floats on top like stickers on glass. */
 :root {
+  --sev-bad: #ef6461;
+  --sev-caution: #f2b230;
+  --sev-good: #5cbf88;
+  --sev-bad-ink: #c94a47;
+  --sev-caution-ink: #a87412;
+  --sev-good-ink: #3a8f60;
+  --ramp-low: #f68c8c;
+  --ramp-mid: #ffd678;
+  --ramp-high: #6ec896;
+  --trend: #8a6cc4;
   --sky: #dcf0f2;
   --panel: rgba(255, 252, 250, 0.8);
   --panel-edge: rgba(255, 255, 255, 0.95);
@@ -31,6 +41,7 @@
   :root:not([data-theme='light']) {
     --sky: #2c2e58;
     --panel: rgba(46, 42, 82, 0.78);
+    --trend: #9a7bdc;
     --panel-edge: rgba(255, 255, 255, 0.14);
     --avatar-bg: #3e3a6b;
     --bubble: rgba(255, 255, 255, 0.1);
@@ -46,6 +57,7 @@
 :root[data-theme='dark'] {
   --sky: #2c2e58;
   --panel: rgba(46, 42, 82, 0.78);
+  --trend: #9a7bdc;
   --panel-edge: rgba(255, 255, 255, 0.14);
   --ink: #f4effc;
   --ink-soft: #b9b1d8;
@@ -439,10 +451,10 @@ body {
   margin-top: 2px;
 }
 .legend-bar.ramp {
-  background: linear-gradient(90deg, #f68c8c, #ffd678, #6ec896);
+  background: linear-gradient(90deg, var(--ramp-low), var(--ramp-mid), var(--ramp-high));
 }
 .legend-bar.ramp-rev {
-  background: linear-gradient(90deg, #6ec896, #ffd678, #f68c8c);
+  background: linear-gradient(90deg, var(--ramp-high), var(--ramp-mid), var(--ramp-low));
 }
 .legend-bar.service {
   background: linear-gradient(90deg, rgba(70, 60, 110, 0.25), #c8b4ec, #8cdcc0);
@@ -587,7 +599,24 @@ button {
   touch-action: manipulation;
 }
 #btn-more {
-  display: none;
+  display: inline-flex;
+}
+
+/* Minimap: bottom-left, above undo */
+.minimap-wrap {
+  position: absolute;
+  left: calc(env(safe-area-inset-left, 0px) + 16px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 80px);
+  padding: 6px;
+  border-radius: 16px;
+  z-index: 2;
+  line-height: 0;
+}
+.minimap-wrap canvas {
+  width: 168px;
+  height: 84px;
+  cursor: pointer;
+  touch-action: none;
 }
 #btn-more.is-on,
 #btn-more.is-paused {
@@ -820,23 +849,26 @@ button:focus-visible {
   border-left: 5px solid transparent;
 }
 .thoughts .sev-bad {
-  background: rgba(239, 100, 97, 0.16);
-  border-left-color: #ef6461;
+  background: color-mix(in srgb, var(--sev-bad) 16%, transparent);
+  border-left-color: var(--sev-bad);
 }
 .thoughts .sev-caution {
-  background: rgba(242, 178, 48, 0.17);
-  border-left-color: #f2b230;
+  background: color-mix(in srgb, var(--sev-caution) 17%, transparent);
+  border-left-color: var(--sev-caution);
 }
 .thoughts .sev-good {
-  background: rgba(92, 191, 136, 0.16);
-  border-left-color: #5cbf88;
+  background: color-mix(in srgb, var(--sev-good) 16%, transparent);
+  border-left-color: var(--sev-good);
 }
 .thoughts .focused {
   box-shadow: 0 0 0 2px currentColor inset;
 }
-.thoughts .sev-bad.focused { color: #c94a47; }
-.thoughts .sev-caution.focused { color: #b9821a; }
-.thoughts .sev-good.focused { color: #3f9a68; }
+.thoughts .sev-bad.focused,
+.sev-bad .sev-label { color: var(--sev-bad-ink); }
+.thoughts .sev-caution.focused,
+.sev-caution .sev-label { color: var(--sev-caution-ink); }
+.thoughts .sev-good.focused,
+.sev-good .sev-label { color: var(--sev-good-ink); }
 .thoughts .focused .th-text { color: var(--ink); }
 .sev-label {
   font-size: 10.5px;
@@ -844,9 +876,6 @@ button:focus-visible {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-.sev-bad .sev-label { color: #d14f4c; }
-.sev-caution .sev-label { color: #b9821a; }
-.sev-good .sev-label { color: #3f9a68; }
 .sev-legend {
   display: block;
   color: var(--ink-soft);
@@ -864,11 +893,14 @@ button:focus-visible {
   border-radius: 50%;
   vertical-align: -1px;
 }
-.sev-dot.bad { background: #ef6461; }
-.sev-dot.caution { background: #f2b230; }
-.sev-dot.good { background: #5cbf88; }
+.sev-dot.bad { background: var(--sev-bad); }
+.sev-dot.caution { background: var(--sev-caution); }
+.sev-dot.good { background: var(--sev-good); }
+.tier .badge {
+  background: var(--sev-bad);
+}
 .tier .badge.caution {
-  background: #f2b230;
+  background: var(--sev-caution);
 }
 .th-icon {
   display: grid;
@@ -876,19 +908,19 @@ button:focus-visible {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #ffb35c;
+  background: var(--sev-caution);
   color: #ffffff;
   font-weight: 800;
   font-size: 13px;
 }
 .thoughts .sev-bad .th-icon {
-  background: #ef6461;
+  background: var(--sev-bad);
 }
 .thoughts .sev-caution .th-icon {
-  background: #f2b230;
+  background: var(--sev-caution);
 }
 .thoughts .sev-good .th-icon {
-  background: #5cbf88;
+  background: var(--sev-good);
 }
 .th-text {
   display: grid;
@@ -906,6 +938,118 @@ button:focus-visible {
   font-size: 12px;
   min-height: 36px;
   white-space: nowrap;
+}
+
+/* Trends: stat tiles with sparklines */
+.trend-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.trend {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding: 9px 10px 8px;
+  border-radius: 14px;
+  background: var(--meter-track);
+}
+.trend-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+.trend-value {
+  font: 600 20px/1.1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+.trend-delta {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+.trend-delta.good {
+  color: var(--sev-good-ink);
+}
+.trend-delta.bad {
+  color: var(--sev-bad-ink);
+}
+.trend-delta small {
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.spark {
+  width: 100%;
+  height: auto;
+  margin-top: 4px;
+  overflow: visible;
+  touch-action: none;
+  cursor: crosshair;
+  border-radius: 6px;
+}
+.spark:focus-visible {
+  outline: 2px solid var(--focus);
+}
+.spark-line {
+  fill: none;
+  stroke: var(--trend);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.spark-hair {
+  stroke: var(--ink-soft);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.spark-dot {
+  fill: var(--trend);
+  stroke: var(--panel-edge);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.spark-tip {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 6px;
+  padding: 5px 8px;
+  border-radius: 10px;
+  background: #3d3557;
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 700;
+  pointer-events: none;
+  z-index: 2;
+  box-shadow: var(--shadow);
+}
+.spark-tip b {
+  font-size: 13px;
+}
+.trend-table summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink-soft);
+  padding: 4px 0;
+}
+.trend-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.trend-table th,
+.trend-table td {
+  padding: 4px 4px;
+  text-align: right;
+  border-bottom: 1px solid var(--meter-track);
+}
+.trend-table th[scope='row'],
+.trend-table thead th:first-child {
+  text-align: left;
+  font-weight: 700;
 }
 
 /* Locked tools wait for a milestone */
@@ -1766,6 +1910,10 @@ button:focus-visible {
     left: calc(env(safe-area-inset-left, 0px) + 12px);
     bottom: calc(env(safe-area-inset-bottom, 0px) + 98px);
   }
+  .minimap-wrap {
+    left: calc(env(safe-area-inset-left, 0px) + 12px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 150px);
+  }
   .history-btns .pill {
     width: 42px;
     height: 42px;
@@ -1983,4 +2131,52 @@ button:focus-visible {
   .life-card {
     animation: none;
   }
+}
+
+/* Colour-blind friendly colours (Okabe–Ito severities; blue-to-yellow ramps) */
+:root.cb {
+  --sev-bad: #d55e00;
+  --sev-caution: #e69f00;
+  --sev-good: #0072b2;
+  --sev-bad-ink: #a84a00;
+  --sev-caution-ink: #8a5f00;
+  --sev-good-ink: #005a8c;
+  --ramp-low: #44468c;
+  --ramp-mid: #3ca0a0;
+  --ramp-high: #f0dc5a;
+}
+:root.cb .legend-bar.ramp-rev {
+  background: linear-gradient(90deg, var(--ramp-high), var(--ramp-mid), var(--ramp-low));
+}
+
+/* Larger text: the floating interface grows; the map stays the same */
+:root.large-text .stats,
+:root.large-text .corner,
+:root.large-text .toolbar,
+:root.large-text .tray,
+:root.large-text .toast,
+:root.large-text .inspector,
+:root.large-text .life-panel,
+:root.large-text .life-card,
+:root.large-text .city-panel,
+:root.large-text .more-sheet,
+:root.large-text .legend,
+:root.large-text .history-btns,
+:root.large-text .milestone-card,
+:root.large-text .minimap-wrap {
+  zoom: 1.15;
+}
+@media (max-width: 560px) {
+  /* Icon rows already fill a phone's width; only text panels grow. */
+  :root.large-text .toolbar,
+  :root.large-text .corner,
+  :root.large-text .history-btns,
+  :root.large-text .minimap-wrap {
+    zoom: 1;
+  }
+}
+
+/* The City panel and the map-view legend share the top-left corner */
+:root.city-open .legend {
+  display: none;
 }

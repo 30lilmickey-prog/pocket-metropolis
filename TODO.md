@@ -11,6 +11,7 @@
 - [x] Life Story, first version (see section 1)
 - [x] Phone layout: Life and a controls sheet up top instead of a column of side buttons; compact landscape layout
 - [x] Phase 1 polish: sound effects and ambience, drag to build, undo and redo, buildings that grow and vary, seasons and weather
+- [x] Phase 4: share links, minimap, trends, colour-blind friendly colours, larger text
 - [x] Street names and house numbers, shown on the map and used in Life Story instead of coordinates
 - [x] Phase 3 Life Story: activities, buying a home, real neighbours, 34 new events, the character walking on the map, achievements and ribbons
 - [x] Phase 2 goals: milestones (Hamlet → Metropolis) with unlocks and a celebration, playground and sports field, resident thoughts with Show me, +/− desirability feedback when placing
@@ -73,13 +74,14 @@ You create a main character who moves into your city. Every so often a text even
 - [x] Buy a real home in the city, priced by desirability
 - [x] More Life Story events, achievements (kept across lives) and life ribbons
 - [ ] **Decision:** move events to inkjs once there are a few hundred (plain JS data is fine for now)
-- [ ] Share a city as a link (lz-string)
+- [x] Share a city as a link (built-in deflate, no library needed); visiting keeps your own town safe
+- [x] Colour-blind friendly colours and a larger-text option
 
 ## 3. Ideas from IsoCity
 
 From [isometric-city](https://github.com/uxcaleb/isometric-city) (originally amilich/isometric-city) (MIT). Ideas to adapt, not code to copy.
 
-- [ ] Minimap for the bigger map; tap to jump there
+- [x] Minimap for the bigger map; tap to jump there
 - [x] Advisors: short hints such as "The roads are jammed at rush hour" (resident thoughts)
 - [ ] Roads over water drawn as bridges
 - [ ] Buses and bus stops; trains later
@@ -89,7 +91,7 @@ From [isometric-city](https://github.com/uxcaleb/isometric-city) (originally ami
 - [ ] Community centre
 - [ ] Police and fire stations with gentle incidents (a small fire, a lost cat), turning on the safety factor
 - [ ] City name generator and several saved cities
-- [ ] Statistics panel with history sparklines
+- [x] Statistics panel with history sparklines (Trends in the City panel)
 
 ## 4. Deploy and tooling
 - [ ] Move the code to `andrerlaster-lgtm/Metropolis` and link it to Vercel so every push redeploys (until then each deploy is started by hand)

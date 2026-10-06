@@ -5,6 +5,16 @@
 <style>
 /* Layout: the city fills the screen edge to edge; the interface floats on top like stickers on glass. */
 :root {
+  --sev-bad: #ef6461;
+  --sev-caution: #f2b230;
+  --sev-good: #5cbf88;
+  --sev-bad-ink: #c94a47;
+  --sev-caution-ink: #a87412;
+  --sev-good-ink: #3a8f60;
+  --ramp-low: #f68c8c;
+  --ramp-mid: #ffd678;
+  --ramp-high: #6ec896;
+  --trend: #8a6cc4;
   --sky: #dcf0f2;
   --panel: rgba(255, 252, 250, 0.8);
   --panel-edge: rgba(255, 255, 255, 0.95);
@@ -36,6 +46,7 @@
   :root:not([data-theme='light']) {
     --sky: #2c2e58;
     --panel: rgba(46, 42, 82, 0.78);
+    --trend: #9a7bdc;
     --panel-edge: rgba(255, 255, 255, 0.14);
     --avatar-bg: #3e3a6b;
     --bubble: rgba(255, 255, 255, 0.1);
@@ -51,6 +62,7 @@
 :root[data-theme='dark'] {
   --sky: #2c2e58;
   --panel: rgba(46, 42, 82, 0.78);
+  --trend: #9a7bdc;
   --panel-edge: rgba(255, 255, 255, 0.14);
   --ink: #f4effc;
   --ink-soft: #b9b1d8;
@@ -444,10 +456,10 @@ body {
   margin-top: 2px;
 }
 .legend-bar.ramp {
-  background: linear-gradient(90deg, #f68c8c, #ffd678, #6ec896);
+  background: linear-gradient(90deg, var(--ramp-low), var(--ramp-mid), var(--ramp-high));
 }
 .legend-bar.ramp-rev {
-  background: linear-gradient(90deg, #6ec896, #ffd678, #f68c8c);
+  background: linear-gradient(90deg, var(--ramp-high), var(--ramp-mid), var(--ramp-low));
 }
 .legend-bar.service {
   background: linear-gradient(90deg, rgba(70, 60, 110, 0.25), #c8b4ec, #8cdcc0);
@@ -592,7 +604,24 @@ button {
   touch-action: manipulation;
 }
 #btn-more {
-  display: none;
+  display: inline-flex;
+}
+
+/* Minimap: bottom-left, above undo */
+.minimap-wrap {
+  position: absolute;
+  left: calc(env(safe-area-inset-left, 0px) + 16px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 80px);
+  padding: 6px;
+  border-radius: 16px;
+  z-index: 2;
+  line-height: 0;
+}
+.minimap-wrap canvas {
+  width: 168px;
+  height: 84px;
+  cursor: pointer;
+  touch-action: none;
 }
 #btn-more.is-on,
 #btn-more.is-paused {
@@ -825,23 +854,26 @@ button:focus-visible {
   border-left: 5px solid transparent;
 }
 .thoughts .sev-bad {
-  background: rgba(239, 100, 97, 0.16);
-  border-left-color: #ef6461;
+  background: color-mix(in srgb, var(--sev-bad) 16%, transparent);
+  border-left-color: var(--sev-bad);
 }
 .thoughts .sev-caution {
-  background: rgba(242, 178, 48, 0.17);
-  border-left-color: #f2b230;
+  background: color-mix(in srgb, var(--sev-caution) 17%, transparent);
+  border-left-color: var(--sev-caution);
 }
 .thoughts .sev-good {
-  background: rgba(92, 191, 136, 0.16);
-  border-left-color: #5cbf88;
+  background: color-mix(in srgb, var(--sev-good) 16%, transparent);
+  border-left-color: var(--sev-good);
 }
 .thoughts .focused {
   box-shadow: 0 0 0 2px currentColor inset;
 }
-.thoughts .sev-bad.focused { color: #c94a47; }
-.thoughts .sev-caution.focused { color: #b9821a; }
-.thoughts .sev-good.focused { color: #3f9a68; }
+.thoughts .sev-bad.focused,
+.sev-bad .sev-label { color: var(--sev-bad-ink); }
+.thoughts .sev-caution.focused,
+.sev-caution .sev-label { color: var(--sev-caution-ink); }
+.thoughts .sev-good.focused,
+.sev-good .sev-label { color: var(--sev-good-ink); }
 .thoughts .focused .th-text { color: var(--ink); }
 .sev-label {
   font-size: 10.5px;
@@ -849,9 +881,6 @@ button:focus-visible {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-.sev-bad .sev-label { color: #d14f4c; }
-.sev-caution .sev-label { color: #b9821a; }
-.sev-good .sev-label { color: #3f9a68; }
 .sev-legend {
   display: block;
   color: var(--ink-soft);
@@ -869,11 +898,14 @@ button:focus-visible {
   border-radius: 50%;
   vertical-align: -1px;
 }
-.sev-dot.bad { background: #ef6461; }
-.sev-dot.caution { background: #f2b230; }
-.sev-dot.good { background: #5cbf88; }
+.sev-dot.bad { background: var(--sev-bad); }
+.sev-dot.caution { background: var(--sev-caution); }
+.sev-dot.good { background: var(--sev-good); }
+.tier .badge {
+  background: var(--sev-bad);
+}
 .tier .badge.caution {
-  background: #f2b230;
+  background: var(--sev-caution);
 }
 .th-icon {
   display: grid;
@@ -881,19 +913,19 @@ button:focus-visible {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #ffb35c;
+  background: var(--sev-caution);
   color: #ffffff;
   font-weight: 800;
   font-size: 13px;
 }
 .thoughts .sev-bad .th-icon {
-  background: #ef6461;
+  background: var(--sev-bad);
 }
 .thoughts .sev-caution .th-icon {
-  background: #f2b230;
+  background: var(--sev-caution);
 }
 .thoughts .sev-good .th-icon {
-  background: #5cbf88;
+  background: var(--sev-good);
 }
 .th-text {
   display: grid;
@@ -911,6 +943,118 @@ button:focus-visible {
   font-size: 12px;
   min-height: 36px;
   white-space: nowrap;
+}
+
+/* Trends: stat tiles with sparklines */
+.trend-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.trend {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding: 9px 10px 8px;
+  border-radius: 14px;
+  background: var(--meter-track);
+}
+.trend-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+.trend-value {
+  font: 600 20px/1.1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+.trend-delta {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+.trend-delta.good {
+  color: var(--sev-good-ink);
+}
+.trend-delta.bad {
+  color: var(--sev-bad-ink);
+}
+.trend-delta small {
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.spark {
+  width: 100%;
+  height: auto;
+  margin-top: 4px;
+  overflow: visible;
+  touch-action: none;
+  cursor: crosshair;
+  border-radius: 6px;
+}
+.spark:focus-visible {
+  outline: 2px solid var(--focus);
+}
+.spark-line {
+  fill: none;
+  stroke: var(--trend);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.spark-hair {
+  stroke: var(--ink-soft);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.spark-dot {
+  fill: var(--trend);
+  stroke: var(--panel-edge);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.spark-tip {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 6px;
+  padding: 5px 8px;
+  border-radius: 10px;
+  background: #3d3557;
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 700;
+  pointer-events: none;
+  z-index: 2;
+  box-shadow: var(--shadow);
+}
+.spark-tip b {
+  font-size: 13px;
+}
+.trend-table summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink-soft);
+  padding: 4px 0;
+}
+.trend-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.trend-table th,
+.trend-table td {
+  padding: 4px 4px;
+  text-align: right;
+  border-bottom: 1px solid var(--meter-track);
+}
+.trend-table th[scope='row'],
+.trend-table thead th:first-child {
+  text-align: left;
+  font-weight: 700;
 }
 
 /* Locked tools wait for a milestone */
@@ -1771,6 +1915,10 @@ button:focus-visible {
     left: calc(env(safe-area-inset-left, 0px) + 12px);
     bottom: calc(env(safe-area-inset-bottom, 0px) + 98px);
   }
+  .minimap-wrap {
+    left: calc(env(safe-area-inset-left, 0px) + 12px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 150px);
+  }
   .history-btns .pill {
     width: 42px;
     height: 42px;
@@ -1990,6 +2138,54 @@ button:focus-visible {
   }
 }
 
+/* Colour-blind friendly colours (Okabe–Ito severities; blue-to-yellow ramps) */
+:root.cb {
+  --sev-bad: #d55e00;
+  --sev-caution: #e69f00;
+  --sev-good: #0072b2;
+  --sev-bad-ink: #a84a00;
+  --sev-caution-ink: #8a5f00;
+  --sev-good-ink: #005a8c;
+  --ramp-low: #44468c;
+  --ramp-mid: #3ca0a0;
+  --ramp-high: #f0dc5a;
+}
+:root.cb .legend-bar.ramp-rev {
+  background: linear-gradient(90deg, var(--ramp-high), var(--ramp-mid), var(--ramp-low));
+}
+
+/* Larger text: the floating interface grows; the map stays the same */
+:root.large-text .stats,
+:root.large-text .corner,
+:root.large-text .toolbar,
+:root.large-text .tray,
+:root.large-text .toast,
+:root.large-text .inspector,
+:root.large-text .life-panel,
+:root.large-text .life-card,
+:root.large-text .city-panel,
+:root.large-text .more-sheet,
+:root.large-text .legend,
+:root.large-text .history-btns,
+:root.large-text .milestone-card,
+:root.large-text .minimap-wrap {
+  zoom: 1.15;
+}
+@media (max-width: 560px) {
+  /* Icon rows already fill a phone's width; only text panels grow. */
+  :root.large-text .toolbar,
+  :root.large-text .corner,
+  :root.large-text .history-btns,
+  :root.large-text .minimap-wrap {
+    zoom: 1;
+  }
+}
+
+/* The City panel and the map-view legend share the top-left corner */
+:root.city-open .legend {
+  display: none;
+}
+
 </style>
 <main id="app">
       <canvas id="city" aria-label="Your city. Tap a tile to build, drag to pan, pinch or scroll to zoom."></canvas>
@@ -2019,13 +2215,14 @@ button:focus-visible {
       </section>
 
       <div class="legend glass" id="legend" hidden></div>
+      <div class="minimap-wrap glass" id="minimap" hidden><canvas aria-label="Minimap. Tap to move the view there."></canvas></div>
 
       <div class="corner">
         <button type="button" id="btn-life" class="pill glass" aria-label="Life Story">
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20.5c.8-4 3.6-6.5 7-6.5s6.2 2.5 7 6.5"/></svg>
           <span class="pill-text">Life</span><span class="badge" hidden></span>
         </button>
-        <button type="button" id="btn-more" class="pill glass icon-only" aria-label="City controls" aria-haspopup="dialog" aria-expanded="false">
+        <button type="button" id="btn-more" class="pill glass icon-only" aria-label="Settings and more" title="Settings and more" aria-haspopup="dialog" aria-expanded="false">
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
         </button>
         <button type="button" id="btn-speed" class="pill glass" aria-label="Change speed"></button>
@@ -2406,6 +2603,7 @@ class CityState {
   reset() {
     this._buildTiles();
     delete this.systems.streets; // a new town gets new street names
+    delete this.systems.trends;
     this.dirty = true;
     this.revision++;
   }
@@ -2425,6 +2623,25 @@ class CityState {
     this.refreshAllRoadMasks();
     this.dirty = true;
     this.emit('resized', { width, height });
+  }
+
+  // Become a copy of another city (a shared town, or your own town coming back), keeping this object
+  // so every system that holds it carries on.
+  copyFrom(other) {
+    this.width = other.width;
+    this.height = other.height;
+    this._buildTiles();
+    other.tiles.forEach((t, i) => {
+      this.tiles[i].terrain = t.terrain;
+      this.tiles[i].structure = t.structure ? { ...t.structure } : null;
+    });
+    this.clock = other.clock;
+    this.day = other.day;
+    this.nextId = Math.max(other.nextId, 1);
+    this.systems = JSON.parse(JSON.stringify(other.systems || {}));
+    this.refreshAllRoadMasks();
+    this.dirty = true;
+    this.revision++;
   }
 
   toJSON() {
@@ -5984,6 +6201,9 @@ const { Milestones } = __mod_milestones;
 const { computeThoughts } = __mod_advisor;
 const { daylightAt } = __mod_time;
 const { clamp, pickWeighted } = __mod_utils;
+const TREND_SAMPLES_PER_DAY = 8;
+const TREND_KEEP = 48;
+
 class Simulation {
   constructor(city) {
     this.city = city;
@@ -6030,6 +6250,7 @@ class Simulation {
     }
     this.updateHousing();
     this.updateStats();
+    this.updateTrends();
     this.milestones.update();
     this._thoughtTimer -= SIM_STEP;
     if (this._thoughtTimer <= 0) {
@@ -6048,6 +6269,23 @@ class Simulation {
     this.updateStats();
     void this.milestones.state; // settle the starting title without a celebration
     this.city.derived.thoughts = computeThoughts(this.city, this.milestones);
+  }
+
+  // Trends for the City panel: a sample every three in-game hours, the last six days kept.
+  // Saved with the city (a few hundred numbers), so the charts survive a reload.
+  updateTrends() {
+    const city = this.city;
+    const slot = Math.floor((city.day + city.clock) * TREND_SAMPLES_PER_DAY);
+    const tr = (city.systems.trends ||= { slot: -1, t: [], pop: [], happy: [], employ: [], traffic: [] });
+    if (tr.slot === slot) return;
+    tr.slot = slot;
+    const s = city.stats;
+    tr.t.push(Math.round((city.day + city.clock) * 1000) / 1000);
+    tr.pop.push(s.population);
+    tr.happy.push(s.homes ? s.happiness : 0);
+    tr.employ.push(Math.round((s.employment ?? 1) * 100));
+    tr.traffic.push(Math.round((s.traffic || 0) * 100));
+    for (const k of ['t', 'pop', 'happy', 'employ', 'traffic']) if (tr[k].length > TREND_KEEP) tr[k].splice(0, tr[k].length - TREND_KEEP);
   }
 
   // Street names and addresses follow the map; recompute only when a tile changed.
@@ -6123,7 +6361,7 @@ class Simulation {
   }
 }
 
-return { Simulation };
+return { TREND_SAMPLES_PER_DAY, Simulation };
 })();
 
 // ---- iso.js ----
@@ -6300,6 +6538,76 @@ function computeLighting(clock) {
 return { lightingAt };
 })();
 
+// ---- settings.js ----
+const __mod_settings = (() => {
+// Viewer settings: comfort options that belong to this device, not to the city, so they live in
+// localStorage apart from the save. Changing one notifies listeners (renderer, UI).
+
+const { SEVERITY_COLORS } = __mod_config;
+const KEY = 'pocket-metropolis:settings';
+const DEFAULTS = { colorBlind: false, largeText: false, minimap: null }; // minimap null = automatic
+
+// Okabe–Ito colours: told apart with every common type of colour blindness.
+const CB_SEVERITY = { bad: '#d55e00', caution: '#e69f00', good: '#0072b2' };
+const NORMAL_SEVERITY = { ...SEVERITY_COLORS };
+
+const settings = { ...DEFAULTS };
+const listeners = new Set();
+
+function loadSettings() {
+  try {
+    Object.assign(settings, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || '{}'));
+  } catch {
+    // Storage blocked or corrupt: keep the defaults.
+  }
+  apply();
+  return settings;
+}
+
+function setSetting(key, value) {
+  settings[key] = value;
+  try {
+    localStorage.setItem(KEY, JSON.stringify(settings));
+  } catch {
+    // Not saved, but still applied for this visit.
+  }
+  apply();
+  for (const fn of listeners) fn(key, value);
+}
+
+function onSettings(fn) {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
+// Severity colours are shared by the map, the bubbles and the panel, so swap them in place.
+function apply() {
+  Object.assign(SEVERITY_COLORS, settings.colorBlind ? CB_SEVERITY : NORMAL_SEVERITY);
+  if (typeof document === 'undefined') return;
+  const root = document.documentElement;
+  root.classList.toggle('cb', !!settings.colorBlind);
+  root.classList.toggle('large-text', !!settings.largeText);
+}
+
+// Desirability and traffic ramps: red → yellow → green normally; dark blue → yellow when colour-blind
+// friendly (a single light-to-dark run reads for everyone).
+function rampStops() {
+  return settings.colorBlind
+    ? [
+        [0, [68, 70, 140]],
+        [0.5, [60, 160, 160]],
+        [1, [240, 220, 90]],
+      ]
+    : [
+        [0, [246, 140, 140]],
+        [0.5, [255, 214, 120]],
+        [1, [110, 200, 150]],
+      ];
+}
+
+return { settings, loadSettings, setSetting, onSettings, rampStops };
+})();
+
 // ---- renderer.js ----
 const __mod_renderer = (() => {
 // Renderer: reads the city, agents and clock and draws the isometric diorama. It never changes city state.
@@ -6310,6 +6618,7 @@ const { lightingAt } = __mod_lighting;
 const { lit, litA, rgba, mixHex } = __mod_color;
 const { clamp, hash2 } = __mod_utils;
 const { shortName, addressOf } = __mod_streets;
+const { rampStops, settings } = __mod_settings;
 const SLAB_DEPTH = 18;
 // Unlit lighting for the cached ground layer; the frame's real light is multiplied on afterwards.
 const NEUTRAL_LIGHT = { ambient: [1, 1, 1], daylight: 1, windowLit: 0, lamps: 0, shadow: { alpha: 0 }, clock: 0.5 };
@@ -6429,11 +6738,7 @@ function contactSprite() {
 // Low → high: blush red, butter yellow, mint green.
 function rampColor(v, alpha) {
   const t = Math.max(0, Math.min(1, v));
-  const stops = [
-    [0, [246, 140, 140]],
-    [0.5, [255, 214, 120]],
-    [1, [110, 200, 150]],
-  ];
+  const stops = rampStops();
   const i = t < 0.5 ? 0 : 1;
   const [a0, c0] = stops[i];
   const [a1, c1] = stops[i + 1];
@@ -6467,6 +6772,7 @@ class Renderer {
     this.confettiBits = [];
     this.thoughtRects = []; // screen-space hit boxes for the resident thought bubbles
     this.showThoughts = true;
+    this.textScale = 1;
     city.on((ev) => this.onCityEvent(ev));
   }
 
@@ -6707,7 +7013,8 @@ class Renderer {
     const phase = (this.time % 6) / 6;
     const fade = Math.min(1, phase * 8, (1 - phase) * 8);
     ctx.save();
-    ctx.font = '600 11px system-ui, -apple-system, "Segoe UI", sans-serif';
+    const k = this.textScale || 1; // larger text setting
+    ctx.font = `600 ${11 * k}px system-ui, -apple-system, "Segoe UI", sans-serif`;
     ctx.textBaseline = 'middle';
     for (const th of new Set(shown)) {
       const tile = this.city.getTile(th.x, th.y);
@@ -6718,8 +7025,8 @@ class Renderer {
       const text = th.text.length > 34 ? `${th.text.slice(0, 32)}…` : th.text;
       const icon = th.kind === 'happy' ? '♥' : '!';
       const tw = ctx.measureText(text).width;
-      const w = tw + 34;
-      const h = 24;
+      const w = tw + 34 * k;
+      const h = 24 * k;
       const x = clamp(s.x - w / 2, 6, this.w - w - 6);
       let y = clamp(s.y - h - 10 + bob, 6, this.h - h - 6);
       // Keep clear of the Life Story home tag: hop above it.
@@ -6748,14 +7055,14 @@ class Renderer {
       ctx.fill();
       ctx.fillStyle = sev;
       ctx.beginPath();
-      ctx.arc(x + 13, y + h / 2, 8, 0, Math.PI * 2);
+      ctx.arc(x + 13 * k, y + h / 2, 8 * k, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
-      ctx.fillText(icon, x + 13, y + h / 2 + 0.5);
+      ctx.fillText(icon, x + 13 * k, y + h / 2 + 0.5);
       ctx.textAlign = 'left';
       ctx.fillStyle = '#4a4270';
-      ctx.fillText(text, x + 26, y + h / 2 + 0.5);
+      ctx.fillText(text, x + 26 * k, y + h / 2 + 0.5);
       this.thoughtRects.push({ x, y, w, h: h + 6, thought: th });
     }
     ctx.restore();
@@ -7452,7 +7759,7 @@ class Renderer {
     const runs = this.city.derived.streets;
     const z = this.camera.zoom;
     if (!runs || z < 0.7) return;
-    const size = clamp(10 / z, 6.5, 11);
+    const size = clamp(10 / z, 6.5, 11) * (this.textScale || 1);
     const len = Math.hypot(HALF_W, HALF_H);
     const ux = HALF_W / len;
     const uy = HALF_H / len;
@@ -9099,6 +9406,35 @@ function loadCity() {
   }
 }
 
+// A copy of your own town, kept while you visit a shared one.
+const BACKUP_KEY = `${KEY}:backup`;
+
+function saveBackup(city) {
+  try {
+    localStorage.setItem(BACKUP_KEY, JSON.stringify({ version: SAVE_VERSION, savedAt: Date.now(), city: city.toJSON() }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function loadBackup() {
+  try {
+    const raw = localStorage.getItem(BACKUP_KEY);
+    return raw ? CityState.fromJSON(migrate(JSON.parse(raw)).city) : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearBackup() {
+  try {
+    localStorage.removeItem(BACKUP_KEY);
+  } catch {
+    // Nothing to clear.
+  }
+}
+
 // Saves shortly after each edit, every so often while the city lives, and when the page is hidden.
 class AutoSaver {
   constructor(city, { delayMs = 800, intervalS = 15 } = {}) {
@@ -9135,7 +9471,253 @@ class AutoSaver {
   }
 }
 
-return { MIGRATIONS, saveCity, loadCity, AutoSaver };
+return { MIGRATIONS, saveCity, loadCity, saveBackup, loadBackup, clearBackup, AutoSaver };
+})();
+
+// ---- share.js ----
+const __mod_share = (() => {
+// Share a town as a link. The map is packed into a few bytes per tile, deflated, and put in the URL
+// hash (#town=…), so no server is needed. Residents, the Life Story and settings stay at home: the
+// visitor's simulation grows the town again from its buildings.
+
+const { STRUCTURES, VARIANT_KEYS } = __mod_config;
+const { CityState } = __mod_state;
+const FORMAT = 1;
+const TYPES = Object.keys(STRUCTURES); // a type's code is its index + 1; 0 means empty
+const HASH_KEY = 'town=';
+const VARIANT_TYPES = new Set(['house', 'tower', 'shop', 'office']); // as CityState.createStructure
+
+// Two bytes per tile: [water flag | type code] and [variant | shape | floors].
+function packCity(city) {
+  const n = city.width * city.height;
+  const out = new Uint8Array(4 + n * 2);
+  out[0] = FORMAT;
+  out[1] = city.width;
+  out[2] = city.height;
+  out[3] = Math.min(255, city.day);
+  city.tiles.forEach((t, i) => {
+    const s = t.structure;
+    const code = s ? TYPES.indexOf(s.type) + 1 : 0;
+    out[4 + i * 2] = (t.terrain === 'water' ? 0x80 : 0) | (code & 0x3f);
+    const variant = Math.max(0, VARIANT_KEYS.indexOf(s?.variant));
+    out[5 + i * 2] = (variant & 3) | (((s?.shape || 0) & 3) << 2) | (((s?.floors || 0) & 15) << 4);
+  });
+  return out;
+}
+
+function unpackCity(bytes) {
+  if (bytes[0] !== FORMAT) throw new Error('Unknown town link format');
+  const w = bytes[1];
+  const h = bytes[2];
+  if (!w || !h || bytes.length < 4 + w * h * 2) throw new Error('Town link is incomplete');
+  const city = new CityState(w, h);
+  city.day = bytes[3] || 1;
+  city.tiles.forEach((t, i) => {
+    const a = bytes[4 + i * 2];
+    const b = bytes[5 + i * 2];
+    t.terrain = a & 0x80 ? 'water' : 'grass';
+    const type = TYPES[(a & 0x3f) - 1];
+    if (!type) return;
+    const s = { id: city.nextId++, type, residents: 0 };
+    if (VARIANT_TYPES.has(type)) s.variant = VARIANT_KEYS[b & 3];
+    if ((b >> 2) & 3) s.shape = (b >> 2) & 3;
+    if (b >> 4) s.floors = b >> 4;
+    t.structure = s;
+  });
+  city.refreshAllRoadMasks();
+  return city;
+}
+
+// Deflate with the browser's built-in compressor, then base64url (URL-safe, no padding).
+async function deflate(bytes) {
+  const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+async function inflate(bytes) {
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+function toBase64Url(bytes) {
+  let s = '';
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function fromBase64Url(text) {
+  const s = atob(text.replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(s, (ch) => ch.charCodeAt(0));
+}
+
+async function encodeCity(city) {
+  return toBase64Url(await deflate(packCity(city)));
+}
+
+async function decodeCity(code) {
+  return unpackCity(await inflate(fromBase64Url(code)));
+}
+
+function shareUrl(code, location = window.location) {
+  return `${location.origin}${location.pathname}#${HASH_KEY}${code}`;
+}
+
+// The code in a #town=… hash, if any.
+function codeFromHash(hash) {
+  const h = (hash || '').replace(/^#/, '');
+  return h.startsWith(HASH_KEY) ? h.slice(HASH_KEY.length) : null;
+}
+
+return { packCity, unpackCity, encodeCity, decodeCity, shareUrl, codeFromHash };
+})();
+
+// ---- minimap.js ----
+const __mod_minimap = (() => {
+// Minimap: the whole city as a small diamond, with the camera's view outlined. Tap or drag on it to
+// jump there. The tiles are drawn once per map change; the view outline is redrawn every frame.
+
+const { PALETTE } = __mod_config;
+const { HALF_W, HALF_H } = __mod_iso;
+const COLORS = {
+  water: PALETTE.water,
+  grass: PALETTE.grass,
+  road: '#bdb6a8',
+  house: PALETTE.peach,
+  tower: '#b79ad0',
+  shop: '#ffc98a',
+  office: '#9fbfe6',
+  school: '#ffab94',
+  clinic: '#8fd8bd',
+  tree: '#7cbf84',
+  park: '#8fd29a',
+  playground: '#ffd99a',
+  field: '#7fca86',
+};
+
+class Minimap {
+  constructor(wrap, city, camera) {
+    this.wrap = wrap;
+    this.canvas = wrap.querySelector('canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.city = city;
+    this.camera = camera;
+    this.cache = document.createElement('canvas');
+    this.key = '';
+    this.size = { w: 168, h: 84 };
+    let dragging = false;
+    const jump = (e) => {
+      const r = this.canvas.getBoundingClientRect();
+      const w = this.toWorld(e.clientX - r.left, e.clientY - r.top);
+      camera.tx = w.x;
+      camera.ty = w.y;
+      camera.clampTarget();
+    };
+    this.canvas.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragging = true;
+      this.canvas.setPointerCapture(e.pointerId);
+      jump(e);
+    });
+    this.canvas.addEventListener('pointermove', (e) => dragging && jump(e));
+    const stop = () => (dragging = false);
+    this.canvas.addEventListener('pointerup', stop);
+    this.canvas.addEventListener('pointercancel', stop);
+  }
+
+  // Grid → minimap pixels. The diamond fills the canvas.
+  get scale() {
+    const c = this.city;
+    return this.size.w / ((c.width + c.height) * HALF_W);
+  }
+
+  toMini(wx, wy) {
+    const k = this.scale;
+    return { x: (wx + this.city.height * HALF_W) * k, y: wy * k };
+  }
+
+  toWorld(mx, my) {
+    const k = this.scale;
+    return { x: mx / k - this.city.height * HALF_W, y: my / k };
+  }
+
+  setVisible(on) {
+    this.wrap.hidden = !on;
+  }
+
+  redrawTiles(dpr, home) {
+    const c = this.city;
+    const { w, h } = this.size;
+    this.cache.width = Math.round(w * dpr);
+    this.cache.height = Math.round(h * dpr);
+    const g = this.cache.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const k = this.scale;
+    const hw = HALF_W * k;
+    const hh = HALF_H * k;
+    for (const t of c.tiles) {
+      const s = t.structure;
+      g.fillStyle = t.terrain === 'water' ? COLORS.water : s ? COLORS[s.type] || COLORS.grass : COLORS.grass;
+      const p = this.toMini((t.x - t.y) * HALF_W, (t.x + t.y) * HALF_H);
+      g.beginPath();
+      g.moveTo(p.x, p.y);
+      g.lineTo(p.x + hw + 0.3, p.y + hh);
+      g.lineTo(p.x, p.y + 2 * hh + 0.3);
+      g.lineTo(p.x - hw - 0.3, p.y + hh);
+      g.closePath();
+      g.fill();
+    }
+    if (home) {
+      const p = this.toMini((home.x - home.y) * HALF_W, (home.x + home.y + 1) * HALF_H);
+      g.fillStyle = '#ffffff';
+      g.beginPath();
+      g.arc(p.x, p.y, 3.4, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = '#ff7a6b';
+      g.beginPath();
+      g.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+      g.fill();
+    }
+  }
+
+  render() {
+    if (this.wrap.hidden) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const { w, h } = this.size;
+    if (this.canvas.width !== Math.round(w * dpr)) {
+      this.canvas.width = Math.round(w * dpr);
+      this.canvas.height = Math.round(h * dpr);
+      this.key = '';
+    }
+    const home = this.city.systems.life?.char?.alive ? this.city.systems.life.char.home : null;
+    const key = `${this.city.revision}|${this.city.width}|${home ? `${home.x},${home.y}` : ''}`;
+    if (key !== this.key) {
+      this.key = key;
+      this.redrawTiles(dpr, home);
+    }
+    const g = this.ctx;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    g.drawImage(this.cache, 0, 0);
+    // The part of the city on screen.
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const cam = this.camera;
+    const halfW = cam.viewW / 2 / cam.zoom;
+    const halfH = cam.viewH / 2 / cam.zoom;
+    // Clamped to the minimap so the outline stays visible when the whole city is on screen.
+    const clampX = (v) => Math.max(1.5, Math.min(w - 1.5, v));
+    const clampY = (v) => Math.max(1.5, Math.min(h - 1.5, v));
+    const a0 = this.toMini(cam.x - halfW, cam.y - halfH);
+    const b0 = this.toMini(cam.x + halfW, cam.y + halfH);
+    const a = { x: clampX(a0.x), y: clampY(a0.y) };
+    const b = { x: clampX(b0.x), y: clampY(b0.y) };
+    g.strokeStyle = '#ffffff';
+    g.lineWidth = 2.5;
+    g.strokeRect(a.x, a.y, b.x - a.x, b.y - a.y);
+    g.strokeStyle = '#5b4f86';
+    g.lineWidth = 1.2;
+    g.strokeRect(a.x, a.y, b.x - a.x, b.y - a.y);
+  }
+}
+
+return { Minimap };
 })();
 
 // ---- generator.js ----
@@ -9338,8 +9920,12 @@ const LEGENDS = {
 const pct = (v) => `${Math.round(v * 100)}%`;
 
 class Interface {
-  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect, sound, locks }) {
+  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect, sound, locks, onShare, onBackHome, hasBackup, display }) {
     this.sound = sound;
+    this.onShare = onShare;
+    this.onBackHome = onBackHome;
+    this.hasBackup = hasBackup || (() => false);
+    this.display = display; // { get(key), set(key, value) } for minimap, colour-blind and large text
     this.locks = locks; // { isUnlocked(tool), unlockLabel(tool) }
     this.soundBtn = document.getElementById('btn-sound');
     this.toolbar = document.getElementById('toolbar');
@@ -9545,7 +10131,7 @@ class Interface {
       [3, '3×'],
     ];
     this.moreSheet.innerHTML =
-      `<header><h2>City controls</h2><button type="button" class="insp-close" data-more="close" aria-label="Close">${ICONS.close}</button></header>` +
+      `<header><h2>Settings &amp; more</h2><button type="button" class="insp-close" data-more="close" aria-label="Close">${ICONS.close}</button></header>` +
       `<span class="sheet-label">Speed</span><div class="seg big">${speeds
         .map(([v, l]) => `<button type="button" data-speed="${v}" aria-pressed="${this.speed === v}">${l}</button>`)
         .join('')}</div>` +
@@ -9553,6 +10139,21 @@ class Interface {
         (v) => `<button type="button" data-view="${v.id}" aria-pressed="${this.view === v.id}">${v.label}</button>`
       ).join('')}</div>` +
       `<span class="sheet-label">Sound</span><div class="seg big"><button type="button" data-sound="on" aria-pressed="${!this.sound.muted()}">On</button><button type="button" data-sound="off" aria-pressed="${this.sound.muted()}">Off</button></div>` +
+      (this.display
+        ? [
+            ['minimap', 'Minimap'],
+            ['colorBlind', 'Colour-blind friendly colours'],
+            ['largeText', 'Larger text'],
+          ]
+            .map(([k, label]) => {
+              const on = !!this.display.get(k);
+              return `<span class="sheet-label">${label}</span><div class="seg big"><button type="button" data-display="${k}" data-value="1" aria-pressed="${on}">On</button><button type="button" data-display="${k}" data-value="0" aria-pressed="${!on}">Off</button></div>`;
+            })
+            .join('')
+        : '') +
+      `<div class="sheet-actions"><button type="button" class="ghost-btn" data-more="share">Share town link</button>` +
+      (this.hasBackup() ? '<button type="button" class="ghost-btn" data-more="home">Back to my town</button>' : '<span></span>') +
+      '</div>' +
       `<div class="sheet-actions"><button type="button" class="ghost-btn" data-more="fit">Recenter</button>` +
       `<button type="button" class="${this._confirmRandom ? 'primary-btn danger' : 'ghost-btn'}" data-more="random">${this._confirmRandom ? 'Tap again to replace your city' : 'Random Town'}</button></div>`;
   }
@@ -9566,7 +10167,14 @@ class Interface {
       if ((t.dataset.sound === 'off') !== this.sound.muted()) this.sound.toggle();
       return this.renderSound();
     }
-    else if (t.dataset.more === 'close') return this.toggleMore(false);
+    else if (t.dataset.display) this.display.set(t.dataset.display, t.dataset.value === '1');
+    else if (t.dataset.more === 'share') {
+      this.onShare?.();
+      return this.toggleMore(false);
+    } else if (t.dataset.more === 'home') {
+      this.onBackHome?.();
+      return this.toggleMore(false);
+    } else if (t.dataset.more === 'close') return this.toggleMore(false);
     else if (t.dataset.more === 'fit') {
       this.onFit();
       return this.toggleMore(false);
@@ -10088,12 +10696,149 @@ class LifeInterface {
 return { avatarSVG, LifeInterface };
 })();
 
+// ---- trendsUI.js ----
+const __mod_trendsUI = (() => {
+// Trends: stat tiles with a sparkline for the City panel. Each tile shows the value now, the change
+// since the oldest sample, and a small line chart with a hover/tap readout and a table view.
+// Charts follow one rule set: one 2px line per tile, the current value marked, text in ink colours.
+
+const { formatClock } = __mod_time;
+const TREND_SERIES = [
+  { id: 'pop', label: 'Population', unit: '', upIsGood: true },
+  { id: 'happy', label: 'Happiness', unit: '%', upIsGood: true },
+  { id: 'employ', label: 'Employment', unit: '%', upIsGood: true },
+  { id: 'traffic', label: 'Busiest road', unit: '%', upIsGood: false },
+];
+
+const W = 120;
+const H = 34;
+const PAD = 4;
+
+const fmt = (v, unit) => `${Math.round(v).toLocaleString()}${unit}`;
+const timeLabel = (t) => `Day ${Math.floor(t)}, ${formatClock(t - Math.floor(t))}`;
+
+function points(values) {
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+  const n = values.length;
+  return values.map((v, i) => ({
+    x: n === 1 ? W / 2 : PAD + (i / (n - 1)) * (W - PAD * 2),
+    y: max === min ? H / 2 : H - PAD - ((v - min) / span) * (H - PAD * 2),
+  }));
+}
+
+function trendsHTML(trends) {
+  const n = trends?.t?.length || 0;
+  if (n < 2) return '<p class="insp-note">Trends appear after a few in-game hours.</p>';
+  const tiles = TREND_SERIES.map((s) => {
+    const values = trends[s.id];
+    const now = values[values.length - 1];
+    const delta = now - values[0];
+    const good = delta === 0 ? null : (delta > 0) === s.upIsGood;
+    const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '';
+    const pts = points(values);
+    const last = pts[pts.length - 1];
+    const path = pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+    return (
+      `<div class="trend" data-series="${s.id}">` +
+      `<span class="trend-label">${s.label}</span>` +
+      `<span class="trend-value">${fmt(now, s.unit)}</span>` +
+      `<span class="trend-delta ${good == null ? '' : good ? 'good' : 'bad'}">${arrow ? `${arrow} ` : ''}${delta === 0 ? 'No change' : fmt(Math.abs(delta), s.unit)}<small> since Day ${Math.floor(trends.t[0])}</small></span>` +
+      `<svg class="spark" viewBox="0 0 ${W} ${H}" tabindex="0" role="img" aria-label="${s.label} over the last ${n} samples, from ${fmt(values[0], s.unit)} to ${fmt(now, s.unit)}">` +
+      `<path class="spark-line" d="${path}"/>` +
+      `<line class="spark-hair" x1="0" x2="0" y1="0" y2="${H}" visibility="hidden"/>` +
+      `<circle class="spark-dot now" cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="4"/>` +
+      `<circle class="spark-dot hover" r="4" visibility="hidden"/>` +
+      `</svg><span class="spark-tip" hidden></span></div>`
+    );
+  }).join('');
+  const rows = trends.t
+    .map((t, i) => ({ t, i }))
+    .slice(-8)
+    .reverse()
+    .map(({ t, i }) => `<tr><th scope="row">${timeLabel(t)}</th>${TREND_SERIES.map((s) => `<td>${fmt(trends[s.id][i], s.unit)}</td>`).join('')}</tr>`)
+    .join('');
+  return (
+    `<div class="trend-grid">${tiles}</div>` +
+    `<details class="trend-table"><summary>Show as a table</summary><table><thead><tr><th scope="col">Time</th>${TREND_SERIES.map((s) => `<th scope="col">${s.label}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></details>`
+  );
+}
+
+// Hover, tap and arrow keys move a crosshair along a sparkline and show that sample.
+function bindTrendHover(root, getTrends) {
+  const show = (svg, index) => {
+    const tile = svg.closest('.trend');
+    const trends = getTrends();
+    const s = TREND_SERIES.find((x) => x.id === tile.dataset.series);
+    const values = trends?.[s.id];
+    if (!values?.length) return;
+    const i = Math.max(0, Math.min(values.length - 1, index));
+    svg.dataset.index = i;
+    const p = points(values)[i];
+    const hair = svg.querySelector('.spark-hair');
+    const dot = svg.querySelector('.spark-dot.hover');
+    hair.setAttribute('x1', p.x);
+    hair.setAttribute('x2', p.x);
+    hair.setAttribute('visibility', 'visible');
+    dot.setAttribute('cx', p.x);
+    dot.setAttribute('cy', p.y);
+    dot.setAttribute('visibility', 'visible');
+    const tip = tile.querySelector('.spark-tip');
+    tip.textContent = '';
+    const b = document.createElement('b');
+    b.textContent = fmt(values[i], s.unit);
+    tip.append(b, document.createTextNode(` ${timeLabel(trends.t[i])}`));
+    tip.hidden = false;
+  };
+  const hide = (svg) => {
+    svg.querySelector('.spark-hair')?.setAttribute('visibility', 'hidden');
+    svg.querySelector('.spark-dot.hover')?.setAttribute('visibility', 'hidden');
+    const tip = svg.closest('.trend')?.querySelector('.spark-tip');
+    if (tip) tip.hidden = true;
+  };
+  const indexAt = (svg, clientX) => {
+    const r = svg.getBoundingClientRect();
+    const n = getTrends()?.t?.length || 1;
+    const x = ((clientX - r.left) / r.width) * W;
+    return Math.round(((x - PAD) / (W - PAD * 2)) * (n - 1));
+  };
+  root.addEventListener('pointermove', (e) => {
+    const svg = e.target.closest?.('.spark');
+    if (svg) show(svg, indexAt(svg, e.clientX));
+  });
+  root.addEventListener('pointerdown', (e) => {
+    const svg = e.target.closest?.('.spark');
+    if (svg) show(svg, indexAt(svg, e.clientX));
+  });
+  root.addEventListener('pointerout', (e) => {
+    const svg = e.target.closest?.('.spark');
+    if (svg && !svg.contains(e.relatedTarget)) hide(svg);
+  });
+  root.addEventListener('focusin', (e) => {
+    if (e.target.classList?.contains('spark')) show(e.target, (getTrends()?.t?.length || 1) - 1);
+  });
+  root.addEventListener('focusout', (e) => {
+    if (e.target.classList?.contains('spark')) hide(e.target);
+  });
+  root.addEventListener('keydown', (e) => {
+    const svg = e.target;
+    if (!svg.classList?.contains('spark') || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+    e.preventDefault();
+    show(svg, Number(svg.dataset.index ?? 0) + (e.key === 'ArrowRight' ? 1 : -1));
+  });
+}
+
+return { TREND_SERIES, timeLabel, trendsHTML, bindTrendHover };
+})();
+
 // ---- cityUI.js ----
 const __mod_cityUI = (() => {
 // City panel: the town's title, progress to the next milestone, what it unlocks, and what residents
 // are wishing for. Opened from the stats bubble. Reads state only; actions go through handlers.
 
 const { MILESTONES, STRUCTURES, TOOLS } = __mod_config;
+const { trendsHTML, bindTrendHover } = __mod_trendsUI;
 const SEVERITY_LABEL = { bad: 'Needs fixing', caution: 'Worth a look', good: 'Going well' };
 
 const labelOf = (id) => STRUCTURES[id]?.label || TOOLS.find((t) => t.id === id)?.label || id;
@@ -10111,6 +10856,9 @@ class CityPanel {
     this.tierEl = document.getElementById('tier-name');
     this.meterEl = document.getElementById('tier-meter');
     this.open = false;
+    this._trendSlot = null;
+    this.city = null;
+    bindTrendHover(this.panel, () => this.city?.systems.trends);
     this.focusedId = null; // the thought being looked at: its tiles pulse on the map
     this.focusUntil = 0; // with the panel closed, the highlight fades after this time (ms)
     this._key = '';
@@ -10156,10 +10904,12 @@ class CityPanel {
     this.btn.setAttribute('aria-expanded', String(this.open));
     this._key = '';
     this.panel.hidden = !this.open;
+    document.documentElement.classList.toggle('city-open', this.open);
   }
 
   // Called a few times a second: refreshes the stats-bubble tier line and, when open, the panel.
   update(city) {
+    this.city = city;
     const m = this.milestones();
     const p = m.progress();
     this.thoughts = city.derived.thoughts || [];
@@ -10175,6 +10925,17 @@ class CityPanel {
     if (key !== this._key) {
       this._key = key;
       this.panel.innerHTML = this.html(city, m, p);
+      this._trendSlot = null;
+    }
+    // Charts redraw only when a new sample arrives, so a hover isn't interrupted.
+    const tr = city.systems.trends;
+    const box = this.panel.querySelector('.trends');
+    if (box && tr?.slot !== this._trendSlot) {
+      this._trendSlot = tr?.slot;
+      const table = box.querySelector('.trend-table');
+      const wasOpen = !!table?.open;
+      box.innerHTML = trendsHTML(tr);
+      if (wasOpen) box.querySelector('.trend-table').open = true;
     }
     const bar = this.panel.querySelector('.tier-progress span');
     if (bar) bar.style.width = `${Math.round(p.fraction * 100)}%`;
@@ -10210,6 +10971,7 @@ class CityPanel {
       `<button type="button" class="insp-close" data-close aria-label="Close city panel">${CLOSE}</button></header>` +
       next +
       ladder +
+      `<h3>Trends</h3><div class="trends"></div>` +
       `<h3>What residents are saying</h3>` +
       (this.thoughts.length
         ? '<p class="sev-legend"><span class="sev-dot bad"></span>Needs fixing <span class="sev-dot caution"></span>Worth a look <span class="sev-dot good"></span>Going well<br><small>The areas are tinted on the map. Tap Show me to fly there.</small></p>'
@@ -10600,7 +11362,10 @@ const { Simulation } = __mod_simulation;
 const { Renderer } = __mod_renderer;
 const { Camera } = __mod_camera;
 const { InputController } = __mod_input;
-const { AutoSaver, loadCity } = __mod_persistence;
+const { AutoSaver, loadCity, saveCity, saveBackup, loadBackup, clearBackup } = __mod_persistence;
+const { encodeCity, decodeCity, shareUrl, codeFromHash } = __mod_share;
+const { Minimap } = __mod_minimap;
+const { settings, loadSettings, setSetting, onSettings } = __mod_settings;
 const { generateTown } = __mod_generator;
 const { Interface } = __mod_ui;
 const { LifeInterface } = __mod_lifeUI;
@@ -10632,6 +11397,7 @@ const STROKE_LABELS = { road: 'road', water: 'water', bulldoze: 'bulldozing', tr
 const FEEDBACK_RADIUS = 7;
 
 function start(hotData = {}) {
+  loadSettings();
   const canvas = document.getElementById('city');
   let city = null;
   try {
@@ -10650,6 +11416,10 @@ function start(hotData = {}) {
   const saver = new AutoSaver(city);
   const history = new History(city);
   const audio = new Audio();
+  const minimap = new Minimap(document.getElementById('minimap'), city, camera);
+  // Automatic minimap: on for roomy screens, off on phones, unless the player chose.
+  const minimapOn = () => settings.minimap ?? (window.innerWidth >= 760 && window.innerHeight >= 560);
+  let hasBackup = !!loadBackup();
 
   let tool = 'house';
   let hover = null; // { x, y } tile under the mouse
@@ -10698,6 +11468,13 @@ function start(hotData = {}) {
     locks: {
       isUnlocked: (id) => sim.milestones.isUnlocked(id),
       unlockLabel: (id) => MILESTONES[unlockTier(id)]?.label || '',
+    },
+    onShare: () => shareTown(),
+    onBackHome: () => backHome(),
+    hasBackup: () => hasBackup,
+    display: {
+      get: (k) => (k === 'minimap' ? minimapOn() : settings[k]),
+      set: (k, v) => setSetting(k, v),
     },
     sound: {
       muted: () => audio.muted,
@@ -10894,6 +11671,81 @@ function start(hotData = {}) {
     framing = rect ? 'town' : 'map';
   }
 
+  // ---- Sharing -----------------------------------------------------------------
+  async function shareTown() {
+    try {
+      const url = shareUrl(await encodeCity(city));
+      const touch = window.matchMedia?.('(pointer: coarse)').matches;
+      if (touch && navigator.share) {
+        await navigator.share({ title: 'My Pocket Metropolis town', text: 'Come and see my little town!', url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      ui.toast('Link copied. Anyone who opens it gets a copy of your town to play with', 4200);
+    } catch (err) {
+      if (err?.name === 'AbortError') return; // closed the share sheet
+      window.prompt('Copy this link to share your town:', shareUrl(await encodeCity(city)));
+    }
+  }
+
+  // Swap in another town (shared or your own back), keeping every system attached to this city.
+  function swapCity(other) {
+    city.copyFrom(other);
+    history.clear();
+    sim.refresh();
+    selected = null;
+    city.emit('loaded');
+    fitView(false);
+  }
+
+  async function visitShared(code) {
+    let other;
+    try {
+      other = await decodeCity(code);
+    } catch {
+      ui.toast('That town link is broken or incomplete', 3600);
+      return;
+    }
+    if (!hasBackup) hasBackup = saveBackup(city); // keep your own town (and Life Story) safe
+    swapCity(other);
+    sim.milestones.settleForCapacity();
+    ui.refreshLocks();
+    saveCity(city);
+    ui.toast(hasBackup ? 'Visiting a shared town. Your own town is saved: ☰ → Back to my town' : 'Visiting a shared town', 6000);
+  }
+
+  function backHome() {
+    const own = loadBackup();
+    if (!own) {
+      hasBackup = false;
+      return;
+    }
+    swapCity(own);
+    ui.refreshLocks();
+    saveCity(city);
+    clearBackup();
+    hasBackup = false;
+    ui.toast('Welcome back to your town', 2400);
+  }
+
+  const sharedCode = codeFromHash(window.location.hash);
+  if (sharedCode) {
+    window.history.replaceState(null, '', window.location.pathname + window.location.search); // a reload won't re-import
+    queueMicrotask(() => visitShared(sharedCode));
+  }
+  window.addEventListener('hashchange', () => {
+    const code = codeFromHash(window.location.hash);
+    if (!code) return;
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    visitShared(code);
+  });
+
+  onSettings(() => {
+    minimap.setVisible(minimapOn());
+    renderer.textScale = settings.largeText ? 1.2 : 1;
+    ui.renderMore();
+  });
+
   function resize() {
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
@@ -10905,8 +11757,13 @@ function start(hotData = {}) {
       fitted = true;
     }
   }
-  window.addEventListener('resize', resize);
+  window.addEventListener('resize', () => {
+    resize();
+    minimap.setVisible(minimapOn());
+  });
   resize();
+  minimap.setVisible(minimapOn());
+  renderer.textScale = settings.largeText ? 1.2 : 1;
 
   const lifeUI = new LifeInterface({
     life: sim.life,
@@ -11103,6 +11960,7 @@ function start(hotData = {}) {
     camera.update(dt);
     audio.ambient(dt, { daylight: daylightAt(city.clock), rain: city.derived.weather?.rain || 0 });
     renderer.render(dt, viewState());
+    minimap.render();
     saver.tick(dt);
     uiTimer -= dt;
     if (uiTimer <= 0) {
