@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Pocket Metropolis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@600;700;800&display=swap" />
+    <link rel="stylesheet" href="src/style.css" />
+  </head>
+  <body>
+    <!-- app:start -->
+    <main id="app">
+      <canvas id="city" aria-label="Your city. Tap a tile to build, drag to pan, pinch or scroll to zoom."></canvas>
+
+      <section class="stats glass" aria-label="City stats" aria-live="polite">
+        <div class="stat">
+          <span class="stat-badge badge-pop">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19.5c0-3.2 2.5-5.5 5.5-5.5s5.5 2.3 5.5 5.5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14.2c2.6-.3 4.6 1.6 4.6 4.3"/></svg>
+          </span>
+          <span class="stat-text">
+            <span class="stat-value"><span id="stat-pop">0</span><small id="stat-cap">/0</small></span>
+            <span class="stat-label">Population</span>
+          </span>
+        </div>
+        <div class="stat">
+          <span class="stat-badge badge-mood">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M9 9.8h.01M15 9.8h.01" stroke-width="2.6"/><path id="mood-mouth" d="M8.5 14c1.9 2.2 5.1 2.2 7 0"/></svg>
+          </span>
+          <span class="stat-text">
+            <span class="stat-value" id="stat-happy">–</span>
+            <span class="stat-label">Happiness</span>
+            <span class="meter" aria-hidden="true"><span id="happy-meter"></span></span>
+          </span>
+        </div>
+        <div class="clock" id="stat-clock">Day 1</div>
+      </section>
+
+      <div class="corner">
+        <button type="button" id="btn-fit" class="pill glass icon-only" aria-label="Recenter the city" title="Recenter">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/><path d="m12 8.5 3.5 2v3l-3.5 2-3.5-2v-3z"/></svg>
+        </button>
+        <button type="button" id="btn-random" class="pill glass" aria-label="Generate a random town">
+          <span class="dice"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 9h.01M15 9h.01M12 12h.01M9 15h.01M15 15h.01" stroke-width="2.8"/></svg></span>
+          <span class="pill-text">Random Town</span>
+        </button>
+      </div>
+
+      <nav class="toolbar glass" id="toolbar" aria-label="Build tools"></nav>
+      <div class="toast glass" id="toast" role="status"></div>
+    </main>
+    <!-- app:end -->
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
