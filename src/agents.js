@@ -22,6 +22,8 @@ export class AgentSystem {
     this.time = 0;
     this._carTimer = 0;
     this._walkTimer = 0;
+    this.hero = null; // the Life Story character, when they are out and about
+    this._heroWait = 1;
     city.on((ev) => {
       if (ev.type === 'reset' || ev.type === 'loaded') this.clear();
     });
@@ -30,6 +32,7 @@ export class AgentSystem {
   clear() {
     this.cars.length = 0;
     this.walkers.length = 0;
+    this.hero = null;
   }
 
   update(dt, daylight) {
@@ -38,6 +41,7 @@ export class AgentSystem {
     this._walkTimer -= dt;
     this.updateCars(dt, daylight);
     this.updateWalkers(dt, daylight);
+    this.updateHero(dt, daylight);
   }
 
   get commuters() {
@@ -235,6 +239,89 @@ export class AgentSystem {
     });
   }
 
+  // ---- The Life Story character ----------------------------------------------------
+
+  // The character walks their real routes: to work by day if they have a job, otherwise out to a
+  // park or playground, then home again. Babies stay in.
+  updateHero(dt, daylight) {
+    const c = this.city.systems.life?.char;
+    const home = c?.alive && c.age >= 3 ? c.home : null;
+    const h = this.hero;
+    if (h && (h.dead || !home || h.home.x !== home.x || h.home.y !== home.y)) {
+      if (!h.dead) h.leaving = true;
+      this.hero = null;
+      this._heroWait = 1.5;
+    }
+    if (this.hero || !home) return;
+    this._heroWait -= dt;
+    if (this._heroWait > 0) return;
+    this._heroWait = 3 + Math.random() * 4;
+    const homeTile = this.city.getTile(home.x, home.y);
+    if (!homeTile?.structure) return;
+    let path = null;
+    let dest = null;
+    if (c.job && daylight > 0.5 && Math.random() < 0.7) {
+      path = this.pathTo(home, c.job);
+      if (path) dest = c.job;
+    }
+    if (!path) path = this.findOuting(homeTile);
+    if (!path || path.length < 2) return;
+    const w = {
+      home: { x: home.x, y: home.y },
+      dest,
+      path,
+      i: 0,
+      t: 0,
+      state: 'out',
+      wait: 0,
+      speed: 0.85,
+      ox: 0,
+      oy: 0,
+      shirt: c.look?.outfit || SHIRT_COLORS[0],
+      skin: c.look?.skin || SKIN_TONES[0],
+      hair: c.look?.hair || '#5b3a29',
+      phase: 0,
+      alpha: 0,
+      gx: home.x + 0.5,
+      gy: home.y + 0.5,
+      moving: true,
+      leaving: false,
+      dead: false,
+      hero: true,
+      child: c.age < 13,
+    };
+    this.hero = w;
+    this.walkers.push(w);
+  }
+
+  // A walking route from one building to another over walkable tiles (paths, parks, roadsides).
+  pathTo(from, to) {
+    const city = this.city;
+    const key = (x, y) => y * city.width + x;
+    const prev = new Map([[key(from.x, from.y), null]]);
+    const queue = [{ x: from.x, y: from.y }];
+    for (let qi = 0; qi < queue.length; qi++) {
+      const cur = queue[qi];
+      for (const dir of DIRS) {
+        const nx = cur.x + dir.dx;
+        const ny = cur.y + dir.dy;
+        const k = key(nx, ny);
+        if (prev.has(k)) continue;
+        const goal = nx === to.x && ny === to.y;
+        if (!goal && !city.isWalkable(nx, ny)) continue;
+        prev.set(k, cur);
+        const n = { x: nx, y: ny };
+        if (goal) {
+          const path = [];
+          for (let p = n; p; p = prev.get(key(p.x, p.y))) path.unshift({ x: p.x, y: p.y });
+          return path;
+        }
+        queue.push(n);
+      }
+    }
+    return null;
+  }
+
   // Residents prefer parks, then trees, then any open ground within a short stroll.
   findOuting(home) {
     const city = this.city;
@@ -273,7 +360,7 @@ export class AgentSystem {
 
   stepWalker(w, dt) {
     const city = this.city;
-    w.alpha = w.leaving ? w.alpha - dt * 2 : Math.min(1, w.alpha + dt * 2);
+    w.alpha = w.leaving ? w.alpha - dt * 2 : w.indoors ? w.alpha : Math.min(1, w.alpha + dt * 2);
     if (w.leaving && w.alpha <= 0) {
       w.dead = true;
       return;
@@ -282,11 +369,20 @@ export class AgentSystem {
       w.moving = false;
       w.wait -= dt;
       const end = w.path[w.path.length - 1];
-      if (!city.isWalkable(end.x, end.y)) w.leaving = true; // something was built where they stood
-      const drift = this.time * 0.35 + w.phase;
-      w.gx = end.x + 0.5 + w.ox + Math.sin(drift) * 0.12;
-      w.gy = end.y + 0.5 + w.oy + Math.cos(drift * 0.8) * 0.12;
-      w.moving = Math.abs(Math.cos(drift)) > 0.4;
+      if (w.indoors) {
+        // The character is inside their workplace, hidden until it's time to head home.
+        w.alpha = Math.max(0, w.alpha - dt * 3);
+        w.gx = end.x + 0.5;
+        w.gy = end.y + 0.5;
+        if (w.wait > 0) return;
+        w.indoors = false;
+      } else {
+        if (!city.isWalkable(end.x, end.y)) w.leaving = true; // something was built where they stood
+        const drift = this.time * 0.35 + w.phase;
+        w.gx = end.x + 0.5 + w.ox + Math.sin(drift) * 0.12;
+        w.gy = end.y + 0.5 + w.oy + Math.cos(drift * 0.8) * 0.12;
+        w.moving = Math.abs(Math.cos(drift)) > 0.4;
+      }
       if (w.wait <= 0) {
         w.state = 'back';
         w.path = w.path.slice().reverse();
@@ -302,13 +398,19 @@ export class AgentSystem {
         const type = city.getTile(a.x, a.y)?.structure?.type;
         w.state = 'linger';
         w.wait = type === 'park' || type === 'playground' || type === 'field' ? 5 + Math.random() * 8 : 2 + Math.random() * 3;
+        if (w.dest && a.x === w.dest.x && a.y === w.dest.y) {
+          w.indoors = true; // a shift at work
+          w.wait = 10 + Math.random() * 6;
+        }
       } else {
         w.leaving = true; // home again
       }
       return;
     }
     const isHome = b.x === w.home.x && b.y === w.home.y;
-    if (!isHome && !city.isWalkable(b.x, b.y)) {
+    const isDest = !!w.dest && b.x === w.dest.x && b.y === w.dest.y;
+    const fromDest = !!w.dest && a.x === w.dest.x && a.y === w.dest.y;
+    if (!isHome && !isDest && !fromDest && !city.isWalkable(b.x, b.y)) {
       w.leaving = true;
       return;
     }

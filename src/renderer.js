@@ -2144,6 +2144,19 @@ export class Renderer {
     const bob = w.moving ? Math.abs(Math.sin(this.time * 9 + w.phase)) * 1.1 : 0;
     ctx.save();
     ctx.globalAlpha = w.alpha;
+    if (w.hero) {
+      // The Life Story character: a little bigger, with a ring at their feet in their outfit colour.
+      const pulse = this.reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(this.time * 3);
+      ctx.strokeStyle = rgba(w.shirt, (0.55 + 0.35 * pulse).toFixed(3));
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, 5 + pulse, 2.5 + pulse * 0.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      const s = w.child ? 1.1 : 1.35;
+      ctx.translate(p.x, p.y);
+      ctx.scale(s, s);
+      ctx.translate(-p.x, -p.y);
+    }
     ctx.fillStyle = 'rgba(52,44,96,0.22)';
     ctx.beginPath();
     ctx.ellipse(p.x, p.y, 2.4, 1.2, 0, 0, Math.PI * 2);
@@ -2156,6 +2169,13 @@ export class Renderer {
     ctx.beginPath();
     ctx.arc(p.x, p.y - 7.8 - bob, 1.7, 0, Math.PI * 2);
     ctx.fill();
+    if (w.hair) {
+      ctx.fillStyle = lit(w.hair, 1, L);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y - 8.2 - bob, 1.8, Math.PI * 1.05, Math.PI * 1.95);
+      ctx.closePath();
+      ctx.fill();
+    }
     // Umbrellas come out in the rain and snow.
     const wet = Math.max(this.weather?.rain || 0, this.weather?.snow || 0);
     if (wet > 0.3) {
@@ -2226,6 +2246,27 @@ export class Renderer {
     };
     if (c.job) pin(c.job, '#a98bd0', 7.5, 'work');
     if (c.home) pin(c.home, c.look?.outfit || '#ff8f7e', 9.5, 'home');
+    // A small marker bobbing over the character when they're out, so they're easy to spot.
+    const h = this.agents.hero;
+    if (h && !h.dead && h.alpha > 0.2) {
+      const z = Math.max(0.7, 1 / Math.sqrt(this.camera.zoom));
+      const bob = this.reduceMotion ? 0 : Math.sin(this.time * 4) * 1.5;
+      const p = gridToWorld(h.gx, h.gy, (h.child ? 16 : 19) + bob);
+      const r = 3.6 * z;
+      ctx.save();
+      ctx.globalAlpha = h.alpha;
+      ctx.fillStyle = c.look?.outfit || '#ff8f7e';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.3 * z;
+      ctx.beginPath();
+      ctx.moveTo(p.x - r, p.y - r * 1.2);
+      ctx.lineTo(p.x + r, p.y - r * 1.2);
+      ctx.lineTo(p.x, p.y + r * 0.6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   // ---- Particles and light ----------------------------------------------------------

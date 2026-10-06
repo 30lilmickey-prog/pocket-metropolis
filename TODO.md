@@ -11,6 +11,7 @@
 - [x] Life Story, first version (see section 1)
 - [x] Phone layout: Life and a controls sheet up top instead of a column of side buttons; compact landscape layout
 - [x] Phase 1 polish: sound effects and ambience, drag to build, undo and redo, buildings that grow and vary, seasons and weather
+- [x] Phase 3 Life Story: activities, buying a home, real neighbours, 34 new events, the character walking on the map, achievements and ribbons
 - [x] Phase 2 goals: milestones (Hamlet → Metropolis) with unlocks and a celebration, playground and sports field, resident thoughts with Show me, +/− desirability feedback when placing
 
 ## 1. Life Story: live one resident's life
@@ -22,7 +23,7 @@ You create a main character who moves into your city. Every so often a text even
 - [x] Two starting traits that tilt outcomes (Curious, Outgoing, Thrifty, Sporty, Creative, Calm…)
 - [x] **Decided:** born as a baby into a family living in one of the city's homes
 - [x] A pin marks the character's home (and later their workplace) on the map
-- [ ] Show the character as a highlighted walker on the map
+- [x] Show the character as a highlighted walker on the map
 - [x] Save the character with the city (stored in `city.systems.life`, so no save migration was needed)
 
 ### 1b. Stats, age and life stages
@@ -44,7 +45,7 @@ You create a main character who moves into your city. Every so often a text even
 - [x] Clinic nearby: illnesses are milder and recovery faster
 - [x] Careers come from real workplaces (shop, office, school, clinic); applications fail when there are no openings
 - [x] Traffic on your commute adds stress events; parks and trees near home add calm ones
-- [ ] Your character walks or drives along their real commute
+- [x] Your character walks their real commute (driving is still to do)
 - [x] Moving house: choose a new home among vacancies, with desirability shown
 
 ### 1e. First content pack
@@ -56,7 +57,8 @@ You create a main character who moves into your city. Every so often a text even
 ### 1f. Polish
 - [x] Badge on a Life button when an event is waiting
 - [ ] Settings: event frequency, pause the city while an event is open
-- [ ] More events: siblings, pets with names, neighbours from real nearby homes, city milestones (the `milestone` event is ready to hook into)
+- [x] More events: siblings, neighbours from real nearby homes, city milestones, weather and seasons, playground and sports field (78 events in all)
+- [ ] Pets with names you choose; more senior and teen events
 - [x] Choose with the keyboard; respects reduced motion
 
 ## 2. Next up (from the GitHub research plan)
@@ -66,8 +68,10 @@ You create a main character who moves into your city. Every so often a text even
 - [x] Floating "+8" desirability feedback when placing parks and services
 - [x] **Decided:** no coins for now; milestones are the goal
 - [ ] More milestone unlocks as new buildings arrive (community centre, bus stop, police and fire)
-- [ ] Life Story activities you can do any time (study, gym, date, visit, shop)
-- [ ] More Life Story events (consider inkjs for writing them), achievements and life ribbons
+- [x] Life Story activities you can do any time (study, exercise, date, visit, shop, volunteer, overtime, babysit)
+- [x] Buy a real home in the city, priced by desirability
+- [x] More Life Story events, achievements (kept across lives) and life ribbons
+- [ ] **Decision:** move events to inkjs once there are a few hundred (plain JS data is fine for now)
 - [ ] Share a city as a link (lz-string)
 
 ## 3. Ideas from IsoCity

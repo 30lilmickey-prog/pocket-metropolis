@@ -2,10 +2,12 @@
 // A choice has weighted outcomes; an outcome has text and effects (stats, money, closeness, flags),
 // plus optional `do(ctx)` for changes like a new friend or job, and `next` to chain another event.
 // Text placeholders: {name} {fullname} {their} {them} {mother} {father} {friend} {partner} {child}
-// {job} {workplace}. Write sentences with {name} as the subject so every pronoun reads naturally.
+// {sibling} {job} {workplace} {money} {neighbour} {neighbourperson} {nspot}.
+// Write sentences with {name} as the subject so every pronoun reads naturally.
 
 import { STRUCTURES } from './config.js';
 import { CAREERS } from './lifeData.js';
+import { MORE_EVENTS } from './lifeEventsMore.js';
 
 const o = (text, effects = {}, extra = {}) => ({ text, effects, ...extra });
 
@@ -670,3 +672,6 @@ export const LIFE_EVENTS = [
     ],
   },
 ];
+
+// City-linked events, buying a home, siblings and more live in lifeEventsMore.js.
+LIFE_EVENTS.push(...MORE_EVENTS);

@@ -4,6 +4,8 @@
 import { STRUCTURES } from './config.js';
 import { PRONOUNS, SKIN_TONES, HAIR_COLORS, OUTFIT_COLORS, TRAITS, CAREERS, stageFor } from './lifeData.js';
 import { STAT_LABELS } from './lifeEngine.js';
+import { ACTIVITY_GROUPS, energyFor } from './lifeActivities.js';
+import { ACHIEVEMENTS } from './lifeAchievements.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const money = (n) => `$${Math.round(n).toLocaleString()}`;
@@ -24,7 +26,7 @@ export function avatarSVG(look = {}, size = 56) {
 
 export class LifeInterface {
   constructor(handlers) {
-    this.h = handlers; // { life, onFocus, onCreate, onAgeUp, onChoose, onContinue, onNewLife }
+    this.h = handlers; // { life, onFocus, onCreate, onAgeUp, onChoose, onActivity, onContinue, onNewLife, onOpen }
     this.panel = document.getElementById('life-panel');
     this.card = document.getElementById('life-card');
     this.btn = document.getElementById('btn-life');
@@ -157,7 +159,8 @@ export class LifeInterface {
             ? 'Too young for school'
             : 'Looking for work';
     const people = [
-      ...['mother', 'father'].map((k) => c.family[k] && { ...c.family[k], role: k === 'mother' ? 'Parent' : 'Parent' }),
+      ...['mother', 'father'].map((k) => c.family[k] && { ...c.family[k], role: 'Parent' }),
+      ...(c.siblings || []).map((sb) => ({ ...sb, role: 'Sibling', alive: sb.alive !== false })),
       c.partner && { ...c.partner, role: c.partner.married ? 'Spouse' : 'Partner', alive: true },
       ...c.children.map((k) => ({ ...k, role: 'Child', closeness: 80 })),
       ...c.friends.map((fr) => ({ ...fr, role: 'Friend', alive: true })),
@@ -180,6 +183,7 @@ export class LifeInterface {
       </div>
       <p class="life-hint">Life moves one year per city day. Age up skips ahead; time stops while an event waits.</p>
       <ul class="stat-bars">${bars}<li><span>Money</span><span></span><b>${money(c.money)}</b></li></ul>
+      ${this.activitiesHTML(c)}
       <dl class="life-facts">
         <div><dt>Home</dt><dd>${c.home ? `${c.livesWithParents ? 'With family' : 'Own place'} at ${c.home.x}, ${c.home.y} · ${Math.round(f.desirability * 100)}% desirable` : 'No home'}</dd></div>
         <div><dt>Daily life</dt><dd>${esc(occupation)}</dd></div>
@@ -193,7 +197,39 @@ export class LifeInterface {
         )
         .join('')}</ul>
       <h3>Life so far</h3>
-      <ol class="life-log">${log}</ol>`;
+      <ol class="life-log">${log}</ol>
+      ${this.achievementsHTML()}`;
+  }
+
+  // Things to do any time, grouped, with energy dots for what's left this year.
+  activitiesHTML(c) {
+    const max = energyFor(c.age);
+    if (!max) return '<h3>Things to do</h3><p class="life-hint">Babies mostly eat, sleep and giggle. Activities start at age 3.</p>';
+    const left = Math.max(0, c.energy ?? max);
+    const list = this.life.activities();
+    const dots = Array.from({ length: max }, (_, i) => `<span class="energy-dot${i < left ? ' on' : ''}"></span>`).join('');
+    const groups = ACTIVITY_GROUPS.map((g) => {
+      const items = list.filter((a) => a.group === g.id);
+      if (!items.length) return '';
+      return `<div class="act-group"><span class="act-group-label">${g.label}</span><div class="act-grid">${items
+        .map(
+          (a) =>
+            `<button type="button" class="act" data-activity="${a.id}" ${a.blocked ? 'disabled' : ''} title="${esc(a.blocked || a.hint)}">` +
+            `<b>${esc(a.label)}</b><small>${esc(a.blocked && a.blocked !== 'No energy left this year' ? a.blocked : a.hint)}${a.cost ? ` · ${money(a.cost)}` : ''}</small></button>`
+        )
+        .join('')}</div></div>`;
+    }).join('');
+    return `<div class="act-head"><h3>Things to do</h3><span class="energy" aria-label="${left} of ${max} activities left this year">${dots}<small>${left ? `${left} left this year` : 'Rested by next birthday'}</small></span></div>${groups}`;
+  }
+
+  // Achievements are shared by every life in this city.
+  achievementsHTML() {
+    const got = this.life.state?.achievements || {};
+    const n = ACHIEVEMENTS.filter((a) => got[a.id]).length;
+    return `<details class="achievements"><summary><h3>Achievements</h3><span>${n} of ${ACHIEVEMENTS.length}</span></summary><ul class="ach-grid">${ACHIEVEMENTS.map((a) => {
+      const g = got[a.id];
+      return `<li class="${g ? 'got' : ''}" title="${esc(g ? `${a.desc}. Earned by ${g.by} at ${g.age}` : a.desc)}"><span class="ach-icon" aria-hidden="true">${g ? '★' : '☆'}</span><span><b>${a.label}</b><small>${esc(g ? `${g.by}, age ${g.age}` : a.desc)}</small></span></li>`;
+    }).join('')}</ul></details>`;
   }
 
   deathHTML(c) {
@@ -203,6 +239,7 @@ export class LifeInterface {
         <div class="avatar gone">${avatarSVG(c.look, 64)}</div>
         <div><span class="life-kicker">In memory</span><h2>${esc(c.first)} ${esc(c.last)}</h2><p class="life-sub">Lived to ${c.death.age} · ${esc(c.death.cause)}</p></div>
       </header>
+      ${c.ribbon ? `<div class="ribbon" style="--ribbon:${c.ribbon.color}"><svg class="ribbon-badge" viewBox="0 0 32 40" width="30" height="38" aria-hidden="true"><path d="M10 22 5 38l6-3 4 5 3-14zM22 22l5 16-6-3-4 5-3-14z" fill="${c.ribbon.color}" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/><circle cx="16" cy="15" r="12" fill="${c.ribbon.color}" stroke="#fff" stroke-width="2"/><circle cx="16" cy="15" r="7" fill="none" stroke="#fff" stroke-width="1.5" opacity=".8"/></svg><span><small>Life ribbon</small><b>${esc(c.ribbon.label)}</b></span></div>` : ''}
       <dl class="life-facts">
         <div><dt>Last job</dt><dd>${career ? career.titles[c.job.level] : c.flags.retired ? 'Retired' : 'None'}</dd></div>
         <div><dt>Savings</dt><dd>${money(c.money)}</dd></div>
@@ -213,11 +250,23 @@ export class LifeInterface {
         ${kid ? `<button type="button" class="primary-btn" data-act="continue">Continue as ${esc(kid.name.split(' ')[0])}</button>` : ''}
         <button type="button" class="${kid ? 'ghost-btn' : 'primary-btn'}" data-act="newlife">Start a new life</button>
       </div>
+      ${this.historyHTML()}
       <h3>Life story</h3>
       <ol class="life-log">${c.log
         .slice(0, 60)
         .map((l) => `<li><span class="log-age">${l.age}</span><span>${esc(l.text)}</span></li>`)
-        .join('')}</ol>`;
+        .join('')}</ol>
+      ${this.achievementsHTML()}`;
+  }
+
+  historyHTML() {
+    const past = this.life.state?.history || [];
+    if (!past.length) return '';
+    return `<h3>Earlier lives</h3><ul class="past-lives">${past
+      .slice(-8)
+      .reverse()
+      .map((p) => `<li><b>${esc(p.name)}</b><small>Lived to ${p.age}</small>${p.ribbon ? `<span class="mini-ribbon" style="--ribbon:${p.ribbon.color}">${esc(p.ribbon.label)}</span>` : ''}</li>`)
+      .join('')}</ul>`;
   }
 
   onPanelInput(e) {
@@ -241,6 +290,12 @@ export class LifeInterface {
       this.cardMinimized = false;
     } else if (t.dataset.act === 'showcard') this.cardMinimized = false;
     else if (t.dataset.act === 'focus') return this.h.onFocus();
+    else if (t.dataset.activity) {
+      const result = this.h.onActivity(t.dataset.activity);
+      if (result?.text) this.outcome = { ...result, age: this.life.char?.age };
+      this.cardMinimized = false;
+      this._cardFor = null;
+    }
     else if (t.dataset.act === 'continue') this.h.onContinue();
     else if (t.dataset.act === 'newlife') {
       this.draft = this.newDraft();

@@ -10,6 +10,7 @@ const DEFAULT_COOLDOWN = 4; // years before a repeatable event can return
 
 export function isEligible(ev, ctx) {
   const c = ctx.char;
+  if (ev.manual) return false; // opened by an activity, never at random
   if (ev.stages && !ev.stages.includes(stageFor(c.age).id)) return false;
   if (ev.minAge != null && c.age < ev.minAge) return false;
   if (ev.maxAge != null && c.age > ev.maxAge) return false;
