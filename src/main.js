@@ -193,6 +193,15 @@ function start(hotData = {}) {
       focusTile(th.x, th.y);
       if (window.innerWidth < 560) cityPanel.toggle(false);
     },
+    // Build a suggested road in one go (one undo step), skipping anything built there since.
+    onBuild: (th) => {
+      const coords = th.plan.filter((c) => city.canApply('road', c.x, c.y) && city.getTile(c.x, c.y).terrain === 'grass' && (!city.getTile(c.x, c.y).structure || city.getTile(c.x, c.y).structure.type === 'tree'));
+      if (!coords.length) return ui.toast('That spot has changed. A new suggestion will come along shortly', 3000);
+      build(`${coords.length} road${coords.length > 1 ? 's' : ''}`, coords, () => city.applyMany('road', coords));
+      cityPanel.focus(null);
+      sim.refresh();
+      ui.toast('New road built. Drivers will start using it right away', 3200);
+    },
   });
   function focusTile(x, y) {
     const w = gridToWorld(x + 0.5, y + 0.5);

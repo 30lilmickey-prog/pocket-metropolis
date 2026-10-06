@@ -944,6 +944,16 @@ button:focus-visible {
   font-size: 11.5px;
   color: var(--ink-soft);
 }
+.th-actions {
+  display: grid;
+  gap: 6px;
+}
+.primary-btn.small {
+  padding: 8px 10px;
+  font-size: 12px;
+  min-height: 36px;
+  white-space: nowrap;
+}
 .ghost-btn.small {
   padding: 8px 10px;
   font-size: 12px;
@@ -2870,17 +2880,74 @@ return { FACTORS, recomputeDesirability };
 // ---- labor.js ----
 const __mod_labor = (() => {
 // Labor market and traffic. Residents look for the nearest jobs they can reach by road; each
-// commute then loads the road tiles along its route. Adapted from Cimulity's aggregate
+// commute then loads the road tiles along its route, and busy roads cost more to use. Adapted from Cimulity's aggregate
 // nearest-with-overflow matching (MIT, github.com/zeikar/cimulity).
 
 const { STRUCTURES, WORKER_SHARE, ROAD_CAPACITY } = __mod_config;
+const NEIGHBOURS = [
+  [0, -1],
+  [1, 0],
+  [0, 1],
+  [-1, 0],
+];
+// How much a full road slows commuters down: a jammed tile costs 1 + JAM_PENALTY steps.
+const JAM_PENALTY = 3;
+
+// A small binary heap of [key, priority] pairs for the route search.
+class MinHeap {
+  constructor() {
+    this.items = [];
+  }
+  get size() {
+    return this.items.length;
+  }
+  clear() {
+    this.items.length = 0;
+  }
+  push(key, pri) {
+    const a = this.items;
+    a.push([key, pri]);
+    let i = a.length - 1;
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (a[p][1] <= a[i][1]) break;
+      [a[p], a[i]] = [a[i], a[p]];
+      i = p;
+    }
+  }
+  pop() {
+    const a = this.items;
+    const top = a[0];
+    const last = a.pop();
+    if (a.length) {
+      a[0] = last;
+      let i = 0;
+      for (;;) {
+        const l = i * 2 + 1;
+        const r = l + 1;
+        let m = i;
+        if (l < a.length && a[l][1] < a[m][1]) m = l;
+        if (r < a.length && a[r][1] < a[m][1]) m = r;
+        if (m === i) break;
+        [a[m], a[i]] = [a[i], a[m]];
+        i = m;
+      }
+    }
+    return top;
+  }
+}
+
 function workersIn(home) {
   return Math.round(home.structure.residents * WORKER_SHARE);
 }
 
-// Returns { flows, employed, unemployed, jobs } and writes per-tile employment, workersFilled
+// Returns { flows, employed, unemployed, jobs, load } and writes per-tile employment, workersFilled
 // and congestion. Each flow is { from, to, count, path } where path lists road tiles.
-function computeLaborMarket(city) {
+// Options for "what if" tests: `extraRoads` (a Set of tile indices treated as road) and `dryRun`
+// (write nothing to the tiles; just return the result).
+function computeLaborMarket(city, { extraRoads = null, dryRun = false } = {}) {
+  const isRoad = extraRoads ? (x, y) => city.isRoad(x, y) || (city.inBounds(x, y) && extraRoads.has(y * city.width + x)) : (x, y) => city.isRoad(x, y);
+  const filled = new Map(); // workplace tile → workers, written to the tile at the end
   const W = city.width;
   const size = W * city.height;
   const homes = city.homes();
@@ -2893,7 +2960,7 @@ function computeLaborMarket(city) {
   for (const w of workplaces) {
     const cap = STRUCTURES[w.structure.type].jobs;
     jobs += cap;
-    w.workersFilled = 0;
+    filled.set(w, 0);
     const road = city.accessRoad(w.x, w.y);
     if (!road) continue;
     const k = road.y * W + road.x;
@@ -2915,8 +2982,17 @@ function computeLaborMarket(city) {
     .map((h) => ({ h, workers: workersIn(h), road: city.accessRoad(h.x, h.y) }))
     .sort((a, b) => a.h.y * W + a.h.x - (b.h.y * W + b.h.x));
 
+  // Commuters pick the cheapest route, and a road gets dearer as it fills up, so later commuters
+  // spill onto alternatives when there are any (a second street, a shortcut, a ring road).
+  const cost = new Float64Array(size);
+  const heap = new MinHeap();
+  const stepCost = (k) => {
+    const busy = load[k] / ROAD_CAPACITY;
+    return 1 + JAM_PENALTY * busy * busy;
+  };
+
   for (const o of origins) {
-    o.h.employment = 0;
+    if (!dryRun) o.h.employment = 0;
     if (o.workers <= 0) continue;
     if (!o.road) {
       unemployed += o.workers;
@@ -2925,55 +3001,58 @@ function computeLaborMarket(city) {
     let left = o.workers;
     stamp++;
     const start = o.road.y * W + o.road.x;
-    const queue = [start];
     seen[start] = stamp;
+    cost[start] = 0;
     prev[start] = -1;
-    for (let qi = 0; qi < queue.length && left > 0; qi++) {
-      const k = queue[qi];
+    heap.clear();
+    heap.push(start, 0);
+    while (heap.size && left > 0) {
+      const [k, c] = heap.pop();
+      if (c > cost[k]) continue; // a cheaper way here was already found
       const cap = capacity.get(k);
       if (cap > 0) {
         const take = Math.min(cap, left);
         capacity.set(k, cap - take);
         left -= take;
         const path = [];
-        for (let p = k; p !== -1; p = prev[p]) {
-          path.push(p);
-          load[p] += take;
-        }
+        for (let p = k; p !== -1; p = prev[p]) path.push(p);
         path.reverse();
+        // Only traffic passing through counts towards a jam. Turning in and out at your own front
+        // door (the first and last tile) is what busy buildings do, not a sign the road is too small.
+        for (let i = 1; i < path.length - 1; i++) load[path[i]] += take;
         flows.push({ from: start, to: k, count: take, path });
         let remaining = take;
         for (const w of destinations.get(k)) {
-          const room = STRUCTURES[w.structure.type].jobs - w.workersFilled;
+          const room = STRUCTURES[w.structure.type].jobs - filled.get(w);
           const add = Math.min(room, remaining);
-          w.workersFilled += add;
+          filled.set(w, filled.get(w) + add);
           remaining -= add;
           if (!remaining) break;
         }
       }
       const x = k % W;
       const y = (k - x) / W;
-      for (const [dx, dy] of [
-        [0, -1],
-        [1, 0],
-        [0, 1],
-        [-1, 0],
-      ]) {
-        if (!city.isRoad(x + dx, y + dy)) continue;
+      for (const [dx, dy] of NEIGHBOURS) {
+        if (!isRoad(x + dx, y + dy)) continue;
         const n = (y + dy) * W + x + dx;
-        if (seen[n] === stamp) continue;
+        const nc = c + stepCost(n);
+        if (seen[n] === stamp && nc >= cost[n]) continue;
         seen[n] = stamp;
+        cost[n] = nc;
         prev[n] = k;
-        queue.push(n);
+        heap.push(n, nc);
       }
     }
     employed += o.workers - left;
     unemployed += left;
-    o.h.employment = (o.workers - left) / o.workers;
+    if (!dryRun) o.h.employment = (o.workers - left) / o.workers;
   }
 
-  for (let i = 0; i < size; i++) city.tiles[i].congestion = Math.min(1, load[i] / ROAD_CAPACITY);
-  return { flows, employed, unemployed, jobs };
+  if (!dryRun) {
+    for (const [w, n] of filled) w.workersFilled = n;
+    for (let i = 0; i < size; i++) city.tiles[i].congestion = Math.min(1, load[i] / ROAD_CAPACITY);
+  }
+  return { flows, employed, unemployed, jobs, load };
 }
 
 return { workersIn, computeLaborMarket };
@@ -6053,12 +6132,272 @@ class Milestones {
 return { tierFor, unlockTier, Milestones };
 })();
 
+// ---- roadPlanner.js ----
+const __mod_roadPlanner = (() => {
+// Road planner: when a street is jammed, find a new stretch of road that would actually ease it.
+// Traffic jams come from the buildings along a street (every office, tower and shop sends its
+// commuters through it), so the cure is another way round: extend a dead end into a shortcut, link
+// two roads with a short connector, or run a bypass alongside the jammed street.
+//
+// Each candidate is tested by re-running the commute model with the new road in place (a dry run
+// that changes nothing), and the one that clears the most traffic per tile built wins.
+
+const { STRUCTURES, ROAD_CAPACITY } = __mod_config;
+const { computeLaborMarket } = __mod_labor;
+const JAM = 0.85; // congestion that counts as jammed
+const SEARCH_RADIUS = 11; // how far from the jam to look for fixes
+const MAX_NEW_TILES = 14;
+const MAX_CANDIDATES = 18;
+const DIRS = [
+  [0, -1],
+  [1, 0],
+  [0, 1],
+  [-1, 0],
+];
+
+// Grass a road could go on: empty, or with a tree that can be cleared (counted as a small cost).
+function buildable(city, x, y) {
+  const t = city.getTile(x, y);
+  return !!t && t.terrain === 'grass' && (!t.structure || t.structure.type === 'tree');
+}
+const treesOn = (city, tiles) => tiles.filter((t) => city.getTile(t.x, t.y).structure?.type === 'tree').length;
+
+// How bad traffic is overall: total delay, where each commuter on a road tile is held up by the
+// square of how full it is. Spreading the same traffic over more roads lowers it.
+function trafficExcess(load) {
+  let sum = 0;
+  for (let i = 0; i < load.length; i++) {
+    const c = load[i] / ROAD_CAPACITY;
+    if (c > 0) sum += load[i] * c * c;
+  }
+  return sum;
+}
+
+// The jammed stretch around the worst tile: its straight run of busy road, and the street's name.
+function worstJam(city) {
+  let worst = null;
+  for (const t of city.tiles) if (t.roadMask && t.congestion >= JAM && (!worst || t.congestion > worst.congestion)) worst = t;
+  if (!worst) return null;
+  // The busy part of each street through the worst tile; at a crossing, follow the one the jam runs along.
+  const runs = (city.derived.streets || []).filter((r) => r.tiles.includes(worst));
+  let run = null;
+  let segment = [worst];
+  for (const r of runs) {
+    const i = r.tiles.indexOf(worst);
+    let a = i;
+    let b = i;
+    while (a > 0 && r.tiles[a - 1].congestion >= 0.6) a--;
+    while (b < r.tiles.length - 1 && r.tiles[b + 1].congestion >= 0.6) b++;
+    if (!run || b - a + 1 > segment.length) {
+      run = r;
+      segment = r.tiles.slice(a, b + 1);
+    }
+  }
+  // What's causing it: the busiest kinds of building along the jammed stretch.
+  const causes = new Map();
+  for (const t of segment) {
+    for (const [dx, dy] of DIRS) {
+      const n = city.getTile(t.x + dx, t.y + dy);
+      const def = n?.structure && STRUCTURES[n.structure.type];
+      if (!def || def.road || def.walkable) continue;
+      if (def.jobs || def.capacity) causes.set(n.structure.type, (causes.get(n.structure.type) || 0) + 1);
+    }
+  }
+  return { tile: worst, run, dir: run?.dir || null, segment, street: worst.street, causes };
+}
+
+// Straight links from a road tile across empty grass to another road: dead-end extensions and
+// shortcuts. Only links that save a real detour are kept.
+function linkCandidates(city, near, out) {
+  const W = city.width;
+  const roads = city.tiles.filter((t) => t.roadMask && Math.abs(t.x - near.x) + Math.abs(t.y - near.y) <= SEARCH_RADIUS);
+  for (const start of roads) {
+    const deadEnd = city.roadNeighbors(start.x, start.y).length === 1;
+    for (const [dx, dy] of DIRS) {
+      const tiles = [];
+      let x = start.x + dx;
+      let y = start.y + dy;
+      while (buildable(city, x, y) && tiles.length < MAX_NEW_TILES) {
+        tiles.push({ x, y });
+        x += dx;
+        y += dy;
+      }
+      if (!tiles.length || !city.isRoad(x, y)) continue;
+      // Skip links that just run beside an existing road (both sides of every step already road).
+      const detour = roadDistance(city, start, { x, y });
+      if (detour !== Infinity && detour - (tiles.length + 1) < 4) continue;
+      out.push({ kind: deadEnd ? 'extend' : 'link', tiles, key: tiles.map((t) => t.y * W + t.x).join(',') });
+    }
+  }
+}
+
+// A road alongside the jammed stretch, two to four tiles away, joined at both ends.
+function bypassCandidates(city, jam, out) {
+  if (!jam.dir || jam.segment.length < 2) return;
+  const W = city.width;
+  const seg = jam.segment;
+  const along = jam.dir === 'h' ? [1, 0] : [0, 1];
+  const side = jam.dir === 'h' ? [0, 1] : [1, 0];
+  const first = seg[0];
+  const last = seg[seg.length - 1];
+  for (const off of [2, -2, 3, -3, 4, -4, 5, -5]) {
+    const tiles = [];
+    let ok = true;
+    const add = (x, y) => {
+      if (city.isRoad(x, y)) return;
+      if (!buildable(city, x, y)) ok = false;
+      else tiles.push({ x, y });
+    };
+    // Connectors from each end of the jam out to the bypass line.
+    const step = Math.sign(off);
+    for (const end of [
+      { x: first.x - along[0], y: first.y - along[1] },
+      { x: last.x + along[0], y: last.y + along[1] },
+    ]) {
+      for (let k = 1; k <= Math.abs(off) && ok; k++) add(end.x + side[0] * k * step, end.y + side[1] * k * step);
+    }
+    // The bypass itself, one tile past each end of the jam.
+    const len = seg.length + 2;
+    for (let i = 1; i < len - 1 && ok; i++) {
+      add(first.x - along[0] + along[0] * i + side[0] * off, first.y - along[1] + along[1] * i + side[1] * off);
+    }
+    // The connectors must start on road: the jammed street's neighbours past each end.
+    const startA = { x: first.x - along[0], y: first.y - along[1] };
+    const startB = { x: last.x + along[0], y: last.y + along[1] };
+    if (!city.isRoad(startA.x, startA.y) && !buildable(city, startA.x, startA.y)) ok = false;
+    if (!city.isRoad(startB.x, startB.y) && !buildable(city, startB.x, startB.y)) ok = false;
+    if (!city.isRoad(startA.x, startA.y)) tiles.push(startA);
+    if (!city.isRoad(startB.x, startB.y)) tiles.push(startB);
+    if (ok && tiles.length) out.push({ kind: 'bypass', tiles, key: tiles.map((t) => t.y * W + t.x).sort().join(',') });
+  }
+}
+
+// A new road across open land from near one end of the jam to near the other, so drivers can go
+// round it. Found with a breadth-first search over buildable tiles only.
+function aroundCandidates(city, jam, out) {
+  const W = city.width;
+  const seg = new Set(jam.segment);
+  const ends = [jam.segment[0], jam.segment[jam.segment.length - 1]];
+  // Road tiles near each end of the jam (not on it): where the new road should join.
+  const zone = (end) => {
+    const set = new Set();
+    for (const t of city.tiles) {
+      if (!t.roadMask && !city.isRoad(t.x, t.y)) continue;
+      if (seg.has(t)) continue;
+      if (Math.abs(t.x - end.x) + Math.abs(t.y - end.y) <= 4) set.add(t.y * W + t.x);
+    }
+    return set;
+  };
+  const zoneA = zone(ends[0]);
+  const zoneB = zone(ends[1]);
+  const touches = (x, y, z) => DIRS.some(([dx, dy]) => z.has((y + dy) * W + x + dx));
+  // Start from every buildable tile beside zone A; stop at the first one beside zone B.
+  const prev = new Map();
+  const queue = [];
+  for (const k of zoneA) {
+    const x = k % W;
+    const y = (k - x) / W;
+    for (const [dx, dy] of DIRS) {
+      const nx = x + dx;
+      const ny = y + dy;
+      const nk = ny * W + nx;
+      if (buildable(city, nx, ny) && !prev.has(nk)) {
+        prev.set(nk, -1);
+        queue.push({ x: nx, y: ny, d: 1 });
+      }
+    }
+  }
+  for (let i = 0; i < queue.length; i++) {
+    const cur = queue[i];
+    if (cur.d > MAX_NEW_TILES) break;
+    if (touches(cur.x, cur.y, zoneB) && cur.d >= 2) {
+      const tiles = [];
+      for (let k = cur.y * W + cur.x; k !== -1; k = prev.get(k)) tiles.push({ x: k % W, y: Math.floor(k / W) });
+      out.push({ kind: 'around', tiles, key: tiles.map((t) => t.y * W + t.x).sort().join(',') });
+      if (out.filter((c) => c.kind === 'around').length >= 3) return;
+      continue;
+    }
+    for (const [dx, dy] of DIRS) {
+      const nx = cur.x + dx;
+      const ny = cur.y + dy;
+      const nk = ny * W + nx;
+      if (prev.has(nk) || !buildable(city, nx, ny)) continue;
+      prev.set(nk, cur.y * W + cur.x);
+      queue.push({ x: nx, y: ny, d: cur.d + 1 });
+    }
+  }
+}
+
+// Steps between two road tiles along the road network.
+function roadDistance(city, a, b) {
+  const W = city.width;
+  const seen = new Map([[a.y * W + a.x, 0]]);
+  const queue = [a];
+  for (let i = 0; i < queue.length; i++) {
+    const cur = queue[i];
+    const d = seen.get(cur.y * W + cur.x);
+    if (cur.x === b.x && cur.y === b.y) return d;
+    if (d > 40) break;
+    for (const n of city.roadNeighbors(cur.x, cur.y)) {
+      const k = n.y * W + n.x;
+      if (seen.has(k)) continue;
+      seen.set(k, d + 1);
+      queue.push(n);
+    }
+  }
+  return Infinity;
+}
+
+// The best road to build for the current jam, or null when no new road would help much.
+// Returns { kind, tiles, street, before, after, gain } where gain is the share of excess traffic cleared.
+function planRoad(city) {
+  const jam = worstJam(city);
+  if (!jam) return null;
+  const base = computeLaborMarket(city, { dryRun: true });
+  const before = trafficExcess(base.load);
+  if (before <= 0) return null;
+  const all = [];
+  linkCandidates(city, jam.tile, all);
+  bypassCandidates(city, jam, all);
+  aroundCandidates(city, jam, all);
+  const unique = new Map();
+  for (const c of all) if (c.tiles.length <= MAX_NEW_TILES && !unique.has(c.key)) unique.set(c.key, c);
+  const near = (c) => Math.min(...c.tiles.map((t) => Math.abs(t.x - jam.tile.x) + Math.abs(t.y - jam.tile.y)));
+  const candidates = [...unique.values()].sort((a, b) => near(a) - near(b) || a.tiles.length - b.tiles.length).slice(0, MAX_CANDIDATES);
+  let best = null;
+  const tried = [];
+  for (const c of candidates) {
+    const extra = new Set(c.tiles.map((t) => t.y * city.width + t.x));
+    const after = trafficExcess(computeLaborMarket(city, { extraRoads: extra, dryRun: true }).load);
+    const gain = (before - after) / before;
+    const trees = treesOn(city, c.tiles);
+    const score = gain / (c.tiles.length + trees * 0.5 + 4);
+    tried.push({ kind: c.kind, n: c.tiles.length, gain });
+    if (gain >= 0.12 && (!best || score > best.score)) best = { ...c, after, gain, score, trees };
+  }
+  return { jam, before, best, tried };
+}
+
+// Cached per map revision, since the dry runs take a few milliseconds each.
+function roadPlanFor(city) {
+  const cached = city.derived.roadPlan;
+  const key = `${city.revision}|${Math.round((city.stats.population || 0) / 25)}`; // re-plan as the town fills up
+  if (cached && cached.key === key) return cached.plan;
+  const plan = planRoad(city);
+  city.derived.roadPlan = { key, plan };
+  return plan;
+}
+
+return { trafficExcess, worstJam, planRoad, roadPlanFor };
+})();
+
 // ---- advisor.js ----
 const __mod_advisor = (() => {
 // Advisor: turns the city's state into a few short resident "thoughts". Each one is a wish (something
 // residents would like) or a happy note, with a tile to point the camera at. Read-only: nothing is changed.
 
 const { STRUCTURES } = __mod_config;
+const { roadPlanFor } = __mod_roadPlanner;
 const MAX_THOUGHTS = 5;
 const MAX_TILES = 240;
 // How urgent a thought is: 'bad' (red, fix soon), 'caution' (yellow, worth a look) or 'good' (green).
@@ -6087,8 +6426,9 @@ function hasWaterNear(city, tile, r = 2) {
 function computeThoughts(city, milestones) {
   const out = [];
   // `tile` is where the camera goes; `area` lists every tile the thought is about, for highlighting.
-  const add = (id, severity, priority, text, hint, tile, area = tile ? [tile] : []) =>
+  const add = (id, severity, priority, text, hint, tile, area = tile ? [tile] : [], extra = {}) =>
     out.push({
+      ...extra,
       id,
       kind: severity === 'good' ? 'happy' : 'wish',
       severity,
@@ -6122,10 +6462,32 @@ function computeThoughts(city, milestones) {
     if (far.length) add('school', 'caution', 3, 'Our kids have no school nearby.', 'Build a school', worstOf(far), far);
   }
 
-  const jammed = city.tiles.filter((t) => t.roadMask && t.congestion >= 0.85);
-  let jam = null;
-  for (const t of jammed) if (!jam || t.congestion > jam.congestion) jam = t;
-  if (jam) add('traffic', jam.congestion >= 0.99 ? 'bad' : 'caution', 3, 'The roads are jammed at rush hour.', 'Add another route or put jobs closer to homes', jam, jammed);
+  // Traffic: only raised where a new or longer road would really help. Jams count through traffic
+  // only, so a street that is busy because of the buildings along it isn't blamed on the road.
+  const roadPlan = roadPlanFor(city);
+  if (roadPlan?.best) {
+    const { jam, best } = roadPlan;
+    const n = best.tiles.length;
+    const street = jam.street || 'This road';
+    const less = Math.round(best.gain * 100);
+    const how = {
+      extend: `Extend the dead end by ${n} tile${n > 1 ? 's' : ''} to make a shortcut`,
+      link: `A ${n}-tile link road would give drivers another way`,
+      bypass: `A ${n}-tile road alongside it would share the traffic`,
+      around: `A ${n}-tile road around it would share the traffic`,
+    }[best.kind];
+    const mid = best.tiles[Math.floor(n / 2)];
+    add(
+      'traffic',
+      jam.tile.congestion >= 0.99 ? 'bad' : 'caution',
+      3,
+      `${street} is jammed with through traffic.`,
+      `${how} (about ${less}% less delay)${best.trees ? `, clearing ${best.trees} tree${best.trees > 1 ? 's' : ''}` : ''}.`,
+      mid,
+      jam.segment,
+      { plan: best.tiles.map(spot), planKind: best.kind },
+    );
+  }
 
   if (unlocked('clinic')) {
     const far = lived.filter((h) => (h.coverage.health || 0) < 0.1);
@@ -7820,6 +8182,21 @@ class Renderer {
         ctx.fill();
         ctx.stroke();
       }
+    }
+    // A suggested road, drawn like a road sketched in pencil: road-coloured with a dashed edge.
+    for (const it of ordered) {
+      if (!it.plan?.length) continue;
+      ctx.fillStyle = `rgba(214,208,196,${(it.focused ? 0.75 + 0.2 * pulse : 0.6).toFixed(3)})`;
+      ctx.strokeStyle = it.focused ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.7)';
+      ctx.lineWidth = 1.8 / z;
+      ctx.setLineDash([4 / z, 3 / z]);
+      ctx.lineDashOffset = -this.time * 8;
+      for (const c of it.plan) {
+        tilePoly(ctx, c.x, c.y, 0.06);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
     }
   }
 
@@ -10854,7 +11231,8 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const CLOSE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
 
 class CityPanel {
-  constructor({ milestones, onShow, onOpen }) {
+  constructor({ milestones, onShow, onOpen, onBuild }) {
+    this.onBuild = onBuild; // (thought) → build its suggested road
     this.milestones = milestones; // () => Milestones
     this.onShow = onShow; // (thought) → move the camera there
     this.onOpen = onOpen; // () → close other panels
@@ -10881,7 +11259,10 @@ class CityPanel {
       const b = e.target.closest('button');
       if (!b) return;
       if (b.dataset.close != null) this.toggle(false);
-      else if (b.dataset.show != null) {
+      else if (b.dataset.build != null) {
+        const th = this.thoughts[Number(b.dataset.build)];
+        if (th?.plan) this.onBuild?.(th);
+      } else if (b.dataset.show != null) {
         const th = this.thoughts[Number(b.dataset.show)];
         if (th) {
           this.focus(th.id);
@@ -10965,7 +11346,10 @@ class CityPanel {
             (t, i) =>
               `<li class="sev-${t.severity}${t.id === this.focusedId ? ' focused' : ''}"><span class="th-icon" aria-hidden="true">${t.kind === 'happy' ? '♥' : '!'}</span>` +
               `<span class="th-text"><span class="sev-label">${SEVERITY_LABEL[t.severity]}</span><span>${esc(t.text)}</span><small>${esc(t.hint)}</small></span>` +
+              `<span class="th-actions">` +
               (t.x != null ? `<button type="button" class="ghost-btn small" data-show="${i}">Show me</button>` : '') +
+              (t.plan ? `<button type="button" class="primary-btn small" data-build="${i}">Build it</button>` : '') +
+              '</span>' +
               '</li>'
           )
           .join('')}</ul>`
@@ -11555,6 +11939,15 @@ function start(hotData = {}) {
     onShow: (th) => {
       focusTile(th.x, th.y);
       if (window.innerWidth < 560) cityPanel.toggle(false);
+    },
+    // Build a suggested road in one go (one undo step), skipping anything built there since.
+    onBuild: (th) => {
+      const coords = th.plan.filter((c) => city.canApply('road', c.x, c.y) && city.getTile(c.x, c.y).terrain === 'grass' && (!city.getTile(c.x, c.y).structure || city.getTile(c.x, c.y).structure.type === 'tree'));
+      if (!coords.length) return ui.toast('That spot has changed. A new suggestion will come along shortly', 3000);
+      build(`${coords.length} road${coords.length > 1 ? 's' : ''}`, coords, () => city.applyMany('road', coords));
+      cityPanel.focus(null);
+      sim.refresh();
+      ui.toast('New road built. Drivers will start using it right away', 3200);
     },
   });
   function focusTile(x, y) {

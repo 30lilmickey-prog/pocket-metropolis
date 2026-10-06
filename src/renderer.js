@@ -1202,6 +1202,21 @@ export class Renderer {
         ctx.stroke();
       }
     }
+    // A suggested road, drawn like a road sketched in pencil: road-coloured with a dashed edge.
+    for (const it of ordered) {
+      if (!it.plan?.length) continue;
+      ctx.fillStyle = `rgba(214,208,196,${(it.focused ? 0.75 + 0.2 * pulse : 0.6).toFixed(3)})`;
+      ctx.strokeStyle = it.focused ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.7)';
+      ctx.lineWidth = 1.8 / z;
+      ctx.setLineDash([4 / z, 3 / z]);
+      ctx.lineDashOffset = -this.time * 8;
+      for (const c of it.plan) {
+        tilePoly(ctx, c.x, c.y, 0.06);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+    }
   }
 
   // Buildings hide the ground, so the issue being looked at also gets a bobbing marker on each tile.

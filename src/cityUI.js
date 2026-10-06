@@ -11,7 +11,8 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const CLOSE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
 
 export class CityPanel {
-  constructor({ milestones, onShow, onOpen }) {
+  constructor({ milestones, onShow, onOpen, onBuild }) {
+    this.onBuild = onBuild; // (thought) → build its suggested road
     this.milestones = milestones; // () => Milestones
     this.onShow = onShow; // (thought) → move the camera there
     this.onOpen = onOpen; // () → close other panels
@@ -38,7 +39,10 @@ export class CityPanel {
       const b = e.target.closest('button');
       if (!b) return;
       if (b.dataset.close != null) this.toggle(false);
-      else if (b.dataset.show != null) {
+      else if (b.dataset.build != null) {
+        const th = this.thoughts[Number(b.dataset.build)];
+        if (th?.plan) this.onBuild?.(th);
+      } else if (b.dataset.show != null) {
         const th = this.thoughts[Number(b.dataset.show)];
         if (th) {
           this.focus(th.id);
@@ -122,7 +126,10 @@ export class CityPanel {
             (t, i) =>
               `<li class="sev-${t.severity}${t.id === this.focusedId ? ' focused' : ''}"><span class="th-icon" aria-hidden="true">${t.kind === 'happy' ? '♥' : '!'}</span>` +
               `<span class="th-text"><span class="sev-label">${SEVERITY_LABEL[t.severity]}</span><span>${esc(t.text)}</span><small>${esc(t.hint)}</small></span>` +
+              `<span class="th-actions">` +
               (t.x != null ? `<button type="button" class="ghost-btn small" data-show="${i}">Show me</button>` : '') +
+              (t.plan ? `<button type="button" class="primary-btn small" data-build="${i}">Build it</button>` : '') +
+              '</span>' +
               '</li>'
           )
           .join('')}</ul>`

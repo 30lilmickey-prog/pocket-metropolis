@@ -11,6 +11,7 @@
 - [x] Life Story, first version (see section 1)
 - [x] Phone layout: Life and a controls sheet up top instead of a column of side buttons; compact landscape layout
 - [x] Phase 1 polish: sound effects and ambience, drag to build, undo and redo, buildings that grow and vary, seasons and weather
+- [x] Traffic: congestion-aware routes, through traffic only, and road suggestions you can build in one tap
 - [x] Phase 4: share links, minimap, trends, colour-blind friendly colours, larger text
 - [x] Street names and house numbers, shown on the map and used in Life Story instead of coordinates
 - [x] Phase 3 Life Story: activities, buying a home, real neighbours, 34 new events, the character walking on the map, achievements and ribbons
