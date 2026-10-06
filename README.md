@@ -4,7 +4,8 @@ A relaxing isometric tiny-city builder. You plan the city; residents decide for 
 
 **What's in it**
 
-- A 32×32 map: a starter town in the middle, with a river, woods and room to grow
+- **New town** (top-right button, or ☰ → New town…): choose **Sandbox** (everything unlocked) or **Milestones** (unlock buildings as you grow), a **small (16×16), medium (32×32) or large (48×48)** map, and **empty land** to build from scratch or a ready-made **starter town**. Your Life Story and achievements carry over
+- The first visit starts with a 32×32 starter town in the middle, with a river, woods and room to grow
 - Homes (house, tower), workplaces (shop, office), services (school, clinic), recreation (playground, sports field), nature (tree, park, water) and roads
 - Residents move into the most desirable homes. Desirability comes from parks and trees, water views, road access, school and clinic coverage, playgrounds and sport, jobs, and traffic
 - **Milestones:** your town grows from Hamlet to Village (60 residents), Town (200), City (450) and Metropolis (900). Each title unlocks buildings for good, with a small celebration. Tap the stats bubble to see your progress
@@ -73,7 +74,7 @@ Events are plain data in `src/lifeEvents.js` and `src/lifeEventsMore.js` (78 in 
 | Recenter | Recenter button (press again for the whole map) | ☰ City controls |
 | Share, minimap, colour-blind colours, larger text | ☰ Settings & more | ☰ Settings & more |
 | Jump around the map | Click or drag on the minimap | Tap or drag on the minimap |
-| Random Town | Random Town button | ☰ City controls (tap twice to confirm) |
+| New town (sandbox, map size, empty land) | New town button | ☰ → New town… |
 | Milestones and resident wishes | Click the stats bubble, or a thought bubble | Tap the stats bubble, or a thought bubble |
 
 ## Architecture
@@ -94,7 +95,7 @@ Each system lives in its own module under `src/` and talks to the others only th
 | Streets | `streets.js` | Names straight runs of road and numbers the buildings along them; names are saved in `city.systems.streets` by tile. Writes `street` and `address` on tiles. |
 | History | `history.js` | Undo and redo of tile edits, plus the L-shaped road and brush stroke paths. |
 | Milestones | `milestones.js`, `advisor.js`, `cityUI.js` | Town titles and permanent unlocks (saved in `city.systems.milestones`); resident thoughts computed from the city every few seconds into `city.derived.thoughts`; the City panel. |
-| Glue | `main.js`, `ui.js`, `generator.js` | Wires systems together, the toolbar (with lock badges) and stats bubble, placement feedback, Random Town. |
+| Glue | `main.js`, `ui.js`, `generator.js`, `newTownUI.js` | Wires systems together, the toolbar (with lock badges) and stats bubble, placement feedback, and new towns (starter town or empty land, sandbox or milestones, three map sizes; the mode is saved in `city.systems.mode`). |
 
 Derived data (labor market, commute routes, congestion, coverage, resident thoughts) lives on tiles and in `city.derived`, is recomputed about once a second, and is never saved.
 

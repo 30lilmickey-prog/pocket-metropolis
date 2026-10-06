@@ -10,7 +10,8 @@ import { AutoSaver, loadCity, saveCity, saveBackup, loadBackup, clearBackup } fr
 import { encodeCity, decodeCity, shareUrl, codeFromHash } from './share.js';
 import { Minimap } from './minimap.js';
 import { settings, loadSettings, setSetting, onSettings } from './settings.js';
-import { generateTown } from './generator.js';
+import { generateTown, generateLand } from './generator.js';
+import { NewTownSheet } from './newTownUI.js';
 import { Interface } from './ui.js';
 import { LifeInterface } from './lifeUI.js';
 import { summaryOf } from './life.js';
@@ -87,18 +88,7 @@ function start(hotData = {}) {
       tool = id;
       if (id !== 'inspect') selected = null;
     },
-    onRandom: () => {
-      history.record('Random Town', city.tiles.map((t) => ({ x: t.x, y: t.y })), () => {
-        generateTown(city);
-        return true;
-      });
-      sim.refresh();
-      sim.milestones.settleForCapacity();
-      ui.refreshLocks();
-      selected = null;
-      fitView(false);
-      ui.toast('A fresh town, with room to grow');
-    },
+    onRandom: () => newTownSheet.toggle(true),
     // First press frames the town; pressing again shows the whole map.
     onFit: () => fitView(false, framing === 'town' ? 'map' : 'town'),
     onSpeed: (speed) => {
@@ -234,7 +224,7 @@ function start(hotData = {}) {
       document.getElementById('app').appendChild(card);
       card.addEventListener('click', () => (card.hidden = true));
     }
-    const names = m.unlocks.map((u) => STRUCTURES[u]?.label || u);
+    const names = sim.milestones.sandbox ? [] : m.unlocks.map((u) => STRUCTURES[u]?.label || u);
     card.innerHTML =
       `<span class="insp-kicker">New milestone</span><h2>You're a ${m.label}!</h2>` +
       `<p>${m.pop.toLocaleString()} people now call your town home.</p>` +
@@ -323,6 +313,36 @@ function start(hotData = {}) {
     const rect = target === 'town' ? townBounds() : null;
     camera.fit(uiInsets(), immediate, rect || camera.bounds);
     framing = rect ? 'town' : 'map';
+  }
+
+  // ---- New town ----------------------------------------------------------------
+  const newTownSheet = new NewTownSheet({
+    onOpen: () => {
+      ui.toggleMore(false);
+      cityPanel.toggle(false);
+      lifeUI.toggle(false);
+      ui.closeTray();
+    },
+    onStart: (opts) => newTown(opts),
+  });
+
+  // Build a fresh town of the chosen size and mode. The Life Story and achievements carry over;
+  // a character whose home is gone moves into whatever the new town offers (or waits for one).
+  function newTown({ mode, size, start }) {
+    const fresh = new CityState(size, size);
+    if (start === 'town') generateTown(fresh);
+    else generateLand(fresh);
+    fresh.systems.mode = mode;
+    if (city.systems.life) fresh.systems.life = city.systems.life;
+    swapCity(fresh);
+    if (start === 'town') sim.milestones.settleForCapacity();
+    ui.refreshLocks();
+    if (sim.life.char?.alive) sim.life.syncWithCity();
+    lifeUI.render();
+    saveCity(city);
+    audio.play('fanfare');
+    const where = start === 'town' ? 'A fresh town' : 'Open land';
+    ui.toast(mode === 'sandbox' ? `${where}, sandbox mode: everything is unlocked` : `${where}. Grow it to unlock new buildings`, 4200);
   }
 
   // ---- Sharing -----------------------------------------------------------------

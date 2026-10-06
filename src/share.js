@@ -17,7 +17,7 @@ export function packCity(city) {
   out[0] = FORMAT;
   out[1] = city.width;
   out[2] = city.height;
-  out[3] = Math.min(255, city.day);
+  out[3] = Math.min(127, city.day) | (city.systems.mode === 'sandbox' ? 0x80 : 0); // high bit: sandbox
   city.tiles.forEach((t, i) => {
     const s = t.structure;
     const code = s ? TYPES.indexOf(s.type) + 1 : 0;
@@ -34,7 +34,8 @@ export function unpackCity(bytes) {
   const h = bytes[2];
   if (!w || !h || bytes.length < 4 + w * h * 2) throw new Error('Town link is incomplete');
   const city = new CityState(w, h);
-  city.day = bytes[3] || 1;
+  city.day = bytes[3] & 0x7f || 1;
+  if (bytes[3] & 0x80) city.systems.mode = 'sandbox';
   city.tiles.forEach((t, i) => {
     const a = bytes[4 + i * 2];
     const b = bytes[5 + i * 2];

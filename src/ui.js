@@ -286,7 +286,7 @@ export class Interface {
       (this.hasBackup() ? '<button type="button" class="ghost-btn" data-more="home">Back to my town</button>' : '<span></span>') +
       '</div>' +
       `<div class="sheet-actions"><button type="button" class="ghost-btn" data-more="fit">Recenter</button>` +
-      `<button type="button" class="${this._confirmRandom ? 'primary-btn danger' : 'ghost-btn'}" data-more="random">${this._confirmRandom ? 'Tap again to replace your city' : 'Random Town'}</button></div>`;
+      `<button type="button" class="ghost-btn" data-more="random">New town…</button></div>`;
   }
 
   onMoreClick(e) {
@@ -310,19 +310,9 @@ export class Interface {
       this.onFit();
       return this.toggleMore(false);
     } else if (t.dataset.more === 'random') {
-      // Replacing the city can't be undone, so it takes a second tap.
-      if (!this._confirmRandom) {
-        this._confirmRandom = true;
-        clearTimeout(this._confirmTimer);
-        this._confirmTimer = setTimeout(() => {
-          this._confirmRandom = false;
-          this.renderMore();
-        }, 3500);
-      } else {
-        this._confirmRandom = false;
-        this.onRandom();
-        return this.toggleMore(false);
-      }
+      // The New town sheet is its own confirmation: nothing changes until Start building.
+      this.toggleMore(false);
+      return this.onRandom();
     }
     this.renderMore();
   }

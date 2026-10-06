@@ -5,7 +5,13 @@ import { STRUCTURES } from './config.js';
 import { DIRS } from './state.js';
 import { mulberry32 } from './utils.js';
 
-export function generateTown(city, seed = (Math.random() * 2 ** 32) >>> 0) {
+// Empty land for building from scratch: a river, a pond and some woods, with open ground in the
+// middle and nothing built.
+export function generateLand(city, seed = (Math.random() * 2 ** 32) >>> 0) {
+  return generateTown(city, seed, { town: false });
+}
+
+export function generateTown(city, seed = (Math.random() * 2 ** 32) >>> 0, { town = true } = {}) {
   const rand = mulberry32(seed);
   const W = city.width;
   const H = city.height;
@@ -42,12 +48,29 @@ export function generateTown(city, seed = (Math.random() * 2 ** 32) >>> 0) {
     }
     if (rand() < 0.35) pos = Math.max(1, Math.min(span - 3, pos + (rand() < 0.5 ? -1 : 1)));
   }
-  // A pond on the far side, if it fits.
+  // A pond on the far side, if it fits. On empty land the middle stays dry for building.
   if (W >= 20) {
     const px = vertical ? (pos < W / 2 ? W - 4 : 3) : ri(4, W - 5);
     const py = vertical ? ri(4, H - 5) : pos < H / 2 ? H - 4 : 3;
     const r = 1.5 + rand();
     for (const t of city.tiles) if (Math.hypot(t.x - px, t.y - py) + (rand() - 0.5) * 0.8 < r && !inTown(t.x, t.y)) t.terrain = 'water';
+  }
+
+  if (!town) {
+    // Woods round the edges, a few lone trees, and clear ground in the middle to start on.
+    const woods = Array.from({ length: Math.max(2, Math.round(W / 7)) }, () => ({ x: ri(0, W - 1), y: ri(0, H - 1), r: 1.5 + rand() * 3 }));
+    for (const t of city.tiles) {
+      if (!isEmpty(t.x, t.y)) continue;
+      const fromMiddle = Math.max(Math.abs(t.x - cx), Math.abs(t.y - cy)) / Math.max(1, half);
+      let p = fromMiddle < 1 ? 0.02 : 0.07;
+      if (DIRS.some((d) => tile(t.x + d.dx, t.y + d.dy)?.terrain === 'water')) p += 0.2;
+      for (const f of woods) if (fromMiddle >= 0.8 && Math.hypot(t.x - f.x, t.y - f.y) < f.r) p += 0.5;
+      if (rand() < p) place(t.x, t.y, 'tree');
+    }
+    city.refreshAllRoadMasks();
+    city.dirty = true;
+    city.emit('reset', { seed, focus: { x: cx, y: cy, radius: half } });
+    return;
   }
 
   // Streets: two avenues cross downtown and run to the map edge; a grid fills the town.
