@@ -4,6 +4,11 @@
 import { STRUCTURES } from './config.js';
 
 const MAX_THOUGHTS = 5;
+const MAX_TILES = 240;
+// How urgent a thought is: 'bad' (red, fix soon), 'caution' (yellow, worth a look) or 'good' (green).
+export const SEVERITY_RANK = { bad: 0, caution: 1, good: 2 };
+
+const spot = (t) => ({ x: t.x, y: t.y });
 
 function isHome(t) {
   return !!t.structure && STRUCTURES[t.structure.type].capacity > 0;
@@ -25,8 +30,19 @@ function hasWaterNear(city, tile, r = 2) {
 
 export function computeThoughts(city, milestones) {
   const out = [];
-  const add = (id, kind, priority, text, hint, tile) =>
-    out.push({ id, kind, priority, text, hint, x: tile ? tile.x : null, y: tile ? tile.y : null });
+  // `tile` is where the camera goes; `area` lists every tile the thought is about, for highlighting.
+  const add = (id, severity, priority, text, hint, tile, area = tile ? [tile] : []) =>
+    out.push({
+      id,
+      kind: severity === 'good' ? 'happy' : 'wish',
+      severity,
+      priority,
+      text,
+      hint,
+      x: tile ? tile.x : null,
+      y: tile ? tile.y : null,
+      tiles: area.slice(0, MAX_TILES).map(spot),
+    });
   const unlocked = (tool) => !milestones || milestones.isUnlocked(tool);
 
   const homes = city.tiles.filter(isHome);
@@ -34,41 +50,43 @@ export function computeThoughts(city, milestones) {
 
   const cutOff = homes.filter((h) => !city.accessRoad(h.x, h.y));
   if (cutOff.length) {
-    add('no-road', 'wish', 5, cutOff.length === 1 ? 'A home has no road. Nobody can get to work.' : `${cutOff.length} homes have no road. Nobody there can get to work.`, 'Connect them with a road', cutOff[0]);
+    add('no-road', 'bad', 5, cutOff.length === 1 ? 'A home has no road. Nobody can get to work.' : `${cutOff.length} homes have no road. Nobody there can get to work.`, 'Connect them with a road', cutOff[0], cutOff);
   }
 
   const labor = city.derived.labor;
   const workers = labor ? labor.employed + labor.unemployed : 0;
   if (workers >= 6 && labor.unemployed / workers > 0.15) {
     const jobless = lived.filter((h) => h.employment < 0.5);
-    add('jobs', 'wish', 4, `We need jobs! ${labor.unemployed} people are looking for work.`, 'Build shops or offices near homes', worstOf(jobless) || worstOf(lived));
+    const share = labor.unemployed / workers;
+    add('jobs', share > 0.3 ? 'bad' : 'caution', 4, `We need jobs! ${labor.unemployed} people are looking for work.`, 'Build shops or offices near homes', worstOf(jobless) || worstOf(lived), jobless);
   }
 
   if (unlocked('school')) {
     const far = lived.filter((h) => (h.coverage.school || 0) < 0.1);
-    if (far.length) add('school', 'wish', 3, 'Our kids have no school nearby.', 'Build a school', worstOf(far));
+    if (far.length) add('school', 'caution', 3, 'Our kids have no school nearby.', 'Build a school', worstOf(far), far);
   }
 
+  const jammed = city.tiles.filter((t) => t.roadMask && t.congestion >= 0.85);
   let jam = null;
-  for (const t of city.tiles) if (t.roadMask && t.congestion >= 0.85 && (!jam || t.congestion > jam.congestion)) jam = t;
-  if (jam) add('traffic', 'wish', 3, 'The roads are jammed at rush hour.', 'Add another route or put jobs closer to homes', jam);
+  for (const t of jammed) if (!jam || t.congestion > jam.congestion) jam = t;
+  if (jam) add('traffic', jam.congestion >= 0.99 ? 'bad' : 'caution', 3, 'The roads are jammed at rush hour.', 'Add another route or put jobs closer to homes', jam, jammed);
 
   if (unlocked('clinic')) {
     const far = lived.filter((h) => (h.coverage.health || 0) < 0.1);
-    if (far.length) add('health', 'wish', 2.5, "There's no clinic if someone gets sick.", 'Build a clinic', worstOf(far));
+    if (far.length) add('health', 'caution', 2.5, "There's no clinic if someone gets sick.", 'Build a clinic', worstOf(far), far);
   }
 
   const bare = lived.filter((h) => (h.factors.greenery || 0) < 0.02);
-  if (bare.length) add('green', 'wish', 2, "It's all concrete here. A few trees would be lovely.", 'Plant trees or a park', worstOf(bare));
+  if (bare.length) add('green', 'caution', 2, "It's all concrete here. A few trees would be lovely.", 'Plant trees or a park', worstOf(bare), bare);
 
   const quiet = city.tiles.filter(
     (t) => t.structure && STRUCTURES[t.structure.type].jobs >= 4 && t.workersFilled < STRUCTURES[t.structure.type].jobs * 0.5,
   );
-  if (quiet.length && homes.length) add('workers', 'wish', 2, 'Some workplaces are short of staff.', 'Build homes nearby, linked by road', quiet[0]);
+  if (quiet.length && homes.length) add('workers', 'caution', 2, 'Some workplaces are short of staff.', 'Build homes nearby, linked by road', quiet[0], quiet);
 
   if (unlocked('playground')) {
     const far = lived.filter((h) => (h.coverage.fun || 0) < 0.1);
-    if (far.length) add('fun', 'wish', 1.5, 'Nowhere to play around here!', 'Build a playground', worstOf(far));
+    if (far.length) add('fun', 'caution', 1.5, 'Nowhere to play around here!', 'Build a playground', worstOf(far), far);
   }
 
   // Always one happy note from the nicest occupied home.
@@ -80,11 +98,13 @@ export function computeThoughts(city, milestones) {
       : (best.factors.greenery || 0) > 0.15
         ? 'So much green on our street. Love it here!'
         : 'This is a lovely little neighbourhood.';
-    add('happy', 'happy', 1, text, 'Your happiest home', best);
+    add('happy', 'good', 1, text, 'Your happiest home', best);
   }
 
-  // Keep the happy note even on a bad day: the top wishes first, then the happy one.
+  // Keep the happy note even on a bad day: red issues first, then yellow, then the happy one.
   const happy = out.filter((t) => t.kind === 'happy');
-  const wishes = out.filter((t) => t.kind !== 'happy').sort((a, b) => b.priority - a.priority);
+  const wishes = out
+    .filter((t) => t.kind !== 'happy')
+    .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] || b.priority - a.priority);
   return [...wishes.slice(0, MAX_THOUGHTS - happy.length), ...happy];
 }
