@@ -4,6 +4,7 @@ import { STRUCTURES, DAY_LENGTH_SECONDS, SIM_STEP } from './config.js';
 import { recomputeDesirability } from './desirability.js';
 import { computeLaborMarket } from './labor.js';
 import { computeCoverage } from './coverage.js';
+import { computeStreets } from './streets.js';
 import { AgentSystem } from './agents.js';
 import { LifeSystem } from './life.js';
 import { WeatherSystem } from './weather.js';
@@ -20,6 +21,7 @@ export class Simulation {
     this.weather = new WeatherSystem(city);
     this.milestones = new Milestones(city);
     this._thoughtTimer = 0;
+    this._streetsRev = -1;
     this.speed = 1; // 0 pauses; 1–3 run faster
     this._acc = 0;
     this._marketTimer = 0;
@@ -47,6 +49,7 @@ export class Simulation {
   tick() {
     const city = this.city;
     this._marketTimer -= SIM_STEP;
+    this.updateStreets();
     // Jobs, traffic and desirability feed each other, so refresh them together about once a second.
     if (city.dirty || this._marketTimer <= 0) {
       if (city.dirty) computeCoverage(city);
@@ -66,12 +69,21 @@ export class Simulation {
 
   // Run the derived systems immediately, e.g. right after loading or generating a city.
   refresh() {
+    this._streetsRev = -1;
+    this.updateStreets();
     computeCoverage(this.city);
     this.city.derived.labor = computeLaborMarket(this.city);
     recomputeDesirability(this.city);
     this.updateStats();
     void this.milestones.state; // settle the starting title without a celebration
     this.city.derived.thoughts = computeThoughts(this.city, this.milestones);
+  }
+
+  // Street names and addresses follow the map; recompute only when a tile changed.
+  updateStreets() {
+    if (this._streetsRev === this.city.revision) return;
+    this._streetsRev = this.city.revision;
+    computeStreets(this.city);
   }
 
   // Desirability maps to how full a home can get: a bare lot fills a little, a leafy one fills up.

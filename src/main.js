@@ -11,6 +11,7 @@ import { generateTown } from './generator.js';
 import { Interface } from './ui.js';
 import { LifeInterface } from './lifeUI.js';
 import { summaryOf } from './life.js';
+import { addressOf } from './streets.js';
 import { CityPanel } from './cityUI.js';
 import { unlockTier } from './milestones.js';
 import { computeCoverage } from './coverage.js';
@@ -322,7 +323,9 @@ function start(hotData = {}) {
     },
     onAgeUp: () => sim.life.ageUp(),
     onChoose: (i) => {
+      const before = homeKey();
       const result = sim.life.choose(i);
+      if (homeKey() !== before) showNewHome();
       if (result) {
         const score = result.changes.reduce((n, c) => n + Math.sign(c.delta), 0);
         audio.play(score >= 0 ? 'good' : 'bad');
@@ -356,8 +359,21 @@ function start(hotData = {}) {
       camera.ty = w.y - 20;
       camera.tzoom = Math.max(camera.tzoom, 1.1);
       camera.clampTarget();
+      renderer.ring(home.x, home.y, '#ffffff');
     },
   });
+  // After a move, fly to the new home and say its address.
+  const homeKey = () => {
+    const h = sim.life.char?.home;
+    return h ? `${h.x},${h.y}` : '';
+  };
+  function showNewHome() {
+    const h = sim.life.char?.home;
+    if (!h) return;
+    sim.updateStreets();
+    lifeUI.h.onFocus();
+    ui.toast(`${sim.life.char.first}'s new home: ${addressOf(city.getTile(h.x, h.y))}`, 4200);
+  }
   city.on((ev) => {
     // Sounds. Strokes fire many events; only the first few make a sound.
     const d = ev.delay || 0;

@@ -196,6 +196,7 @@ export class CityState {
   // Wipe every tile but keep time of day.
   reset() {
     this._buildTiles();
+    delete this.systems.streets; // a new town gets new street names
     this.dirty = true;
     this.revision++;
   }

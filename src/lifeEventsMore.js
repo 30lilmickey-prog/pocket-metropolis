@@ -5,9 +5,10 @@
 
 import { STRUCTURES, MILESTONES } from './config.js';
 import { CAREERS } from './lifeData.js';
+import { addressOf } from './streets.js';
 
 const o = (text, effects = {}, extra = {}) => ({ text, effects, ...extra });
-const where = (t) => `the ${STRUCTURES[t.structure.type].label.toLowerCase()} at ${t.x}, ${t.y}`;
+const where = (t) => `the ${STRUCTURES[t.structure.type].label.toLowerCase()} at ${addressOf(t)}`;
 const season = (ctx) => ctx.city.derived.weather?.season;
 const weather = (ctx) => ctx.city.derived.weather || {};
 
@@ -30,7 +31,7 @@ export const MORE_EVENTS = [
         .slice(0, 3)
         .sort((a, b) => a.price - b.price);
       const out = affordable.map((h) => ({
-        label: `${STRUCTURES[h.tile.structure.type].label} at ${h.tile.x}, ${h.tile.y} · ${Math.round(h.tile.desirability * 100)}% desirable · $${h.price.toLocaleString()}`,
+        label: `${STRUCTURES[h.tile.structure.type].label} at ${addressOf(h.tile)} · ${Math.round(h.tile.desirability * 100)}% desirable · $${h.price.toLocaleString()}`,
         data: { x: h.tile.x, y: h.tile.y, price: h.price },
       }));
       if (!affordable.length && sale.length) {
@@ -113,7 +114,7 @@ export const MORE_EVENTS = [
     when: (ctx) => ctx.neighbour(),
     text: (ctx) => {
       const n = ctx.neighbour();
-      return `${n.family[0].toUpperCase() + n.family.slice(1)} at ${n.x}, ${n.y} has lost their cat, Mittens. There are posters everywhere.`;
+      return `${n.family[0].toUpperCase() + n.family.slice(1)} at ${n.address} has lost their cat, Mittens. There are posters everywhere.`;
     },
     choices: [
       {
@@ -274,7 +275,7 @@ export const MORE_EVENTS = [
     when: (ctx) => !ctx.char.livesWithParents && ctx.neighbour(),
     text: (ctx) => {
       const n = ctx.neighbour();
-      return `${n.family[0].toUpperCase() + n.family.slice(1)} at ${n.x}, ${n.y} just moved in next door.`;
+      return `${n.family[0].toUpperCase() + n.family.slice(1)} at ${n.address} just moved in next door.`;
     },
     choices: [
       { label: 'Bring them cookies', outcomes: [o('{name} met {neighbourperson}, who turned out to be lovely.', { happiness: 5 }, { do: (c) => c.addFriend(55, c.neighbour()?.person) })] },
@@ -286,7 +287,7 @@ export const MORE_EVENTS = [
     stages: ['young', 'adult', 'senior'],
     cooldown: 6,
     when: (ctx) => ctx.neighbour() && ctx.facts.home?.structure?.type === 'tower',
-    text: (ctx) => `The flat above {name} at ${ctx.char.home.x}, ${ctx.char.home.y} is having its third party this week.`,
+    text: (ctx) => `The flat above {name}'s place at ${addressOf(ctx.facts.home)} is having its third party this week.`,
     choices: [
       { label: 'Join the party', outcomes: [o('Best night in ages. {name} knows everyone upstairs now.', { happiness: 6, health: -2 }, { do: (c) => c.addFriend(50) })] },
       { label: 'Knock and complain', outcomes: [o('They turned it down. Mostly.', { happiness: 1 })] },

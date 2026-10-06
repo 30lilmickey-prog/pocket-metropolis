@@ -388,7 +388,7 @@ export class Interface {
     this._inspectKey = key;
     this.inspectEl.hidden = false;
     this.inspectEl.innerHTML =
-      `<header><div><span class="insp-kicker">Tile ${t.x}, ${t.y}</span><h2>${title}</h2></div>` +
+      `<header><div><span class="insp-kicker">${t.address || t.street || `Tile ${t.x}, ${t.y}`}</span><h2>${title}</h2></div>` +
       `<button type="button" class="insp-close" data-close aria-label="Close inspector">${ICONS.close}</button></header>` +
       (facts.length ? `<dl>${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>` : '') +
       (showFactors
