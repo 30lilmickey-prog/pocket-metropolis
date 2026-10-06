@@ -12,6 +12,7 @@ A relaxing isometric tiny-city builder. You plan the city; residents decide for 
 - Map views for desirability, traffic and services; pause and 1×–3× speed
 - A slow day/night cycle with lit windows, street lights and headlights
 - Autosave with versioned saves; older 12×12 towns open centred on the larger map
+- **Life Story:** create a character who is born in your city and live their life through text events (see below)
 
 Open `index.html` through any static server (ES modules need one, e.g. `npx serve .`), or build the single-file version:
 
@@ -24,6 +25,17 @@ node build.mjs   # writes dist/pocket-metropolis.html
 `vercel.json` runs `node build.mjs` and serves `dist/` (no dependencies to install).
 
 Import this repository in Vercel (**Add New → Project**) with the framework preset left as **Other**; no other settings are needed.
+
+## Life Story
+
+Open **Life** to create a character: name, pronouns, look and two traits. They are born as a baby into a family living in one of your city's homes, marked with a pin on the map.
+
+- A year of life passes per in-game day in the background; **Age up** skips to the next birthday. Life time stops while an event waits for an answer.
+- Events pop up as messages with two to four choices. Each choice has its own outcomes, which change Happiness, Health, Smarts, Looks, Money and relationships.
+- The city shapes the life: schools and clinics near home, parks and trees, traffic on the commute, which workplaces are hiring and which homes have room. Bulldozing their home or workplace changes their story too.
+- Stages run from baby to senior. When a life ends you can continue as your child, or start a new life.
+
+Events are plain data in `src/lifeEvents.js`; see the comment at the top of that file to add more.
 
 ## Controls
 
@@ -46,6 +58,7 @@ Each system lives in its own module under `src/` and talks to the others only th
 | System | Files | Responsibility |
 | --- | --- | --- |
 | City State | `state.js`, `config.js` | Tiles (terrain, structure, residents, road links), clock, stats, `systems` slot for future modules. Emits `placed` / `removed` / `watered` / `movedIn` / `reset` events. |
+| Life Story | `life.js`, `lifeEngine.js`, `lifeEvents.js`, `lifeData.js`, `lifeUI.js` | One resident's life: aging, yearly stats, home and job tied to real tiles, the event engine and content, and the panel and event card. Saved in `city.systems.life`. |
 | Simulation | `simulation.js`, `desirability.js`, `labor.js`, `coverage.js`, `agents.js`, `time.js` | Fixed-step ticks: time of day, service coverage, the labor market and road congestion, desirability, residents moving in and out, stats. Agents (commuters, cruising cars, pedestrians) read the city and move through it. |
 | Renderer | `renderer.js`, `lighting.js`, `color.js`, `iso.js` | Reads state and draws the diorama. The ground layer is cached offscreen and redrawn only when the map changes; buildings and agents are depth-sorted and drawn each frame for on-screen tiles only. Also draws the data overlays. |
 | Input/Camera | `input.js`, `camera.js` | Pointer, wheel and pinch gestures; smooth pan and zoom; fitting to the screen. |
@@ -60,7 +73,7 @@ Derived data (labor market, commute routes, congestion, coverage) lives on tiles
 npm test   # node --test, no dependencies
 ```
 
-The tests cover the labor market, road reachability, service coverage, save migration, town generation and pausing.
+The tests cover the labor market, road reachability, service coverage, save migration, town generation, pausing, and Life Story (aging, events, jobs and homes from the city, bulldozed homes, whole lives start to finish, saving).
 
 ### Extending it
 

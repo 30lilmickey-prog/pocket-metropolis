@@ -8,49 +8,53 @@
 - [x] Residents move into the most desirable homes; cars and pedestrians
 - [x] Versioned saves with migrations; Random Town; deployed on Vercel
 - [x] 32×32 map, jobs (shop, office), services (school, clinic), traffic, Inspect tool, map views, speed controls
+- [x] Life Story, first version (see section 1)
 
 ## 1. Life Story: live one resident's life
 
 You create a main character who moves into your city. Every so often a text event pops up, like a message: *"Your neighbour invites you to the park on Saturday."* You pick one of two to four choices, and each choice leads to its own outcome that changes your character's stats and story (in the spirit of BitLife). The city you build shapes that life: the schools, clinics, jobs and parks you place decide which events and careers are possible.
 
 ### 1a. Create a character
-- [ ] Creation screen: name, pronouns, look (skin tone, hair, outfit colour)
-- [ ] Two starting traits that tilt outcomes (Curious, Outgoing, Thrifty, Sporty, Creative, Calm…)
-- [ ] **Decision:** start as a newborn in a family, or move in as a young adult
-- [ ] Pick a home (or take the most desirable vacancy); the character appears as a highlighted walker on the map
-- [ ] Save the character with the city (save version 3 with a migration)
+- [x] Creation screen: name, pronouns, look (skin tone, hair, outfit colour)
+- [x] Two starting traits that tilt outcomes (Curious, Outgoing, Thrifty, Sporty, Creative, Calm…)
+- [x] **Decided:** born as a baby into a family living in one of the city's homes
+- [x] A pin marks the character's home (and later their workplace) on the map
+- [ ] Show the character as a highlighted walker on the map
+- [x] Save the character with the city (stored in `city.systems.life`, so no save migration was needed)
 
 ### 1b. Stats, age and life stages
-- [ ] Stats from 0 to 100: Happiness, Health, Smarts, Looks; plus Money
-- [ ] **Decision:** time passes with the city clock (for example a year per in-game day) or with an "Age up" button like BitLife
-- [ ] Life stages: child, teen, young adult, adult, senior; a life ends, and you can continue as your child
-- [ ] Life log: a scrollable timeline of every event and choice ("Age 17: You aced your exams.")
+- [x] Stats from 0 to 100: Happiness, Health, Smarts, Looks; plus Money
+- [x] **Decided:** both. A year passes per in-game day in the background, and Age up skips ahead; life time stops while an event waits
+- [x] Life stages: child, teen, young adult, adult, senior; a life ends, and you can continue as your child
+- [x] Life log: a scrollable timeline of every event and choice ("Age 17: You aced your exams.")
 
 ### 1c. Event engine
-- [ ] Data-driven events: conditions (age, stage, stats, traits, flags, city facts), text with `{name}` placeholders, choices, weighted outcomes, stat changes, follow-up events
-- [ ] Scheduler with cooldowns so events don't repeat too soon; nothing fires while paused
-- [ ] Message-style pop-up card that works on phones, with an outcome card showing stat changes
-- [ ] Event chains through flags (a first date leads to a second)
-- [ ] Unit tests for condition matching, outcome rolls and chains
+- [x] Data-driven events: conditions (age, stage, stats, traits, flags, city facts), text with `{name}` placeholders, choices, weighted outcomes, stat changes, follow-up events
+- [x] Bulldozing the character's home or workplace changes their life straight away
+- [x] Scheduler with cooldowns so events don't repeat too soon; nothing fires while paused
+- [x] Message-style pop-up card that works on phones, with an outcome card showing stat changes
+- [x] Event chains through flags (dating leads to moving in, proposing and a baby)
+- [x] Unit tests for condition matching, outcome rolls and chains
 
 ### 1d. Link the life to the city
-- [ ] School nearby: school events and faster Smarts growth; no school means fewer options
-- [ ] Clinic nearby: illnesses are milder and recovery faster
-- [ ] Careers come from real workplaces (shop, office, school, clinic); applications fail when there are no openings
-- [ ] Traffic on your commute adds stress events; parks and trees near home add calm ones
+- [x] School nearby: school events and faster Smarts growth; no school means fewer options
+- [x] Clinic nearby: illnesses are milder and recovery faster
+- [x] Careers come from real workplaces (shop, office, school, clinic); applications fail when there are no openings
+- [x] Traffic on your commute adds stress events; parks and trees near home add calm ones
 - [ ] Your character walks or drives along their real commute
-- [ ] Moving house: choose a new home among vacancies, with desirability shown
+- [x] Moving house: choose a new home among vacancies, with desirability shown
 
 ### 1e. First content pack
-- [ ] About 40 events: childhood 10, teen 10, adult 12, senior 8
-- [ ] Relationships: family, friends and a partner, each with closeness from 0 to 100
-- [ ] Careers with promotions: shop assistant → shop manager, office junior → director, teacher, nurse → doctor
-- [ ] Money: daily wage, purchases, rent
+- [x] 44 events across babyhood, childhood, teen years, adulthood and old age
+- [x] Relationships: family, friends and a partner, each with closeness from 0 to 100
+- [x] Careers with promotions: shop assistant → shop manager, office junior → director, teacher, nurse → doctor
+- [x] Money: yearly savings from wages, purchases, rent
 
 ### 1f. Polish
-- [ ] Badge on a Life button when an event is waiting
+- [x] Badge on a Life button when an event is waiting
 - [ ] Settings: event frequency, pause the city while an event is open
-- [ ] Choose with the keyboard; respects reduced motion
+- [ ] More events: siblings, pets with names, neighbours from real nearby homes, city milestones ("the town reached 500 people")
+- [x] Choose with the keyboard; respects reduced motion
 
 ## 2. Ideas from IsoCity
 
@@ -68,6 +72,6 @@ From [isometric-city](https://github.com/uxcaleb/isometric-city) (originally ami
 - [ ] Statistics panel with history sparklines
 
 ## 3. Deploy and tooling
-- [ ] Vercel redeploys on every push (Vercel can't see `30lilmickey-prog/pocket-metropolis` yet; until then each deploy is started by hand)
+- [ ] Move the code to `andrerlaster-lgtm/Metropolis` and link it to Vercel so every push redeploys (until then each deploy is started by hand)
 - [ ] Test pinch and long-press on a real phone
 - [ ] Run `npm test` on every pull request with GitHub Actions

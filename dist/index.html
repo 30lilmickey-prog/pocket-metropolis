@@ -28,6 +28,13 @@
   --tint-road: #d6d0c4;
   --tint-water: #7ec8e3;
   --tint-bulldoze: #fcd5ce;
+  --avatar-bg: #fdeee8;
+  --bubble: #ffffff;
+  --stat-happiness: #ffcf6e;
+  --stat-health: #8fd0a5;
+  --stat-smarts: #b49ad1;
+  --stat-looks: #f5a3b5;
+  --stat-rel: #ff9f8f;
   --font-display: 'Fredoka', ui-rounded, 'SF Pro Rounded', 'Nunito', system-ui, sans-serif;
   --font-body: 'Nunito', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
 }
@@ -36,6 +43,8 @@
     --sky: #2c2e58;
     --panel: rgba(46, 42, 82, 0.78);
     --panel-edge: rgba(255, 255, 255, 0.14);
+    --avatar-bg: #3e3a6b;
+    --bubble: rgba(255, 255, 255, 0.1);
     --ink: #f4effc;
     --ink-soft: #b9b1d8;
     --press: rgba(255, 255, 255, 0.16);
@@ -562,6 +571,493 @@ button:focus-visible {
   transform: translate(-50%, 0);
 }
 
+/* Life Story */
+#btn-life {
+  position: relative;
+}
+#btn-life.is-on {
+  background: var(--press);
+  outline: 2px solid var(--stat-rel);
+}
+.badge {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #ff7a6b;
+  border: 2px solid var(--panel-edge);
+  animation: badge-pop 1.6s ease-in-out infinite;
+}
+@keyframes badge-pop {
+  50% {
+    transform: scale(1.25);
+  }
+}
+.life-panel {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 72px);
+  right: calc(env(safe-area-inset-right, 0px) + 16px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 104px);
+  width: 360px;
+  overflow-y: auto;
+  padding: 16px;
+  border-radius: 24px;
+  z-index: 4;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.life-panel h3 {
+  margin: 6px 0 0;
+  font: 600 15px/1.2 var(--font-display);
+}
+.life-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+.life-create .life-head {
+  grid-template-columns: auto 1fr;
+}
+.avatar {
+  display: grid;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(84, 70, 130, 0.18);
+}
+.avatar.gone {
+  filter: grayscale(0.7);
+  opacity: 0.8;
+}
+.life-kicker {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.life-head h2 {
+  margin: 1px 0 0;
+  font: 600 22px/1.1 var(--font-display);
+  text-wrap: balance;
+}
+.life-sub {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.year-bar {
+  margin-top: 6px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--meter-track);
+  overflow: hidden;
+}
+.year-bar span {
+  display: block;
+  height: 100%;
+  background: var(--stat-rel);
+  border-radius: inherit;
+}
+.icon-btn {
+  appearance: none;
+  border: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: var(--meter-track);
+  color: var(--ink);
+  cursor: pointer;
+  align-self: start;
+}
+.icon-btn svg {
+  width: 18px;
+  height: 18px;
+}
+.life-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.primary-btn,
+.ghost-btn {
+  appearance: none;
+  border: 0;
+  border-radius: 14px;
+  padding: 11px 16px;
+  font: 800 13.5px/1 var(--font-body);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.primary-btn {
+  flex: 1;
+  background: var(--stat-rel);
+  color: #4a2a28;
+  box-shadow: inset 0 -3px 0 rgba(120, 50, 40, 0.18);
+}
+.primary-btn:disabled {
+  background: var(--meter-track);
+  color: var(--ink-soft);
+  box-shadow: none;
+  cursor: default;
+}
+.ghost-btn {
+  background: var(--meter-track);
+  color: var(--ink);
+}
+.ghost-btn:disabled {
+  opacity: 0.5;
+}
+.primary-btn:not(:disabled):active,
+.ghost-btn:active {
+  transform: scale(0.97);
+}
+.life-hint {
+  margin: -4px 0 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.stat-bars,
+.people,
+.life-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.stat-bars li {
+  display: grid;
+  grid-template-columns: 74px 1fr 52px;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.stat-bars b {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.sbar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--meter-track);
+  overflow: hidden;
+}
+.sbar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.5s ease;
+}
+.s-happiness { background: var(--stat-happiness); }
+.s-health { background: var(--stat-health); }
+.s-smarts { background: var(--stat-smarts); }
+.s-looks { background: var(--stat-looks); }
+.s-rel { background: var(--stat-rel); }
+.life-facts {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--meter-track);
+}
+.life-facts div {
+  display: grid;
+  grid-template-columns: 74px 1fr;
+  gap: 10px;
+  font-size: 12.5px;
+}
+.life-facts dt {
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.life-facts dd {
+  margin: 0;
+  font-weight: 700;
+  min-width: 0;
+}
+.people li {
+  display: grid;
+  grid-template-columns: 1fr 90px;
+  gap: 10px;
+  align-items: center;
+  font-size: 12.5px;
+}
+.people li span:first-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.people small {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.people li.gone {
+  opacity: 0.55;
+}
+.life-log li {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.log-age {
+  justify-self: start;
+  min-width: 24px;
+  text-align: center;
+  font: 700 11px/18px var(--font-body);
+  border-radius: 9px;
+  background: var(--meter-track);
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Character creation */
+.life-create {
+  display: grid;
+  gap: 12px;
+}
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+.field {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.field > span,
+.field legend {
+  padding: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 5px;
+}
+.field legend small {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 700;
+}
+.field input {
+  width: 100%;
+  min-width: 0;
+  font: 700 14px/1 var(--font-body);
+  color: var(--ink);
+  background: var(--press);
+  border: 1.5px solid var(--meter-track);
+  border-radius: 11px;
+  padding: 9px 10px;
+}
+.field input:focus {
+  outline: 2px solid var(--focus);
+  border-color: transparent;
+}
+.seg {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--meter-track);
+}
+.seg button {
+  flex: 1;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  border-radius: 9px;
+  padding: 7px 4px;
+  font: 700 12px/1 var(--font-body);
+  cursor: pointer;
+}
+.seg button[aria-pressed='true'] {
+  background: var(--press);
+  box-shadow: var(--shadow);
+}
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.swatch {
+  appearance: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--panel-edge);
+  background: var(--c);
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(60, 40, 90, 0.2);
+}
+.swatch[aria-pressed='true'] {
+  outline: 3px solid var(--focus);
+  outline-offset: 1px;
+}
+.chips {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.chip {
+  appearance: none;
+  border: 1.5px solid var(--meter-track);
+  background: transparent;
+  color: var(--ink);
+  border-radius: 12px;
+  padding: 8px 10px;
+  text-align: left;
+  font: 800 13px/1.2 var(--font-body);
+  cursor: pointer;
+  display: grid;
+  gap: 2px;
+}
+.chip small {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.chip[aria-pressed='true'] {
+  background: var(--press);
+  border-color: var(--stat-rel);
+  box-shadow: var(--shadow);
+}
+
+/* Event card */
+.life-card {
+  position: absolute;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 110px);
+  transform: translateX(-50%);
+  width: min(430px, calc(100vw - 32px));
+  max-height: calc(100% - 210px);
+  overflow-y: auto;
+  padding: 14px 16px 16px;
+  border-radius: 24px;
+  z-index: 6;
+  display: grid;
+  gap: 10px;
+  animation: card-in 0.35s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+@keyframes card-in {
+  from {
+    transform: translate(-50%, 16px) scale(0.96);
+    opacity: 0;
+  }
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+.card-head svg {
+  border-radius: 50%;
+  flex: none;
+}
+.later {
+  margin-left: auto;
+  appearance: none;
+  border: 0;
+  background: var(--meter-track);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font: 800 11.5px/1 var(--font-body);
+  cursor: pointer;
+}
+.life-card h3 {
+  margin: 0;
+  font: 600 18px/1.2 var(--font-display);
+}
+.bubble {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 6px 18px 18px 18px;
+  background: var(--bubble);
+  box-shadow: 0 1px 3px rgba(84, 70, 130, 0.12);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+.bubble.reply {
+  border-radius: 18px 6px 18px 18px;
+  background: var(--avatar-bg);
+}
+.choices {
+  display: grid;
+  gap: 6px;
+}
+.choice {
+  appearance: none;
+  border: 1.5px solid var(--meter-track);
+  background: var(--press);
+  color: var(--ink);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+  font: 800 13.5px/1.3 var(--font-body);
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+.choice:hover {
+  border-color: var(--stat-rel);
+  transform: translateX(2px);
+}
+.choice kbd {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background: var(--meter-track);
+  font: 800 11px/1 var(--font-body);
+  color: var(--ink-soft);
+}
+.deltas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.delta {
+  padding: 5px 9px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.delta.up {
+  background: rgba(143, 208, 165, 0.35);
+}
+.delta.down {
+  background: rgba(243, 154, 154, 0.35);
+}
+
 @media (max-width: 560px) {
   .stats {
     column-gap: 12px;
@@ -603,6 +1099,21 @@ button:focus-visible {
   .tray-item {
     width: 58px;
   }
+  .life-panel {
+    top: auto;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 88px);
+    max-height: calc(100% - 330px - env(safe-area-inset-top, 0px));
+  }
+  .life-card {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 92px);
+    max-height: 70%;
+  }
+  .field-row {
+    grid-template-columns: 1fr 1fr auto;
+  }
   .toolbar {
     gap: 2px;
     padding: 5px;
@@ -633,6 +1144,7 @@ button:focus-visible {
   }
 }
 @media (pointer: coarse) {
+  .choice kbd,
   .tray-item kbd {
     display: none;
   }
@@ -642,8 +1154,13 @@ button:focus-visible {
   .tool-icon,
   .pill,
   .toast,
-  .meter span {
+  .meter span,
+  .sbar > span {
     transition: none;
+  }
+  .badge,
+  .life-card {
+    animation: none;
   }
 }
 
@@ -679,6 +1196,10 @@ button:focus-visible {
       <div class="legend glass" id="legend" hidden></div>
 
       <div class="corner">
+        <button type="button" id="btn-life" class="pill glass" aria-label="Life Story">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20.5c.8-4 3.6-6.5 7-6.5s6.2 2.5 7 6.5"/></svg>
+          <span class="pill-text">Life</span><span class="badge" hidden></span>
+        </button>
         <button type="button" id="btn-speed" class="pill glass" aria-label="Change speed"></button>
         <button type="button" id="btn-view" class="pill glass" aria-label="Switch map view"></button>
         <button type="button" id="btn-fit" class="pill glass icon-only" aria-label="Recenter the city" title="Recenter">
@@ -691,6 +1212,8 @@ button:focus-visible {
       </div>
 
       <aside class="inspector glass" id="inspector" aria-live="polite" hidden></aside>
+      <aside class="life-panel glass" id="life-panel" aria-label="Life Story" hidden></aside>
+      <section class="life-card glass" id="life-card" role="dialog" aria-live="polite" aria-label="Life event" hidden></section>
       <div class="tray glass" id="tray" role="menu" hidden></div>
       <nav class="toolbar glass" id="toolbar" aria-label="Build tools"></nav>
       <div class="toast glass" id="toast" role="status"></div>
@@ -1700,6 +2223,1260 @@ class AgentSystem {
 return { commuteActivity, AgentSystem };
 })();
 
+// ---- lifeData.js ----
+const __mod_lifeData = (() => {
+// Life Story data: names, traits, careers, looks. Pure data, no logic.
+
+const FIRST_NAMES = [
+  'Ava', 'Kai', 'Noor', 'Mateo', 'Zara', 'Eli', 'Mina', 'Theo', 'Amara', 'Luca', 'Ines', 'Jun', 'Priya', 'Omar',
+  'Freya', 'Kofi', 'Lena', 'Ravi', 'Sofia', 'Malik', 'Hana', 'Felix', 'Yara', 'Diego', 'Ivy', 'Sami', 'Clara',
+  'Tariq', 'June', 'Nico', 'Aisha', 'Leo', 'Maya', 'Emeka', 'Rosa', 'Arlo', 'Lila', 'Kenji', 'Nadia', 'Ezra',
+];
+const LAST_NAMES = [
+  'Park', 'Okafor', 'Rivera', 'Haddad', 'Lindqvist', 'Nakamura', 'Moreau', 'Patel', 'Costa', 'Mensah', 'Novak',
+  'Ibarra', 'Kowalski', 'Ahmed', 'Bellamy', 'Fontaine', 'Osei', 'Tanaka', 'Romero', 'Quinn', 'Varga', 'Silva',
+];
+
+const PRONOUNS = {
+  she: { they: 'she', them: 'her', their: 'her', label: 'She / her' },
+  he: { they: 'he', them: 'him', their: 'his', label: 'He / him' },
+  they: { they: 'they', them: 'them', their: 'their', label: 'They / them' },
+};
+
+const SKIN_TONES = ['#f6d5bd', '#f1c7a5', '#e8b896', '#c98e6a', '#a86f4c', '#8d5a3f'];
+const HAIR_COLORS = ['#2f2a33', '#5b3a29', '#a0643a', '#e2b86b', '#c9603f', '#b9b4c9'];
+const OUTFIT_COLORS = ['#ff8f7e', '#7fc4ad', '#a98bd0', '#ffcf6e', '#86b5e6', '#f49ab8'];
+
+const TRAITS = [
+  { id: 'curious', label: 'Curious', hint: 'Learns faster' },
+  { id: 'outgoing', label: 'Outgoing', hint: 'Makes friends easily' },
+  { id: 'thrifty', label: 'Thrifty', hint: 'Saves more money' },
+  { id: 'sporty', label: 'Sporty', hint: 'Stays healthier' },
+  { id: 'creative', label: 'Creative', hint: 'Shines at art and music' },
+  { id: 'calm', label: 'Calm', hint: 'Shrugs off bad days' },
+];
+
+// Jobs come from real workplaces in the city. Requirements use Smarts; pay is per year.
+const CAREERS = {
+  shop: { titles: ['Shop assistant', 'Senior assistant', 'Shop manager'], pay: [18000, 24000, 34000], smarts: 0 },
+  office: { titles: ['Office junior', 'Analyst', 'Team lead', 'Director'], pay: [26000, 38000, 52000, 80000], smarts: 45 },
+  school: { titles: ['Teaching assistant', 'Teacher', 'Head teacher'], pay: [22000, 34000, 48000], smarts: 55 },
+  clinic: { titles: ['Care assistant', 'Nurse', 'Doctor'], pay: [22000, 36000, 70000], smarts: 60 },
+};
+
+const STAGES = [
+  { id: 'baby', label: 'Baby', from: 0 },
+  { id: 'child', label: 'Child', from: 3 },
+  { id: 'teen', label: 'Teen', from: 13 },
+  { id: 'young', label: 'Young adult', from: 18 },
+  { id: 'adult', label: 'Adult', from: 30 },
+  { id: 'senior', label: 'Senior', from: 60 },
+];
+
+function stageFor(age) {
+  let s = STAGES[0];
+  for (const st of STAGES) if (age >= st.from) s = st;
+  return s;
+}
+
+return { FIRST_NAMES, LAST_NAMES, PRONOUNS, SKIN_TONES, HAIR_COLORS, OUTFIT_COLORS, TRAITS, CAREERS, STAGES, stageFor };
+})();
+
+// ---- lifeEngine.js ----
+const __mod_lifeEngine = (() => {
+// Life event engine: decides which events can happen, fills in their text, rolls outcomes and
+// applies their effects. Events themselves are data in lifeEvents.js.
+
+const { stageFor } = __mod_lifeData;
+const { pickWeighted } = __mod_utils;
+const STAT_KEYS = ['happiness', 'health', 'smarts', 'looks'];
+const STAT_LABELS = { happiness: 'Happiness', health: 'Health', smarts: 'Smarts', looks: 'Looks', money: 'Money' };
+const DEFAULT_COOLDOWN = 4; // years before a repeatable event can return
+
+function isEligible(ev, ctx) {
+  const c = ctx.char;
+  if (ev.stages && !ev.stages.includes(stageFor(c.age).id)) return false;
+  if (ev.minAge != null && c.age < ev.minAge) return false;
+  if (ev.maxAge != null && c.age > ev.maxAge) return false;
+  const last = c.seen[ev.id];
+  if (last != null) {
+    if (ev.once) return false;
+    if (c.age - last < (ev.cooldown ?? DEFAULT_COOLDOWN)) return false;
+  }
+  if (ev.when && !ev.when(ctx)) return false;
+  if (ev.choices && typeof ev.choices === 'function' && !ev.choices(ctx).length) return false;
+  return true;
+}
+
+function pickEvent(events, ctx, rng = Math.random) {
+  const pool = events.filter((ev) => isEligible(ev, ctx));
+  return pickWeighted(pool, (ev) => (typeof ev.weight === 'function' ? ev.weight(ctx) : ev.weight ?? 1), rng);
+}
+
+// Replace {name}, {they}, {friend}… with values; {They} capitalises.
+function fill(text, vars) {
+  return text.replace(/\{(\w+)\}/g, (m, key) => {
+    const lower = key[0].toLowerCase() + key.slice(1);
+    const v = vars[key] ?? vars[lower];
+    if (v == null) return m;
+    return key[0] === key[0].toUpperCase() && key !== lower ? String(v)[0].toUpperCase() + String(v).slice(1) : String(v);
+  });
+}
+
+function choicesFor(ev, ctx) {
+  const list = typeof ev.choices === 'function' ? ev.choices(ctx) : ev.choices;
+  return list.map((ch, i) => ({ label: ch.label, data: ch.data ?? null, index: i }));
+}
+
+// Pick an outcome for a choice. Outcome weights may depend on traits and stats.
+function rollOutcome(ev, choiceIndex, data, ctx, rng = Math.random) {
+  if (ev.outcome) return ev.outcome(ctx, data, rng);
+  const choice = ev.choices[choiceIndex];
+  return pickWeighted(choice.outcomes, (o) => (typeof o.weight === 'function' ? o.weight(ctx) : o.weight ?? 1), rng);
+}
+
+function clampStat(v) {
+  return Math.max(0, Math.min(100, Math.round(v)));
+}
+
+// Apply an outcome's effects. Returns the visible changes for the outcome card.
+function applyEffects(effects = {}, ctx) {
+  const c = ctx.char;
+  const changes = [];
+  for (const k of STAT_KEYS) {
+    if (!effects[k]) continue;
+    const before = c.stats[k];
+    c.stats[k] = clampStat(before + effects[k]);
+    if (c.stats[k] !== before) changes.push({ key: k, delta: c.stats[k] - before });
+  }
+  if (effects.money) {
+    const before = c.money;
+    c.money = Math.max(0, Math.round(c.money + effects.money));
+    if (c.money !== before) changes.push({ key: 'money', delta: c.money - before });
+  }
+  if (effects.rel) {
+    for (const [who, d] of Object.entries(effects.rel)) {
+      const person = ctx.person(who);
+      if (!person) continue;
+      person.closeness = clampStat(person.closeness + d);
+      changes.push({ key: 'rel', who: person.name, delta: d });
+    }
+  }
+  for (const f of effects.set || []) c.flags[f] = true;
+  for (const f of effects.unset || []) delete c.flags[f];
+  return changes;
+}
+
+return { STAT_KEYS, STAT_LABELS, isEligible, pickEvent, fill, choicesFor, rollOutcome, applyEffects };
+})();
+
+// ---- lifeEvents.js ----
+const __mod_lifeEvents = (() => {
+// Life Story events. Each event: when it can happen (stages, ages, `when`), its text, and choices.
+// A choice has weighted outcomes; an outcome has text and effects (stats, money, closeness, flags),
+// plus optional `do(ctx)` for changes like a new friend or job, and `next` to chain another event.
+// Text placeholders: {name} {fullname} {their} {them} {mother} {father} {friend} {partner} {child}
+// {job} {workplace}. Write sentences with {name} as the subject so every pronoun reads naturally.
+
+const { STRUCTURES } = __mod_config;
+const { CAREERS } = __mod_lifeData;
+const o = (text, effects = {}, extra = {}) => ({ text, effects, ...extra });
+
+const place = (t) => `the ${STRUCTURES[t.structure.type].label.toLowerCase()} at ${t.x}, ${t.y}`;
+
+const LIFE_EVENTS = [
+  // ---- Baby ---------------------------------------------------------------
+  {
+    id: 'first_word',
+    stages: ['baby'],
+    once: true,
+    text: '{name} has been babbling all week. At breakfast, a real word is on the way.',
+    choices: [
+      { label: 'Say "Mama"', outcomes: [o('{name} said "Mama", and {mother} cried happy tears.', { happiness: 4, rel: { mother: 10 } })] },
+      { label: 'Say "Dada"', outcomes: [o('{name} said "Dada". {father} told everyone on the street.', { happiness: 4, rel: { father: 10 } })] },
+      { label: 'Say "Duck"', outcomes: [o('{name}\'s first word was "duck". Nobody knows why.', { happiness: 6, smarts: 2 })] },
+    ],
+  },
+  {
+    id: 'night_owl',
+    stages: ['baby'],
+    text: 'It is 3 a.m. and {name} is wide awake.',
+    choices: [
+      { label: 'Cry for a cuddle', outcomes: [o('{father} rocked {name} back to sleep, yawning.', { happiness: 3, rel: { father: 4 } })] },
+      { label: 'Babble at the ceiling', outcomes: [o('{name} chatted to the ceiling until sunrise.', { smarts: 2 })] },
+    ],
+  },
+  {
+    id: 'pram_park',
+    stages: ['baby'],
+    when: (ctx) => ctx.facts.greenery > 0.1,
+    text: 'The family takes {name} for a stroll in the park near home.',
+    choices: [
+      { label: 'Giggle at the ducks', outcomes: [o('{name} giggled at the ducks the whole way round.', { happiness: 6, health: 2 })] },
+      { label: 'Nap in the pram', outcomes: [o('{name} slept soundly under the trees.', { health: 4 })] },
+    ],
+  },
+
+  // ---- Child --------------------------------------------------------------
+  {
+    id: 'first_school_day',
+    stages: ['child'],
+    minAge: 5,
+    maxAge: 7,
+    once: true,
+    when: (ctx) => ctx.facts.schoolCoverage > 0.25,
+    text: 'First day at school! {name} stands at the gate clutching a new backpack.',
+    choices: [
+      { label: 'Hold {mother}\'s hand', outcomes: [o('{name} held on tight, then waved goodbye at the door.', { happiness: 3, rel: { mother: 6 } })] },
+      {
+        label: 'Run straight in',
+        outcomes: [
+          o('{name} ran in and made a friend before the bell rang.', { happiness: 6 }, { weight: (c) => (c.has('outgoing') ? 3 : 1), do: (c) => c.addFriend(60) }),
+          o('{name} ran in, tripped over a backpack and laughed it off.', { happiness: 2 }),
+        ],
+      },
+      { label: 'Hide behind the gate', outcomes: [o('A kind teacher coaxed {name} inside with a sticker.', { happiness: -2, smarts: 1 })] },
+    ],
+  },
+  {
+    id: 'no_school',
+    stages: ['child'],
+    minAge: 6,
+    maxAge: 8,
+    once: true,
+    when: (ctx) => ctx.facts.schoolCoverage <= 0.25,
+    title: 'No school nearby',
+    text: 'There is no school close to home, so {mother} sets up lessons at the kitchen table. (Building a school near {name}\'s home would help.)',
+    choices: [
+      { label: 'Study hard', outcomes: [o('{name} worked through every workbook.', { smarts: 4, happiness: -2 })] },
+      { label: 'Daydream out of the window', outcomes: [o('{name} learned the names of every bird outside instead.', { happiness: 3, smarts: 1 })] },
+    ],
+  },
+  {
+    id: 'playground_friend',
+    stages: ['child'],
+    cooldown: 3,
+    text: 'A kid at the playground asks {name} to play.',
+    choices: [
+      { label: 'Play tag', outcomes: [o('{name} and a new friend played tag until dark.', { happiness: 5, health: 2 }, { do: (c) => c.addFriend(55) })] },
+      { label: 'Share a snack', outcomes: [o('{name} shared a snack and made a friend for life.', { happiness: 4 }, { do: (c) => c.addFriend(65) })] },
+      {
+        label: 'Stay shy',
+        outcomes: [
+          o('{name} stayed by the slide and watched.', { happiness: -2 }),
+          o('{name} was shy, but the kid came over anyway.', { happiness: 3 }, { do: (c) => c.addFriend(45) }),
+        ],
+      },
+    ],
+  },
+  {
+    id: 'puppy',
+    stages: ['child'],
+    once: true,
+    text: '{name} has seen a puppy in the shop window and really, really wants one.',
+    choices: [
+      {
+        label: 'Beg {father}',
+        outcomes: [
+          o('{father} gave in. Welcome home, Biscuit the puppy!', { happiness: 10, set: ['pet'] }, { weight: 2 }),
+          o('{father} said not this year.', { happiness: -4 }),
+        ],
+      },
+      { label: 'Promise to walk it every day', outcomes: [o('The promise worked. Biscuit the puppy joins the family.', { happiness: 10, health: 2, set: ['pet'] })] },
+      { label: 'Draw a picture of it instead', outcomes: [o('{name}\'s puppy drawing went on the fridge.', { happiness: 2, smarts: 1 })] },
+    ],
+  },
+  {
+    id: 'loose_tooth',
+    stages: ['child'],
+    once: true,
+    text: '{name}\'s wobbly tooth finally came out at dinner.',
+    choices: [
+      { label: 'Put it under the pillow', outcomes: [o('The tooth fairy left $5.', { money: 5, happiness: 4 })] },
+      { label: 'Keep it in a jar', outcomes: [o('{name} started a tooth collection. Slightly worrying.', { happiness: 2, smarts: 1 })] },
+    ],
+  },
+  {
+    id: 'science_fair',
+    stages: ['child', 'teen'],
+    minAge: 8,
+    maxAge: 14,
+    when: (ctx) => ctx.facts.schoolCoverage > 0.25,
+    text: 'The school science fair is next week.',
+    choices: [
+      {
+        label: 'Build a baking-soda volcano',
+        outcomes: [o('The volcano erupted all over the judges. Third place!', { smarts: 3, happiness: 4 }), o('The volcano fizzled. Next year.', { smarts: 2 })],
+      },
+      {
+        label: 'Make a solar oven',
+        outcomes: [
+          o('{name}\'s solar oven baked a cookie. First prize!', { smarts: 6, happiness: 6 }, { weight: (c) => 1 + c.char.stats.smarts / 40 }),
+          o('Cloudy day. The oven made a warm cookie at best.', { smarts: 3 }),
+        ],
+      },
+      { label: 'Skip it', outcomes: [o('{name} spent the week playing outside.', { happiness: 2, smarts: -1 })] },
+    ],
+  },
+  {
+    id: 'chickenpox',
+    stages: ['child'],
+    once: true,
+    text: '{name} has woken up covered in itchy spots. Chickenpox.',
+    choices: [
+      {
+        label: 'Rest and drink soup',
+        outcomes: [
+          o('The clinic nearby helped {name} feel better within days.', { health: -2 }, { weight: (c) => (c.facts.clinicCoverage > 0.25 ? 4 : 0.5) }),
+          o('{name} rested for two long weeks.', { health: -6 }),
+        ],
+      },
+      { label: 'Scratch everything', outcomes: [o('{name} scratched and now has a tiny scar.', { health: -6, looks: -2 })] },
+    ],
+  },
+  {
+    id: 'learn_bike',
+    stages: ['child'],
+    minAge: 5,
+    maxAge: 10,
+    once: true,
+    text: '{father} is teaching {name} to ride a bike.',
+    choices: [
+      {
+        label: 'Keep trying',
+        outcomes: [
+          o('After three wobbly falls, {name} rode the length of the street!', { health: 4, happiness: 6, set: ['bike'] }),
+          o('The street is busy with traffic, so lessons moved to the park. {name} got there in the end.', { health: 3, happiness: 3, set: ['bike'] }, { weight: (c) => c.facts.commuteJam * 2 }),
+        ],
+      },
+      { label: 'Give up for now', outcomes: [o('The bike went back in the shed.', { happiness: -3 })] },
+    ],
+  },
+  {
+    id: 'school_play',
+    stages: ['child'],
+    minAge: 7,
+    when: (ctx) => ctx.facts.schoolCoverage > 0.25,
+    text: 'Auditions for the school play!',
+    choices: [
+      {
+        label: 'Try for the lead',
+        outcomes: [
+          o('{name} got the lead and the whole family came to watch.', { happiness: 8, looks: 2 }, { weight: (c) => (c.has('creative') ? 3 : 1) }),
+          o('{name} got cast as a tree. A very convincing tree.', { happiness: 2 }),
+        ],
+      },
+      { label: 'Join the stage crew', outcomes: [o('{name} painted the castle backdrop.', { smarts: 2, happiness: 3 })] },
+    ],
+  },
+  {
+    id: 'climbing_dare',
+    stages: ['child'],
+    text: 'Some older kids dare {name} to climb the tallest tree in the park.',
+    when: (ctx) => ctx.facts.greenery > 0.05,
+    choices: [
+      {
+        label: 'Climb it',
+        outcomes: [o('{name} reached the top and waved like a champion.', { happiness: 6, health: 2 }, { weight: 2 }), o('{name} slipped and sprained a wrist.', { health: -8, happiness: -3 })],
+      },
+      { label: 'Say no thanks', outcomes: [o('{name} walked away. Sensible.', { smarts: 1 })] },
+    ],
+  },
+
+  // ---- Teen ---------------------------------------------------------------
+  {
+    id: 'weekend_job',
+    stages: ['teen'],
+    minAge: 15,
+    once: true,
+    when: (ctx) => ctx.openJobs().some((t) => t.structure.type === 'shop'),
+    text: 'A shop in town has a sign in the window: weekend help wanted.',
+    choices: [
+      { label: 'Apply', outcomes: [o('{name} got the job and the first pay packet felt amazing.', { money: 400, happiness: 4, smarts: -1, set: ['partTime'] })] },
+      { label: 'Keep weekends free', outcomes: [o('{name} spent weekends with friends instead.', { happiness: 3 })] },
+    ],
+  },
+  {
+    id: 'exam_week',
+    stages: ['teen'],
+    cooldown: 2,
+    text: 'Exams start on Monday.',
+    choices: [
+      { label: 'Study every evening', outcomes: [o('{name} aced the exams.', { smarts: 5, happiness: -1 }, { weight: 3 }), o('{name} studied hard but blanked on the day.', { smarts: 2, happiness: -3 })] },
+      { label: 'Cram the night before', outcomes: [o('{name} scraped through.', { smarts: 2, health: -2 }), o('Cramming did not go well.', { smarts: -1, happiness: -3 })] },
+      { label: 'Go to a party instead', outcomes: [o('Great party. Terrible results.', { happiness: 4, smarts: -4 })] },
+    ],
+  },
+  {
+    id: 'crush',
+    stages: ['teen'],
+    once: true,
+    text: '{name} has a crush on someone in class.',
+    choices: [
+      {
+        label: 'Ask them out',
+        outcomes: [
+          o('They said yes! Milkshakes after school became a thing.', { happiness: 10 }, { weight: (c) => 1 + c.char.stats.looks / 60 }),
+          o('They said they just want to be friends.', { happiness: -6 }, { do: (c) => c.addFriend(50) }),
+        ],
+      },
+      { label: 'Pass a note', outcomes: [o('The note got intercepted by a teacher. Mortifying.', { happiness: -4 }), o('The reply said "me too". {name} floated home.', { happiness: 8 })] },
+      { label: 'Keep it secret', outcomes: [o('{name} kept the secret and wrote a lot of poetry.', { happiness: -1, smarts: 1 })] },
+    ],
+  },
+  {
+    id: 'band',
+    stages: ['teen'],
+    once: true,
+    text: '{friend} is starting a band and needs one more member.',
+    choices: [
+      { label: 'Play guitar', outcomes: [o('{name} learned four chords and played a gig at the community hall.', { happiness: 7, looks: 2, rel: { friend: 8 } }, { weight: (c) => (c.has('creative') ? 3 : 1) }), o('Practice was fun, the gig was loud.', { happiness: 4, rel: { friend: 5 } })] },
+      { label: 'Play drums', outcomes: [o('The neighbours were not fans, but {name} loved it.', { happiness: 6, health: 2, rel: { friend: 6 } })] },
+      { label: 'Say no', outcomes: [o('{name} came to every gig as their biggest fan.', { rel: { friend: 3 } })] },
+    ],
+  },
+  {
+    id: 'curfew',
+    stages: ['teen'],
+    text: 'Everyone is going to a late concert, but curfew is at ten.',
+    choices: [
+      { label: 'Sneak out', outcomes: [o('Best night ever, and nobody noticed.', { happiness: 6 }), o('{mother} was waiting up. Grounded for a month.', { happiness: -6, rel: { mother: -8 } }, { weight: 1.2 })] },
+      { label: 'Ask for an exception', outcomes: [o('{father} said yes, as long as {name} texted on the way home.', { happiness: 5, rel: { father: 5 } }), o('The answer was no.', { happiness: -3 })] },
+      { label: 'Stay home', outcomes: [o('{name} watched the concert online with snacks.', { happiness: 1, rel: { mother: 3 } })] },
+    ],
+  },
+  {
+    id: 'driving_test',
+    stages: ['teen', 'young'],
+    minAge: 17,
+    maxAge: 25,
+    when: (ctx) => !ctx.char.flags.license,
+    text: '{name}\'s driving test is booked.',
+    choices: [
+      {
+        label: 'Practise for weeks',
+        outcomes: [
+          o('Passed first time!', { happiness: 6, set: ['license'] }, { weight: 3 }),
+          o('A traffic jam downtown made {name} nervous. Failed, but close.', { happiness: -4 }, { weight: (c) => 1 + c.facts.commuteJam * 3 }),
+        ],
+      },
+      { label: 'Wing it', outcomes: [o('{name} passed, somehow.', { happiness: 5, set: ['license'] }), o('{name} failed after forgetting to signal.', { happiness: -5 }, { weight: 2 })] },
+    ],
+  },
+  {
+    id: 'sports_trials',
+    stages: ['teen'],
+    text: 'Trials for the school sports team are on Friday.',
+    choices: [
+      { label: 'Try out', outcomes: [o('{name} made the team!', { health: 6, happiness: 5 }, { weight: (c) => (c.has('sporty') ? 3 : 1) }), o('{name} didn\'t make it, but got a lot fitter.', { health: 3, happiness: -2 })] },
+      { label: 'Sit it out', outcomes: [o('{name} cheered from the stands.', { happiness: 1 })] },
+    ],
+  },
+  {
+    id: 'graduation',
+    stages: ['teen', 'young'],
+    minAge: 17,
+    maxAge: 19,
+    once: true,
+    text: 'It\'s graduation day for {name}.',
+    choices: [
+      { label: 'Celebrate with friends', outcomes: [o('{name} threw a cap in the air and partied till dawn.', { happiness: 8, set: ['graduated'] })] },
+      { label: 'Quiet dinner with family', outcomes: [o('{mother} and {father} beamed all through dinner.', { happiness: 5, rel: { mother: 6, father: 6 }, set: ['graduated'] })] },
+    ],
+  },
+
+  // ---- Young adult --------------------------------------------------------
+  {
+    id: 'move_out',
+    stages: ['young'],
+    minAge: 18,
+    weight: 3,
+    cooldown: 2,
+    when: (ctx) => ctx.char.livesWithParents,
+    title: 'Time to move out?',
+    text: '{name} is thinking about getting a place of {their} own. These homes in the city have room:',
+    choices: (ctx) => [
+      ...ctx
+        .openHomes()
+        .slice(0, 3)
+        .map((t) => ({ label: `${STRUCTURES[t.structure.type].label} at ${t.x}, ${t.y} · ${Math.round(t.desirability * 100)}% desirable`, data: { x: t.x, y: t.y } })),
+      { label: 'Stay with {mother} and {father} a while longer', data: null },
+    ],
+    outcome: (ctx, data) => {
+      if (!data) return o('{name} stayed home and saved money on rent.', { money: 2000, happiness: -1 });
+      const t = ctx.city.getTile(data.x, data.y);
+      if (!t?.structure || !STRUCTURES[t.structure.type].capacity) return o('That place was gone by the time {name} called.', { happiness: -3 });
+      return o(`{name} moved into ${place(t)}. Freedom!`, { happiness: 6 + Math.round(t.desirability * 6) }, { do: (c) => c.moveTo(t) });
+    },
+  },
+  {
+    id: 'job_hunt',
+    stages: ['young', 'adult'],
+    minAge: 18,
+    maxAge: 62,
+    weight: 4,
+    cooldown: 1,
+    when: (ctx) => !ctx.char.job,
+    title: 'Looking for work',
+    text: '{name} is looking for a job. These workplaces in the city are hiring:',
+    choices: (ctx) => {
+      const jobs = ctx.openJobs();
+      const seenTypes = new Set();
+      const picks = [];
+      for (const t of jobs) {
+        if (seenTypes.has(t.structure.type)) continue;
+        seenTypes.add(t.structure.type);
+        const career = CAREERS[t.structure.type];
+        picks.push({ label: `${career.titles[0]} at ${place(t)} · $${career.pay[0].toLocaleString()}/yr`, data: { x: t.x, y: t.y } });
+        if (picks.length === 3) break;
+      }
+      return [...picks, { label: picks.length ? 'Keep looking' : 'Nothing is hiring. Wait and see', data: null }];
+    },
+    outcome: (ctx, data, rng) => {
+      if (!data) {
+        return ctx.openJobs().length
+          ? o('{name} decided to hold out for something better.', { happiness: -2 })
+          : o('No one in town is hiring. (Shops, offices, schools and clinics create jobs.)', { happiness: -5 });
+      }
+      const t = ctx.city.getTile(data.x, data.y);
+      const career = t?.structure && CAREERS[t.structure.type];
+      if (!career) return o('That workplace closed before the interview.', { happiness: -3 });
+      const need = career.smarts;
+      const odds = Math.min(0.95, 0.35 + (ctx.char.stats.smarts - need) / 50 + (ctx.char.flags.graduated ? 0.15 : 0));
+      if (rng() < odds) return o(`{name} got the job as ${career.titles[0].toLowerCase()} at ${place(t)}!`, { happiness: 8 }, { do: (c) => c.takeJob(t) });
+      return o(`The ${STRUCTURES[t.structure.type].label.toLowerCase()} went with someone else. ${need ? 'More Smarts would help.' : ''}`, { happiness: -4 });
+    },
+  },
+  {
+    id: 'promotion',
+    stages: ['young', 'adult'],
+    when: (ctx) => ctx.char.job && ctx.char.job.years >= 2 && ctx.char.job.level < CAREERS[ctx.char.job.type].titles.length - 1,
+    cooldown: 3,
+    text: 'A senior role has opened up at the {workplace}.',
+    choices: [
+      {
+        label: 'Work late for weeks to earn it',
+        outcomes: [
+          o('{name} got the promotion!', { happiness: 6, health: -3 }, { weight: (c) => 1 + c.char.stats.smarts / 50, do: (c) => (c.char.job.level += 1, (c.char.job.years = 0)) }),
+          o('Someone else got it. {name} is exhausted.', { happiness: -5, health: -3 }),
+        ],
+      },
+      {
+        label: 'Ask the boss directly',
+        outcomes: [
+          o('Bold move. It worked!', { happiness: 7 }, { weight: (c) => (c.has('outgoing') ? 2 : 1), do: (c) => (c.char.job.level += 1, (c.char.job.years = 0)) }),
+          o('The boss said "maybe next year".', { happiness: -2 }),
+        ],
+      },
+      { label: 'Stay where {name} is', outcomes: [o('{name} likes the current role just fine.', { happiness: 2 })] },
+    ],
+  },
+  {
+    id: 'commute_jam',
+    stages: ['young', 'adult'],
+    when: (ctx) => ctx.char.job && ctx.facts.commuteJam > 0.5,
+    cooldown: 2,
+    title: 'Stuck in traffic',
+    text: 'The roads near {name}\'s commute are jammed again. (More roads or nearby jobs would ease it.)',
+    choices: [
+      { label: 'Leave an hour earlier', outcomes: [o('{name} beat the traffic but misses sleep.', { health: -3 })] },
+      { label: 'Cycle instead', outcomes: [o('{name} breezed past the queues.', { health: 5, happiness: 3 }), o('{name} got caught in the rain.', { health: 2, happiness: -2 })] },
+      { label: 'Complain to the city', outcomes: [o('The city said it is "looking into it".', { happiness: -3 })] },
+    ],
+  },
+  {
+    id: 'blind_date',
+    stages: ['young', 'adult'],
+    maxAge: 50,
+    when: (ctx) => !ctx.char.partner,
+    cooldown: 2,
+    text: '{friend} wants to set {name} up on a blind date.',
+    choices: [
+      {
+        label: 'Go for it',
+        outcomes: [
+          o('Sparks flew! {name} has a new partner.', { happiness: 10 }, { weight: (c) => 1 + c.char.stats.looks / 70 + (c.has('outgoing') ? 0.5 : 0), do: (c) => c.setPartner(60) }),
+          o('Awkward silence over pasta. Never again.', { happiness: -3 }),
+        ],
+      },
+      { label: 'Not interested', outcomes: [o('{name} enjoyed a quiet night in.', { happiness: 1 })] },
+    ],
+  },
+  {
+    id: 'move_in_together',
+    stages: ['young', 'adult'],
+    once: true,
+    when: (ctx) => ctx.char.partner && ctx.char.partner.closeness > 65,
+    text: '{partner} asks if {name} wants to move in together.',
+    choices: [
+      { label: 'Yes!', outcomes: [o('{name} and {partner} moved in together.', { happiness: 8, rel: { partner: 10 } }, { do: (c) => (c.char.livesWithParents = false) })] },
+      { label: 'Not yet', outcomes: [o('{partner} was a bit hurt but understood.', { rel: { partner: -6 } })] },
+    ],
+  },
+  {
+    id: 'gym',
+    stages: ['young', 'adult'],
+    cooldown: 5,
+    text: '{name} wants to get fitter.',
+    choices: [
+      { label: 'Join a gym ($600)', outcomes: [o('{name} went three times a week, mostly.', { health: 6, looks: 2, money: -600 })] },
+      {
+        label: 'Run in the park',
+        outcomes: [
+          o('Morning runs under the trees became a habit.', { health: 7, happiness: 3 }, { weight: (c) => (c.facts.greenery > 0.1 ? 3 : 0.3) }),
+          o('No park nearby, so {name} ran along busy roads. Not so pleasant.', { health: 3, happiness: -2 }),
+        ],
+      },
+      { label: 'Maybe next year', outcomes: [o('{name} bought trainers and admired them.', { happiness: 1 })] },
+    ],
+  },
+  {
+    id: 'holiday',
+    stages: ['young', 'adult', 'senior'],
+    cooldown: 3,
+    when: (ctx) => ctx.char.money > 1500,
+    text: '{name} has some savings and could use a break.',
+    choices: [
+      { label: 'Beach trip ($1,500)', outcomes: [o('Sun, sea and a lot of ice cream.', { happiness: 10, money: -1500 })] },
+      { label: 'Mountain hike ($1,000)', outcomes: [o('{name} reached the summit at sunrise.', { happiness: 7, health: 4, money: -1000 })] },
+      { label: 'Stay home and save', outcomes: [o('{name} explored the city like a tourist.', { happiness: 3 })] },
+    ],
+  },
+  {
+    id: 'old_friend',
+    stages: ['young', 'adult', 'senior'],
+    cooldown: 6,
+    text: 'An old friend from school messages {name} out of the blue.',
+    choices: [
+      { label: 'Meet for coffee', outcomes: [o('It was like no time had passed.', { happiness: 6 }, { do: (c) => c.addFriend(60) })] },
+      { label: 'Leave it on read', outcomes: [o('{name} let the past stay in the past.', { happiness: -1 })] },
+    ],
+  },
+  {
+    id: 'adopt_cat',
+    stages: ['young', 'adult'],
+    once: true,
+    text: 'A stray cat keeps showing up at {name}\'s door.',
+    choices: [
+      { label: 'Adopt it', outcomes: [o('Meet Pickles, the new boss of the house.', { happiness: 8, set: ['cat'] })] },
+      { label: 'Find its owner', outcomes: [o('The owner lived two streets away and brought cake.', { happiness: 4 }, { do: (c) => c.addFriend(50) })] },
+    ],
+  },
+
+  // ---- Adult --------------------------------------------------------------
+  {
+    id: 'proposal',
+    stages: ['young', 'adult'],
+    once: true,
+    when: (ctx) => ctx.char.partner && !ctx.char.partner.married && ctx.char.partner.closeness > 70,
+    text: '{name} and {partner} have been together a long time.',
+    choices: [
+      {
+        label: 'Propose',
+        outcomes: [
+          o('{partner} said yes! The wedding was in the park.', { happiness: 12, money: -3000, rel: { partner: 12 } }, { weight: 4, do: (c) => (c.char.partner.married = true) }),
+          o('{partner} wants to wait a little longer.', { happiness: -5 }),
+        ],
+      },
+      { label: 'Wait', outcomes: [o('No rush.', { rel: { partner: -2 } })] },
+    ],
+  },
+  {
+    id: 'new_baby',
+    stages: ['young', 'adult'],
+    minAge: 24,
+    maxAge: 44,
+    cooldown: 3,
+    when: (ctx) => ctx.char.partner && ctx.char.partner.closeness > 60 && ctx.char.children.length < 3,
+    text: '{name} and {partner} are talking about a baby.',
+    choices: [
+      { label: 'Start a family', outcomes: [o('Welcome to the world, {child}!', { happiness: 12, health: -2, money: -2000 }, { do: (c) => c.addChild() })] },
+      { label: 'Not now', outcomes: [o('{name} and {partner} decided to wait.', {})] },
+    ],
+  },
+  {
+    id: 'career_change',
+    stages: ['adult'],
+    cooldown: 8,
+    when: (ctx) => ctx.char.job && ctx.char.job.years >= 4 && ctx.openJobs().some((t) => t.structure.type !== ctx.char.job.type),
+    text: '{name} is bored of being a {job}. Something new is tempting.',
+    choices: (ctx) => [
+      ...ctx
+        .openJobs()
+        .filter((t) => t.structure.type !== ctx.char.job.type)
+        .slice(0, 2)
+        .map((t) => ({ label: `Retrain for ${place(t)}`, data: { x: t.x, y: t.y } })),
+      { label: 'Stay put', data: null },
+    ],
+    outcome: (ctx, data, rng) => {
+      if (!data) return o('{name} stayed in the same job, and that is fine.', { happiness: -1 });
+      const t = ctx.city.getTile(data.x, data.y);
+      const career = t?.structure && CAREERS[t.structure.type];
+      if (!career) return o('That opening vanished.', {});
+      if (rng() < 0.4 + (ctx.char.stats.smarts - career.smarts) / 60) return o(`{name} started fresh as ${career.titles[0].toLowerCase()} at ${place(t)}.`, { happiness: 8, money: -1000 }, { do: (c) => c.takeJob(t) });
+      return o('The retraining course was full this year.', { happiness: -3 });
+    },
+  },
+  {
+    id: 'hobby',
+    stages: ['adult'],
+    cooldown: 6,
+    text: '{name} wants a new hobby.',
+    choices: [
+      { label: 'Painting', outcomes: [o('{name}\'s watercolours of the city skyline sold at a fair.', { happiness: 6, money: 300 }, { weight: (c) => (c.has('creative') ? 3 : 1) }), o('{name} enjoys painting, even if nobody else does.', { happiness: 4 })] },
+      { label: 'Train for a marathon', outcomes: [o('{name} finished the city marathon!', { health: 8, happiness: 6 }), o('A twisted ankle ended training early.', { health: -4 })] },
+      { label: 'Cooking classes', outcomes: [o('{name}\'s lasagne is now famous on the street.', { happiness: 5 }, { do: (c) => c.addFriend(45) })] },
+    ],
+  },
+  {
+    id: 'parent_ill',
+    stages: ['adult'],
+    once: true,
+    when: (ctx) => (ctx.char.family.mother?.alive || ctx.char.family.father?.alive) && ctx.char.age > 34,
+    text: '{name}\'s parent hasn\'t been well lately.',
+    choices: [
+      {
+        label: 'Visit every weekend',
+        outcomes: [o('The visits meant the world.', { happiness: 2, rel: { mother: 10, father: 10 } }, { weight: (c) => (c.facts.clinicCoverage > 0.25 ? 3 : 1) }), o('It was a hard year, but they got through it together.', { happiness: -3, rel: { mother: 8, father: 8 } })],
+      },
+      { label: 'Send flowers', outcomes: [o('Lovely flowers. They wished {name} would visit.', { rel: { mother: -3, father: -3 } })] },
+    ],
+  },
+  {
+    id: 'park_petition',
+    stages: ['adult', 'senior'],
+    once: true,
+    when: (ctx) => ctx.facts.greenery < 0.08,
+    title: 'Not much green around here',
+    text: 'There are hardly any trees or parks near {name}\'s home. (Planting trees or a park nearby would cheer everyone up.)',
+    choices: [
+      { label: 'Start a petition', outcomes: [o('Half the street signed {name}\'s petition.', { happiness: 3 }, { do: (c) => c.addFriend(45) })] },
+      { label: 'Grow plants on the balcony', outcomes: [o('{name}\'s balcony is now a tiny jungle.', { happiness: 4 })] },
+    ],
+  },
+  {
+    id: 'lottery',
+    stages: ['young', 'adult', 'senior'],
+    cooldown: 5,
+    text: 'The corner shop is selling lottery tickets for $10.',
+    choices: [
+      {
+        label: 'Buy one',
+        outcomes: [o('Not a winner.', { money: -10 }, { weight: 18 }), o('{name} won $500!', { money: 490, happiness: 6 }, { weight: 2 }), o('Jackpot! {name} won $50,000!', { money: 49990, happiness: 20 }, { weight: 0.15 })],
+      },
+      { label: 'Keep the $10', outcomes: [o('{name} bought a nice coffee instead.', { happiness: 1 })] },
+    ],
+  },
+
+  // ---- Senior -------------------------------------------------------------
+  {
+    id: 'retirement',
+    stages: ['senior'],
+    minAge: 60,
+    weight: 3,
+    cooldown: 3,
+    when: (ctx) => ctx.char.job,
+    text: '{name} could retire from being a {job}.',
+    choices: [
+      { label: 'Retire', outcomes: [o('{name} retired with cake and a card from the whole {workplace}.', { happiness: 10, set: ['retired'] }, { do: (c) => c.loseJob() })] },
+      { label: 'Keep working a few more years', outcomes: [o('{name} likes feeling useful.', { happiness: 2, health: -2 })] },
+    ],
+  },
+  {
+    id: 'grandkids',
+    stages: ['senior'],
+    cooldown: 3,
+    when: (ctx) => ctx.char.children.some((k) => k.age > 25),
+    text: 'The grandkids are coming over for the weekend.',
+    choices: [
+      { label: 'Bake cookies together', outcomes: [o('Flour everywhere, smiles everywhere.', { happiness: 8 })] },
+      { label: 'Tell stories about the old days', outcomes: [o('{name} told the story of the city when it was only a few houses.', { happiness: 6, smarts: 1 })] },
+    ],
+  },
+  {
+    id: 'checkup',
+    stages: ['adult', 'senior'],
+    minAge: 50,
+    cooldown: 3,
+    text: 'It\'s time for {name}\'s yearly check-up.',
+    choices: [
+      {
+        label: 'Go to the clinic',
+        outcomes: [
+          o('The clinic nearby caught a problem early.', { health: 8 }, { weight: (c) => (c.facts.clinicCoverage > 0.25 ? 4 : 0) }),
+          o('The nearest clinic is far away. {name} went anyway; all clear.', { health: 2, happiness: -2 }, { weight: (c) => (c.facts.clinicCoverage > 0.25 ? 0 : 1) }),
+        ],
+      },
+      { label: 'Skip it', outcomes: [o('{name} feels fine, probably.', { health: -4 })] },
+    ],
+  },
+  {
+    id: 'garden_club',
+    stages: ['senior'],
+    once: true,
+    text: 'The neighbourhood garden club is looking for members.',
+    choices: [
+      { label: 'Join', outcomes: [o('{name} grew prize-winning tomatoes.', { happiness: 7, health: 3 }, { do: (c) => c.addFriend(55) })] },
+      { label: 'Not for {name}', outcomes: [o('{name} prefers a quiet garden of one.', { happiness: 1 })] },
+    ],
+  },
+  {
+    id: 'memoir',
+    stages: ['senior'],
+    once: true,
+    text: '{name} is thinking about writing a memoir.',
+    choices: [
+      { label: 'Write it', outcomes: [o('"Growing Up in Pocket Metropolis" was a local bestseller.', { happiness: 8, smarts: 3, money: 800 }, { weight: (c) => 1 + c.char.stats.smarts / 50 }), o('{name} wrote it for the family. They loved it.', { happiness: 6 })] },
+      { label: 'Some stories are best left untold', outcomes: [o('{name} smiled and kept the secrets.', { happiness: 2 })] },
+    ],
+  },
+  {
+    id: 'quiet_day',
+    stages: ['child', 'teen', 'young', 'adult', 'senior'],
+    weight: 0.4,
+    cooldown: 3,
+    text: 'A quiet, sunny day in the city.',
+    choices: [
+      { label: 'Walk around the neighbourhood', outcomes: [o('{name} said hello to every neighbour.', { happiness: 3, health: 1 })] },
+      { label: 'Call {friend}', outcomes: [o('A long, happy phone call with {friend}.', { happiness: 2, rel: { friend: 4 } })] },
+      { label: 'Do nothing at all', outcomes: [o('Perfect.', { happiness: 2 })] },
+    ],
+  },
+];
+
+return { LIFE_EVENTS };
+})();
+
+// ---- life.js ----
+const __mod_life = (() => {
+// Life Story: one resident's life, played through text events. The character's state is saved in
+// city.systems.life; their home and job are real tiles in the city, so building choices shape the
+// events, schooling and careers they get.
+
+const { STRUCTURES, DAY_LENGTH_SECONDS } = __mod_config;
+const { FIRST_NAMES, LAST_NAMES, PRONOUNS, CAREERS, stageFor } = __mod_lifeData;
+const { pickEvent, fill, choicesFor, rollOutcome, applyEffects } = __mod_lifeEngine;
+const { LIFE_EVENTS } = __mod_lifeEvents;
+const { pick } = __mod_utils;
+// One year of life passes per in-game day; Age up skips ahead.
+const YEAR_SECONDS = DAY_LENGTH_SECONDS;
+const MAX_LOG = 200;
+const FALLBACKS = new Set(['job', 'work', 'a classmate', 'someone special', 'the little one']);
+
+class LifeSystem {
+  constructor(city, { rng = Math.random, events = LIFE_EVENTS } = {}) {
+    this.city = city;
+    this.rng = rng;
+    this.events = events;
+  }
+
+  get state() {
+    return this.city.systems.life || null;
+  }
+
+  get char() {
+    return this.state?.char || null;
+  }
+
+  // ---- Creating a life ---------------------------------------------------
+
+  randomName() {
+    return { first: pick(FIRST_NAMES, this.rng), last: pick(LAST_NAMES, this.rng) };
+  }
+
+  // Born as a baby into a family living in one of the city's homes.
+  create({ first, last, pronouns = 'they', look, traits = [] }, parentsOverride = null) {
+    const rng = this.rng;
+    const r = (a, b) => a + Math.floor(rng() * (b - a + 1));
+    const home = this.bestHome({ occupiedOk: true, preferOccupied: true });
+    const parentName = () => `${pick(FIRST_NAMES, rng)} ${last}`;
+    const prev = this.state;
+    const char = {
+      first,
+      last,
+      pronouns: PRONOUNS[pronouns] ? pronouns : 'they',
+      look,
+      traits: traits.slice(0, 2),
+      age: 0,
+      yearProgress: 0,
+      stats: { happiness: r(70, 85), health: r(70, 90), smarts: r(35, 60), looks: r(40, 75) },
+      money: 0,
+      home: home ? { x: home.x, y: home.y } : null,
+      livesWithParents: true,
+      family: parentsOverride || {
+        mother: { name: parentName(), closeness: r(65, 90), age: r(24, 36), alive: true },
+        father: { name: parentName(), closeness: r(60, 90), age: r(25, 38), alive: true },
+      },
+      friends: [],
+      partner: null,
+      children: [],
+      job: null,
+      flags: {},
+      seen: {},
+      log: [],
+      plan: [],
+      pending: null,
+      alive: true,
+      death: null,
+      generation: (prev?.char?.generation || 0) + 1,
+    };
+    this.city.systems.life = { char, history: prev?.history || [] };
+    const where = home ? `a ${STRUCTURES[home.structure.type].label.toLowerCase()} at ${home.x}, ${home.y}` : 'a city with no homes yet';
+    this.log(`${first} ${last} was born in ${where}.`);
+    this.planYear();
+    this.city.emit('lifeChanged');
+    return char;
+  }
+
+  // Keep playing as your oldest child after a life ends.
+  continueAsChild() {
+    const s = this.state;
+    const parent = s?.char;
+    const kid = parent?.children?.find((c) => c.alive !== false);
+    if (!kid) return null;
+    s.history.push(summaryOf(parent));
+    const otherParent = parent.partner ? { name: parent.partner.name, closeness: 70, age: parent.age, alive: true } : null;
+    const family = {
+      mother: { name: `${parent.first} ${parent.last}`, closeness: 80, age: parent.age, alive: false },
+      father: otherParent || { name: `${pick(FIRST_NAMES, this.rng)} ${parent.last}`, closeness: 50, age: parent.age, alive: false },
+    };
+    const char = this.create({ first: kid.name.split(' ')[0], last: parent.last, pronouns: kid.pronouns, look: kid.look || parent.look, traits: parent.traits }, family);
+    char.age = kid.age;
+    char.livesWithParents = kid.age < 18;
+    char.money = Math.round(parent.money * 0.6);
+    char.home = parent.home;
+    char.log = [];
+    this.log(`${char.first} carries on the ${parent.last} family story, inheriting $${char.money.toLocaleString()}.`);
+    this.planYear();
+    this.city.emit('lifeChanged');
+    return char;
+  }
+
+  // ---- Time --------------------------------------------------------------
+
+  // Background aging. Life time stops while an event waits for an answer.
+  update(dt) {
+    const c = this.char;
+    if (!c || !c.alive || c.pending) return;
+    c.yearProgress += dt / YEAR_SECONDS;
+    while (c.plan.length && c.yearProgress >= c.plan[0] && !c.pending) {
+      c.plan.shift();
+      this.fireEvent();
+    }
+    if (!c.pending && c.yearProgress >= 1) this.birthday();
+  }
+
+  // Skip to the next birthday; the new year's first event shows straight away.
+  ageUp() {
+    const c = this.char;
+    if (!c || !c.alive || c.pending) return false;
+    this.birthday();
+    if (c.alive && c.plan.length) {
+      c.plan.shift();
+      this.fireEvent();
+    }
+    return true;
+  }
+
+  birthday() {
+    const c = this.char;
+    c.age += 1;
+    c.yearProgress = 0;
+    this.yearly();
+    if (c.alive) this.planYear();
+    this.city.emit('lifeChanged');
+  }
+
+  planYear() {
+    const c = this.char;
+    const n = c.age < 3 ? (this.rng() < 0.7 ? 1 : 0) : 1 + (this.rng() < 0.5 ? 1 : 0);
+    c.plan = Array.from({ length: n }, () => 0.15 + this.rng() * 0.75).sort((a, b) => a - b);
+  }
+
+  // Yearly drift: school, health, money, family, and keeping home and job in sync with the city.
+  yearly() {
+    const c = this.char;
+    const f = this.facts();
+    const has = (t) => c.traits.includes(t);
+    for (const k of c.children) k.age += 1;
+    for (const p of [c.family.mother, c.family.father]) {
+      if (!p?.alive) continue;
+      p.age += 1;
+      if (p.age > 72 && this.rng() < ((p.age - 72) / 30) ** 2) {
+        p.alive = false;
+        c.stats.happiness = Math.max(0, c.stats.happiness - 12);
+        this.log(`${p.name} passed away at ${p.age}.`);
+      }
+    }
+
+    if (c.age >= 6 && c.age <= 17) c.stats.smarts += (f.schoolCoverage > 0.25 ? 3 : 1) + (has('curious') ? 1 : 0);
+    let dHealth = 0;
+    if (c.age >= 50) dHealth -= 1 + Math.floor((c.age - 50) / 12);
+    if (f.clinicCoverage > 0.25) dHealth += 1;
+    if (f.greenery > 0.15) dHealth += 1;
+    if (has('sporty')) dHealth += 1;
+    c.stats.health += dHealth;
+    if (c.age > 55) c.stats.looks -= 1;
+    const target = 35 + f.desirability * 40 + (c.job ? 6 : 0) + (c.partner ? 6 : 0) + Math.min(10, c.friends.length * 3);
+    const pull = has('calm') ? 0.25 : 0.15;
+    c.stats.happiness += (target - c.stats.happiness) * pull;
+    for (const k of ['happiness', 'health', 'smarts', 'looks']) c.stats[k] = Math.max(0, Math.min(100, Math.round(c.stats[k])));
+    for (const fr of c.friends) fr.closeness = Math.max(0, fr.closeness - 2);
+
+    // Money: savings from work, minus rent once living alone.
+    if (c.job) {
+      const career = CAREERS[c.job.type];
+      const pay = career.pay[c.job.level] || career.pay[0];
+      c.money += Math.round(pay * (has('thrifty') ? 0.25 : 0.15));
+      c.job.years += 1;
+    } else if (c.flags.partTime && c.age < 18) c.money += 1500;
+    if (!c.livesWithParents && !c.job) c.money = Math.max(0, c.money - 3000);
+
+    this.syncWithCity();
+
+    // Old age.
+    const risk = c.age >= 65 ? ((c.age - 65) / 35) ** 3 * (1.3 - c.stats.health / 100) : 0;
+    if (c.stats.health <= 0 || this.rng() < risk) this.die(c.stats.health <= 0 ? 'ill health' : 'old age');
+  }
+
+  // The city can change under a life: bulldozed homes and workplaces. Called yearly and after edits.
+  syncWithCity() {
+    const c = this.char;
+    if (!c?.alive) return;
+    if (c.job) {
+      const t = this.city.getTile(c.job.x, c.job.y);
+      if (t?.structure?.type !== c.job.type) {
+        this.log(`The ${c.job.type} where ${c.first} worked closed down.`);
+        c.stats.happiness = Math.max(0, c.stats.happiness - 8);
+        c.job = null;
+      }
+    }
+    const home = c.home && this.city.getTile(c.home.x, c.home.y);
+    if (!home?.structure || !STRUCTURES[home.structure.type].capacity) {
+      const next = this.bestHome({ occupiedOk: c.livesWithParents });
+      if (next) {
+        c.home = { x: next.x, y: next.y };
+        this.log(`${c.first}'s home was demolished. ${c.livesWithParents ? 'The family' : c.first} moved to ${next.x}, ${next.y}.`);
+      } else {
+        c.home = null;
+        this.log(`${c.first}'s home was demolished and there was nowhere free to move.`);
+      }
+      c.stats.happiness = Math.max(0, c.stats.happiness - 6);
+    }
+  }
+
+  die(cause) {
+    const c = this.char;
+    c.alive = false;
+    c.death = { age: c.age, cause };
+    c.plan = [];
+    c.pending = null;
+    this.log(`${c.first} ${c.last} died of ${cause} at ${c.age}.`);
+    this.city.emit('lifeChanged');
+  }
+
+  // ---- Events ------------------------------------------------------------
+
+  fireEvent(forceId = null) {
+    const c = this.char;
+    const ctx = this.ctx();
+    const ev = forceId ? this.events.find((e) => e.id === forceId) : pickEvent(this.events, ctx, this.rng);
+    if (!ev) return null;
+    c.seen[ev.id] = c.age;
+    c.pending = { id: ev.id, age: c.age, choices: choicesFor(ev, ctx) };
+    this.city.emit('lifeEvent', { id: ev.id });
+    return c.pending;
+  }
+
+  // What the event card shows for the waiting event.
+  current() {
+    const c = this.char;
+    if (!c?.pending) return null;
+    const ev = this.events.find((e) => e.id === c.pending.id);
+    if (!ev) {
+      c.pending = null;
+      return null;
+    }
+    const vars = this.vars();
+    return {
+      id: ev.id,
+      title: ev.title ? fill(ev.title, vars) : null,
+      text: fill(ev.text, vars),
+      choices: c.pending.choices.map((ch) => fill(ch.label, vars)),
+    };
+  }
+
+  choose(index) {
+    const c = this.char;
+    const p = c?.pending;
+    if (!p || !p.choices[index]) return null;
+    const ev = this.events.find((e) => e.id === p.id);
+    const ctx = this.ctx();
+    const choice = p.choices[index];
+    const outcome = rollOutcome(ev, choice.index, choice.data, ctx, this.rng) || { text: 'Life goes on.' };
+    const before = this.vars();
+    const changes = applyEffects(outcome.effects, ctx);
+    if (outcome.do) outcome.do(ctx, choice.data);
+    // Name things as they were when the choice was made (the job just left), plus anything new (a baby's name).
+    const after = this.vars();
+    const vars = { ...after };
+    for (const k of Object.keys(before)) if (FALLBACKS.has(after[k]) && !FALLBACKS.has(before[k])) vars[k] = before[k];
+    const text = fill(outcome.text, vars);
+    this.log(text);
+    c.pending = null;
+    if (outcome.next) this.fireEvent(outcome.next);
+    this.city.emit('lifeChanged');
+    return { text, changes };
+  }
+
+  // ---- Helpers events use --------------------------------------------------
+
+  log(text) {
+    const c = this.char;
+    c.log.unshift({ age: c.age, text });
+    if (c.log.length > MAX_LOG) c.log.length = MAX_LOG;
+  }
+
+  vars() {
+    const c = this.char;
+    const pr = PRONOUNS[c.pronouns];
+    const friend = [...c.friends].sort((a, b) => b.closeness - a.closeness)[0];
+    return {
+      name: c.first,
+      fullname: `${c.first} ${c.last}`,
+      last: c.last,
+      age: c.age,
+      they: pr.they,
+      them: pr.them,
+      their: pr.their,
+      mother: c.family.mother?.name.split(' ')[0] || 'Mum',
+      father: c.family.father?.name.split(' ')[0] || 'Dad',
+      friend: friend?.name.split(' ')[0] || 'a classmate',
+      partner: c.partner?.name.split(' ')[0] || 'someone special',
+      child: c.children[0]?.name.split(' ')[0] || 'the little one',
+      job: c.job ? CAREERS[c.job.type].titles[c.job.level].toLowerCase() : 'job',
+      workplace: c.job ? STRUCTURES[c.job.type].label.toLowerCase() : 'work',
+    };
+  }
+
+  // City facts for the character's home and job.
+  facts() {
+    const c = this.char;
+    const home = c?.home && this.city.getTile(c.home.x, c.home.y);
+    const jam = (t) => {
+      if (!t) return 0;
+      let worst = 0;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) worst = Math.max(worst, this.city.getTile(t.x + dx, t.y + dy)?.congestion || 0);
+      return worst;
+    };
+    const work = c?.job && this.city.getTile(c.job.x, c.job.y);
+    return {
+      home,
+      schoolCoverage: home?.coverage?.school || 0,
+      clinicCoverage: home?.coverage?.health || 0,
+      greenery: home?.factors?.greenery || 0,
+      desirability: home?.desirability ?? 0.4,
+      commuteJam: Math.max(jam(home), jam(work)),
+      cityHappiness: (this.city.stats.happiness || 50) / 100,
+    };
+  }
+
+  // Workplaces with free positions, nearest first.
+  openJobs() {
+    const c = this.char;
+    const from = c.home || { x: this.city.width / 2, y: this.city.height / 2 };
+    return this.city
+      .workplaces()
+      .filter((w) => CAREERS[w.structure.type] && this.city.accessRoad(w.x, w.y) && w.workersFilled < STRUCTURES[w.structure.type].jobs)
+      .filter((w) => !(c.job && c.job.x === w.x && c.job.y === w.y))
+      .sort((a, b) => Math.abs(a.x - from.x) + Math.abs(a.y - from.y) - (Math.abs(b.x - from.x) + Math.abs(b.y - from.y)));
+  }
+
+  // Homes with room, most desirable first.
+  openHomes() {
+    const c = this.char;
+    return this.city
+      .homes()
+      .filter((h) => h.structure.residents < STRUCTURES[h.structure.type].capacity)
+      .filter((h) => !(c?.home && c.home.x === h.x && c.home.y === h.y))
+      .sort((a, b) => b.desirability - a.desirability);
+  }
+
+  bestHome({ occupiedOk = false, preferOccupied = false } = {}) {
+    const homes = this.city.homes().sort((a, b) => b.desirability - a.desirability);
+    if (preferOccupied) {
+      const lived = homes.find((h) => h.structure.residents > 0);
+      if (lived) return lived;
+    }
+    return this.openHomes()[0] || (occupiedOk ? homes[0] : null) || null;
+  }
+
+  ctx() {
+    const c = this.char;
+    const life = this;
+    return {
+      char: c,
+      city: this.city,
+      rng: this.rng,
+      facts: this.facts(),
+      has: (t) => c.traits.includes(t),
+      person(who) {
+        if (who === 'mother' || who === 'father') return c.family[who]?.alive ? c.family[who] : null;
+        if (who === 'partner') return c.partner;
+        if (who === 'friend') return [...c.friends].sort((a, b) => b.closeness - a.closeness)[0] || null;
+        if (who === 'child') return c.children[0] || null;
+        return null;
+      },
+      addFriend(closeness = 55) {
+        const name = `${pick(FIRST_NAMES, life.rng)} ${pick(LAST_NAMES, life.rng)}`;
+        c.friends.push({ name, closeness });
+        if (c.friends.length > 6) c.friends.sort((a, b) => b.closeness - a.closeness).length = 6;
+        return name;
+      },
+      setPartner(closeness = 60) {
+        c.partner = { name: `${pick(FIRST_NAMES, life.rng)} ${pick(LAST_NAMES, life.rng)}`, closeness, married: false };
+        return c.partner.name;
+      },
+      addChild() {
+        const pronouns = pick(['she', 'he', 'they'], life.rng);
+        const kid = { name: `${pick(FIRST_NAMES, life.rng)} ${c.last}`, age: 0, pronouns, alive: true, look: c.look };
+        c.children.push(kid);
+        return kid.name;
+      },
+      moveTo(tile) {
+        c.home = { x: tile.x, y: tile.y };
+        c.livesWithParents = false;
+      },
+      takeJob(tile) {
+        c.job = { type: tile.structure.type, x: tile.x, y: tile.y, level: 0, years: 0 };
+      },
+      loseJob() {
+        c.job = null;
+      },
+      openJobs: () => life.openJobs(),
+      openHomes: () => life.openHomes(),
+    };
+  }
+}
+
+function summaryOf(c) {
+  return {
+    name: `${c.first} ${c.last}`,
+    age: c.death?.age ?? c.age,
+    job: c.job ? CAREERS[c.job.type].titles[c.job.level] : null,
+    money: c.money,
+    children: c.children.length,
+    generation: c.generation,
+  };
+}
+
+function lifeStage(c) {
+  return stageFor(c.age);
+}
+
+return { YEAR_SECONDS, LifeSystem, summaryOf, lifeStage };
+})();
+
 // ---- time.js ----
 const __mod_time = (() => {
 // Time of day as simulation data. `clock` runs 0..1 per day: 0 = midnight, 0.25 = sunrise, 0.5 = noon.
@@ -1734,12 +3511,14 @@ const { recomputeDesirability } = __mod_desirability;
 const { computeLaborMarket } = __mod_labor;
 const { computeCoverage } = __mod_coverage;
 const { AgentSystem } = __mod_agents;
+const { LifeSystem } = __mod_life;
 const { daylightAt } = __mod_time;
 const { clamp, pickWeighted } = __mod_utils;
 class Simulation {
   constructor(city) {
     this.city = city;
     this.agents = new AgentSystem(city);
+    this.life = new LifeSystem(city);
     this.speed = 1; // 0 pauses; 1–3 run faster
     this._acc = 0;
     this._marketTimer = 0;
@@ -1760,6 +3539,7 @@ class Simulation {
       this.tick();
     }
     this.agents.update(step, daylightAt(city.clock));
+    this.life.update(step);
   }
 
   tick() {
@@ -2311,6 +4091,7 @@ class Renderer {
     if (view.ghost) items.push({ d: view.ghost.x + view.ghost.y + 1.01, kind: 'ghost', ghost: view.ghost });
     items.sort((a, b) => a.d - b.d);
     for (const it of items) this.drawItem(ctx, it, L);
+    this.drawLifePins(ctx, L);
 
     this.drawParticles(ctx, dt, L);
     this.drawGlows(ctx, L);
@@ -3547,6 +5328,59 @@ class Renderer {
     ctx.restore();
   }
 
+  // Pins over the Life Story character's home and workplace, drawn above everything else.
+  drawLifePins(ctx, L) {
+    const c = this.city.systems.life?.char;
+    if (!c?.alive) return;
+    const pin = (spot, color, size, icon) => {
+      const t = this.city.getTile(spot.x, spot.y);
+      if (!t) return;
+      const f = t.structure ? this.footprint(t) : null;
+      const bob = this.reduceMotion ? 0 : Math.sin(this.time * 2.4 + spot.x) * 2;
+      const p = gridToWorld(spot.x + 0.5, spot.y + 0.5, (f?.h || 10) + 14 + bob);
+      const z = Math.max(0.7, 1 / Math.sqrt(this.camera.zoom));
+      const r = size * z;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.fillStyle = 'rgba(52,44,96,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(0, r * 1.9, r * 0.5, r * 0.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = color;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.6 * z;
+      ctx.beginPath();
+      ctx.moveTo(0, r * 1.6);
+      ctx.bezierCurveTo(-r * 0.6, r * 0.6, -r, r * 0.1, -r, -r * 0.2);
+      ctx.arc(0, -r * 0.2, r, Math.PI, 0);
+      ctx.bezierCurveTo(r, r * 0.1, r * 0.6, r * 0.6, 0, r * 1.6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      if (icon === 'home') {
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.5, -r * 0.1);
+        ctx.lineTo(0, -r * 0.6);
+        ctx.lineTo(r * 0.5, -r * 0.1);
+        ctx.lineTo(r * 0.35, -r * 0.1);
+        ctx.lineTo(r * 0.35, r * 0.35);
+        ctx.lineTo(-r * 0.35, r * 0.35);
+        ctx.lineTo(-r * 0.35, -r * 0.1);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        ctx.fillRect(-r * 0.42, -r * 0.35, r * 0.84, r * 0.62);
+        ctx.fillStyle = color;
+        ctx.fillRect(-r * 0.18, -r * 0.5, r * 0.36, r * 0.18);
+      }
+      ctx.restore();
+      if (L.lamps > 0.1) this.glows.push({ x: p.x, y: p.y, r: r * 2.4, a: 0.35 * L.lamps, rgb: '255,240,220' });
+    };
+    if (c.job) pin(c.job, '#a98bd0', 7.5, 'work');
+    if (c.home) pin(c.home, c.look?.outfit || '#ff8f7e', 9.5, 'home');
+  }
+
   // ---- Particles and light ----------------------------------------------------------
 
   drawParticles(ctx, dt, L) {
@@ -3929,7 +5763,7 @@ class AutoSaver {
     this.pending = -1;
     this.since = 0;
     city.on((ev) => {
-      if (ev.type === 'placed' || ev.type === 'removed' || ev.type === 'watered' || ev.type === 'reset') {
+      if (['placed', 'removed', 'watered', 'reset', 'lifeChanged', 'lifeEvent'].includes(ev.type)) {
         this.pending = this.delayMs;
       }
     });
@@ -4384,6 +6218,336 @@ class Interface {
 return { Interface };
 })();
 
+// ---- lifeUI.js ----
+const __mod_lifeUI = (() => {
+// Life Story interface: the Life button, the life panel (create, follow, remember) and the event card.
+// Shows state from LifeSystem; every change goes through the callbacks main.js passes in.
+
+const { STRUCTURES } = __mod_config;
+const { PRONOUNS, SKIN_TONES, HAIR_COLORS, OUTFIT_COLORS, TRAITS, CAREERS, stageFor } = __mod_lifeData;
+const { STAT_LABELS } = __mod_lifeEngine;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const money = (n) => `$${Math.round(n).toLocaleString()}`;
+
+function avatarSVG(look = {}, size = 56) {
+  const skin = look.skin || SKIN_TONES[1];
+  const hair = look.hair || HAIR_COLORS[0];
+  const outfit = look.outfit || OUTFIT_COLORS[0];
+  return `<svg viewBox="0 0 56 56" width="${size}" height="${size}" aria-hidden="true">
+    <circle cx="28" cy="28" r="28" fill="var(--avatar-bg)"/>
+    <path d="M10 56c1-11 8.5-17 18-17s17 6 18 17z" fill="${outfit}"/>
+    <circle cx="28" cy="25" r="11" fill="${skin}"/>
+    <path d="M16.6 24.5c-.4-8 4.6-12.5 11.4-12.5s11.8 4.5 11.4 12.5c-2.6-4.2-6.6-6.3-11.4-6.3s-8.8 2.1-11.4 6.3z" fill="${hair}"/>
+    <circle cx="24" cy="26.5" r="1.3" fill="#3d3550"/><circle cx="32" cy="26.5" r="1.3" fill="#3d3550"/>
+    <path d="M24.6 30.6c1.9 1.5 4.9 1.5 6.8 0" stroke="#3d3550" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+  </svg>`;
+}
+
+class LifeInterface {
+  constructor(handlers) {
+    this.h = handlers; // { life, onFocus, onCreate, onAgeUp, onChoose, onContinue, onNewLife }
+    this.panel = document.getElementById('life-panel');
+    this.card = document.getElementById('life-card');
+    this.btn = document.getElementById('btn-life');
+    this.open = false;
+    this.cardMinimized = false;
+    this.outcome = null;
+    this.draft = this.newDraft();
+
+    this.btn.addEventListener('click', () => this.toggle());
+    this.panel.addEventListener('click', (e) => this.onPanelClick(e));
+    this.panel.addEventListener('input', (e) => this.onPanelInput(e));
+    this.panel.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.submitDraft();
+    });
+    this.card.addEventListener('click', (e) => this.onCardClick(e));
+    // While the event card is up, number keys answer it instead of picking tools.
+    window.addEventListener(
+      'keydown',
+      (e) => {
+        if (this.card.hidden || e.metaKey || e.ctrlKey || e.altKey) return;
+        const n = Number(e.key);
+        if (this.outcome && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          this.closeOutcome();
+        } else if (!this.outcome && n >= 1 && n <= 4) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          this.choose(n - 1);
+        }
+      },
+      true
+    );
+    this.render();
+  }
+
+  get life() {
+    return this.h.life;
+  }
+
+  newDraft() {
+    const { first, last } = this.h.life.randomName();
+    const pickOne = (a) => a[Math.floor(Math.random() * a.length)];
+    return {
+      first,
+      last,
+      pronouns: pickOne(Object.keys(PRONOUNS)),
+      look: { skin: pickOne(SKIN_TONES), hair: pickOne(HAIR_COLORS), outfit: pickOne(OUTFIT_COLORS) },
+      traits: [],
+    };
+  }
+
+  toggle(force) {
+    this.open = force ?? !this.open;
+    this.render();
+  }
+
+  // ---- Panel ---------------------------------------------------------------
+
+  render() {
+    const c = this.life.char;
+    this.btn.classList.toggle('is-on', this.open);
+    this.btn.querySelector('.badge').hidden = !c?.pending || (!this.cardMinimized && !this.card.hidden);
+    this.renderCard();
+    // On phones the event card and the panel share the same space; the card wins.
+    const narrow = window.innerWidth < 560;
+    this.panel.hidden = !this.open || (narrow && !this.card.hidden);
+    if (!this.panel.hidden) {
+      this.panel.innerHTML = !c ? this.createHTML() : c.alive ? this.lifeHTML(c) : this.deathHTML(c);
+    }
+  }
+
+  // Light refresh for the year progress bar, without rebuilding the panel.
+  tick() {
+    const c = this.life.char;
+    if (!this.open || !c?.alive) return;
+    const bar = this.panel.querySelector('.year-bar span');
+    if (bar) bar.style.width = `${Math.min(100, c.yearProgress * 100).toFixed(1)}%`;
+  }
+
+  createHTML() {
+    const d = this.draft;
+    const swatches = (name, colors, value) =>
+      `<div class="swatches" role="radiogroup" aria-label="${name}">${colors
+        .map((col) => `<button type="button" class="swatch" data-look="${name}" data-value="${col}" aria-pressed="${col === value}" style="--c:${col}" aria-label="${name} ${col}"></button>`)
+        .join('')}</div>`;
+    return `<form class="life-create">
+      <header class="life-head">
+        <div class="avatar">${avatarSVG(d.look, 64)}</div>
+        <div><span class="life-kicker">Life Story</span><h2>Start a life</h2><p class="life-sub">Born as a baby in your city. Your choices, and the city you build, shape the story.</p></div>
+      </header>
+      <div class="field-row">
+        <label class="field"><span>First name</span><input id="life-first" name="first" value="${esc(d.first)}" maxlength="20" required autocomplete="off"></label>
+        <label class="field"><span>Last name</span><input id="life-last" name="last" value="${esc(d.last)}" maxlength="20" required autocomplete="off"></label>
+        <button type="button" class="icon-btn" data-act="reroll" aria-label="Random name" title="Random name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 9h.01M15 15h.01M12 12h.01" stroke-width="2.8"/></svg></button>
+      </div>
+      <fieldset class="field"><legend>Pronouns</legend><div class="seg">${Object.entries(PRONOUNS)
+        .map(([id, p]) => `<button type="button" data-pronouns="${id}" aria-pressed="${id === d.pronouns}">${p.label}</button>`)
+        .join('')}</div></fieldset>
+      <fieldset class="field"><legend>Skin</legend>${swatches('skin', SKIN_TONES, d.look.skin)}</fieldset>
+      <fieldset class="field"><legend>Hair</legend>${swatches('hair', HAIR_COLORS, d.look.hair)}</fieldset>
+      <fieldset class="field"><legend>Outfit</legend>${swatches('outfit', OUTFIT_COLORS, d.look.outfit)}</fieldset>
+      <fieldset class="field"><legend>Traits <small>pick two</small></legend><div class="chips">${TRAITS.map(
+        (t) => `<button type="button" class="chip" data-trait="${t.id}" aria-pressed="${d.traits.includes(t.id)}" title="${t.hint}">${t.label}<small>${t.hint}</small></button>`
+      ).join('')}</div></fieldset>
+      <button type="submit" class="primary-btn" ${d.traits.length === 2 ? '' : 'disabled'}>${d.traits.length === 2 ? 'Be born' : `Pick ${2 - d.traits.length} more trait${d.traits.length === 1 ? '' : 's'}`}</button>
+    </form>`;
+  }
+
+  lifeHTML(c) {
+    const life = this.life;
+    const stage = stageFor(c.age);
+    const f = life.facts();
+    const bars = ['happiness', 'health', 'smarts', 'looks']
+      .map((k) => `<li><span>${STAT_LABELS[k]}</span><span class="sbar"><span class="s-${k}" style="width:${c.stats[k]}%"></span></span><b>${c.stats[k]}</b></li>`)
+      .join('');
+    const career = c.job && CAREERS[c.job.type];
+    const occupation = c.job
+      ? `${career.titles[c.job.level]} at the ${STRUCTURES[c.job.type].label.toLowerCase()} (${c.job.x}, ${c.job.y})`
+      : c.age >= 6 && c.age <= 17
+        ? f.schoolCoverage > 0.25
+          ? 'At school'
+          : 'Learning at home (no school nearby)'
+        : c.flags.retired
+          ? 'Retired'
+          : c.age < 6
+            ? 'Too young for school'
+            : 'Looking for work';
+    const people = [
+      ...['mother', 'father'].map((k) => c.family[k] && { ...c.family[k], role: k === 'mother' ? 'Parent' : 'Parent' }),
+      c.partner && { ...c.partner, role: c.partner.married ? 'Spouse' : 'Partner', alive: true },
+      ...c.children.map((k) => ({ ...k, role: 'Child', closeness: 80 })),
+      ...c.friends.map((fr) => ({ ...fr, role: 'Friend', alive: true })),
+    ].filter(Boolean);
+    const log = c.log
+      .slice(0, 40)
+      .map((l) => `<li><span class="log-age">${l.age}</span><span>${esc(l.text)}</span></li>`)
+      .join('');
+    const waiting = !!c.pending;
+    return `<header class="life-head">
+        <div class="avatar">${avatarSVG(c.look, 64)}</div>
+        <div class="life-id"><span class="life-kicker">${c.generation > 1 ? `Generation ${c.generation}` : 'Life Story'}</span><h2>${esc(c.first)} ${esc(c.last)}</h2>
+        <p class="life-sub">Age ${c.age} · ${stage.label}</p>
+        <div class="year-bar" title="Progress to next birthday"><span style="width:${Math.min(100, c.yearProgress * 100).toFixed(1)}%"></span></div></div>
+        <button type="button" class="icon-btn" data-act="close" aria-label="Close life panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </header>
+      <div class="life-actions">
+        ${waiting ? '<button type="button" class="primary-btn" data-act="showcard">Open the waiting event</button>' : '<button type="button" class="primary-btn" data-act="ageup">Age up · +1 year</button>'}
+        <button type="button" class="ghost-btn" data-act="focus" ${c.home ? '' : 'disabled'}>Show home</button>
+      </div>
+      <p class="life-hint">Life moves one year per city day. Age up skips ahead; time stops while an event waits.</p>
+      <ul class="stat-bars">${bars}<li><span>Money</span><span></span><b>${money(c.money)}</b></li></ul>
+      <dl class="life-facts">
+        <div><dt>Home</dt><dd>${c.home ? `${c.livesWithParents ? 'With family' : 'Own place'} at ${c.home.x}, ${c.home.y} · ${Math.round(f.desirability * 100)}% desirable` : 'No home'}</dd></div>
+        <div><dt>Daily life</dt><dd>${esc(occupation)}</dd></div>
+        <div><dt>Traits</dt><dd>${c.traits.map((t) => TRAITS.find((x) => x.id === t)?.label).join(', ')}</dd></div>
+      </dl>
+      <h3>People</h3>
+      <ul class="people">${people
+        .map(
+          (p) =>
+            `<li class="${p.alive === false ? 'gone' : ''}"><span><b>${esc(p.name)}</b><small>${p.role}${p.alive === false ? ' · passed away' : p.age != null && p.role === 'Child' ? ` · ${p.age}` : ''}</small></span><span class="sbar"><span class="s-rel" style="width:${p.closeness}%"></span></span></li>`
+        )
+        .join('')}</ul>
+      <h3>Life so far</h3>
+      <ol class="life-log">${log}</ol>`;
+  }
+
+  deathHTML(c) {
+    const kid = c.children.find((k) => k.alive !== false);
+    const career = c.job && CAREERS[c.job.type];
+    return `<header class="life-head">
+        <div class="avatar gone">${avatarSVG(c.look, 64)}</div>
+        <div><span class="life-kicker">In memory</span><h2>${esc(c.first)} ${esc(c.last)}</h2><p class="life-sub">Lived to ${c.death.age} · ${esc(c.death.cause)}</p></div>
+      </header>
+      <dl class="life-facts">
+        <div><dt>Last job</dt><dd>${career ? career.titles[c.job.level] : c.flags.retired ? 'Retired' : 'None'}</dd></div>
+        <div><dt>Savings</dt><dd>${money(c.money)}</dd></div>
+        <div><dt>Children</dt><dd>${c.children.length || 'None'}</dd></div>
+        <div><dt>Friends</dt><dd>${c.friends.length}</dd></div>
+      </dl>
+      <div class="life-actions">
+        ${kid ? `<button type="button" class="primary-btn" data-act="continue">Continue as ${esc(kid.name.split(' ')[0])}</button>` : ''}
+        <button type="button" class="${kid ? 'ghost-btn' : 'primary-btn'}" data-act="newlife">Start a new life</button>
+      </div>
+      <h3>Life story</h3>
+      <ol class="life-log">${c.log
+        .slice(0, 60)
+        .map((l) => `<li><span class="log-age">${l.age}</span><span>${esc(l.text)}</span></li>`)
+        .join('')}</ol>`;
+  }
+
+  onPanelInput(e) {
+    if (e.target.id === 'life-first') this.draft.first = e.target.value;
+    if (e.target.id === 'life-last') this.draft.last = e.target.value;
+  }
+
+  onPanelClick(e) {
+    const t = e.target.closest('button');
+    if (!t) return;
+    const d = this.draft;
+    if (t.dataset.pronouns) d.pronouns = t.dataset.pronouns;
+    else if (t.dataset.look) d.look[t.dataset.look] = t.dataset.value;
+    else if (t.dataset.trait) {
+      const id = t.dataset.trait;
+      d.traits = d.traits.includes(id) ? d.traits.filter((x) => x !== id) : [...d.traits, id].slice(-2);
+    } else if (t.dataset.act === 'reroll') Object.assign(d, this.h.life.randomName());
+    else if (t.dataset.act === 'close') return this.toggle(false);
+    else if (t.dataset.act === 'ageup') {
+      this.h.onAgeUp();
+      this.cardMinimized = false;
+    } else if (t.dataset.act === 'showcard') this.cardMinimized = false;
+    else if (t.dataset.act === 'focus') return this.h.onFocus();
+    else if (t.dataset.act === 'continue') this.h.onContinue();
+    else if (t.dataset.act === 'newlife') {
+      this.draft = this.newDraft();
+      this.h.onNewLife();
+    } else return;
+    this.render();
+  }
+
+  submitDraft() {
+    const d = this.draft;
+    if (d.traits.length !== 2) return;
+    this.h.onCreate({ first: d.first.trim() || 'Ava', last: d.last.trim() || 'Park', pronouns: d.pronouns, look: { ...d.look }, traits: d.traits });
+    this.draft = this.newDraft();
+    this.render();
+  }
+
+  // ---- Event card ------------------------------------------------------------
+
+  // A new event arrived: show it unless the player tucked the card away.
+  eventArrived() {
+    this.cardMinimized = false;
+    this.render();
+  }
+
+  renderCard() {
+    const c = this.life.char;
+    if (this.outcome) {
+      this.card.hidden = false;
+      const chips = this.outcome.changes
+        .map((ch) => {
+          const up = ch.delta > 0;
+          const label = ch.key === 'rel' ? `${ch.who.split(' ')[0]}` : ch.key === 'money' ? 'Money' : STAT_LABELS[ch.key];
+          const amount = ch.key === 'money' ? money(Math.abs(ch.delta)) : Math.abs(ch.delta);
+          return `<span class="delta ${up ? 'up' : 'down'}">${up ? '+' : '−'}${amount} ${label}</span>`;
+        })
+        .join('');
+      this.card.innerHTML = `<div class="card-head">${avatarSVG(c?.look, 36)}<span>${esc(c ? `${c.first}, ${this.outcome.age}` : '')}</span></div>
+        <p class="bubble reply">${esc(this.outcome.text)}</p>
+        ${chips ? `<div class="deltas">${chips}</div>` : ''}
+        <button type="button" class="primary-btn" data-act="ok">Continue</button>`;
+      return;
+    }
+    const view = this.life.current();
+    if (!view || this.cardMinimized) {
+      this.card.hidden = true;
+      return;
+    }
+    this.card.hidden = false;
+    if (this._cardFor === `${view.id}|${c.age}`) return;
+    this._cardFor = `${view.id}|${c.age}`;
+    this.card.innerHTML = `<div class="card-head">${avatarSVG(c.look, 36)}<span>${esc(c.first)}, ${c.age} · ${stageFor(c.age).label}</span>
+        <button type="button" class="later" data-act="later">Later</button></div>
+      ${view.title ? `<h3>${esc(view.title)}</h3>` : ''}
+      <p class="bubble">${esc(view.text)}</p>
+      <div class="choices">${view.choices.map((ch, i) => `<button type="button" class="choice" data-choice="${i}"><kbd>${i + 1}</kbd><span>${esc(ch)}</span></button>`).join('')}</div>`;
+  }
+
+  onCardClick(e) {
+    const t = e.target.closest('button');
+    if (!t) return;
+    if (t.dataset.choice != null) this.choose(Number(t.dataset.choice));
+    else if (t.dataset.act === 'ok') this.closeOutcome();
+    else if (t.dataset.act === 'later') {
+      this.cardMinimized = true;
+      this._cardFor = null;
+      this.render();
+    }
+  }
+
+  choose(i) {
+    const age = this.life.char?.age;
+    const result = this.h.onChoose(i);
+    if (!result) return;
+    this.outcome = { ...result, age };
+    this._cardFor = null;
+    this.render();
+  }
+
+  closeOutcome() {
+    this.outcome = null;
+    this._cardFor = null;
+    this.render();
+  }
+}
+
+return { avatarSVG, LifeInterface };
+})();
+
 // ---- main.js ----
 const __mod_main = (() => {
 // Wiring: creates each system, connects input to state, and runs the frame loop.
@@ -4397,7 +6561,8 @@ const { InputController } = __mod_input;
 const { AutoSaver, loadCity } = __mod_persistence;
 const { generateTown } = __mod_generator;
 const { Interface } = __mod_ui;
-const { worldToGrid, mapBounds, tileRectBounds } = __mod_iso;
+const { LifeInterface } = __mod_lifeUI;
+const { worldToGrid, mapBounds, tileRectBounds, gridToWorld } = __mod_iso;
 function start(hotData = {}) {
   const canvas = document.getElementById('city');
   let city = null;
@@ -4511,6 +6676,42 @@ function start(hotData = {}) {
   window.addEventListener('resize', resize);
   resize();
 
+  const lifeUI = new LifeInterface({
+    life: sim.life,
+    onCreate: (draft) => {
+      sim.life.create(draft);
+      ui.toast(`${draft.first} was born. Watch for life events as the years go by.`, 3600);
+    },
+    onAgeUp: () => sim.life.ageUp(),
+    onChoose: (i) => sim.life.choose(i),
+    onContinue: () => sim.life.continueAsChild(),
+    onNewLife: () => {
+      const s = city.systems.life;
+      if (s?.char) s.history = [...(s.history || []), { name: `${s.char.first} ${s.char.last}`, age: s.char.age }];
+      city.systems.life = s ? { char: null, history: s.history } : null;
+    },
+    onFocus: () => {
+      const home = sim.life.char?.home;
+      if (!home) return;
+      const w = gridToWorld(home.x + 0.5, home.y + 0.5);
+      camera.tx = w.x;
+      camera.ty = w.y - 20;
+      camera.tzoom = Math.max(camera.tzoom, 1.1);
+      camera.clampTarget();
+    },
+  });
+  city.on((ev) => {
+    if (ev.type === 'lifeEvent') lifeUI.eventArrived();
+    else if (ev.type === 'lifeChanged') lifeUI.render();
+    else if (ev.type === 'removed' || ev.type === 'watered' || ev.type === 'placed' || ev.type === 'reset') {
+      // A bulldozed home or workplace changes the character's life right away.
+      if (sim.life.char?.alive) {
+        sim.life.syncWithCity();
+        lifeUI.render();
+      }
+    }
+  });
+
   new InputController(canvas, camera, {
     onTap: (sx, sy) => {
       const t = tileAt(sx, sy);
@@ -4570,6 +6771,7 @@ function start(hotData = {}) {
     if (uiTimer <= 0) {
       ui.update(city);
       ui.inspect(city, selected);
+      lifeUI.tick();
       uiTimer = 0.2;
     }
     requestAnimationFrame(frame);

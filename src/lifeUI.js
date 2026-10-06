@@ -1,0 +1,325 @@
+// Life Story interface: the Life button, the life panel (create, follow, remember) and the event card.
+// Shows state from LifeSystem; every change goes through the callbacks main.js passes in.
+
+import { STRUCTURES } from './config.js';
+import { PRONOUNS, SKIN_TONES, HAIR_COLORS, OUTFIT_COLORS, TRAITS, CAREERS, stageFor } from './lifeData.js';
+import { STAT_LABELS } from './lifeEngine.js';
+
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const money = (n) => `$${Math.round(n).toLocaleString()}`;
+
+export function avatarSVG(look = {}, size = 56) {
+  const skin = look.skin || SKIN_TONES[1];
+  const hair = look.hair || HAIR_COLORS[0];
+  const outfit = look.outfit || OUTFIT_COLORS[0];
+  return `<svg viewBox="0 0 56 56" width="${size}" height="${size}" aria-hidden="true">
+    <circle cx="28" cy="28" r="28" fill="var(--avatar-bg)"/>
+    <path d="M10 56c1-11 8.5-17 18-17s17 6 18 17z" fill="${outfit}"/>
+    <circle cx="28" cy="25" r="11" fill="${skin}"/>
+    <path d="M16.6 24.5c-.4-8 4.6-12.5 11.4-12.5s11.8 4.5 11.4 12.5c-2.6-4.2-6.6-6.3-11.4-6.3s-8.8 2.1-11.4 6.3z" fill="${hair}"/>
+    <circle cx="24" cy="26.5" r="1.3" fill="#3d3550"/><circle cx="32" cy="26.5" r="1.3" fill="#3d3550"/>
+    <path d="M24.6 30.6c1.9 1.5 4.9 1.5 6.8 0" stroke="#3d3550" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+  </svg>`;
+}
+
+export class LifeInterface {
+  constructor(handlers) {
+    this.h = handlers; // { life, onFocus, onCreate, onAgeUp, onChoose, onContinue, onNewLife }
+    this.panel = document.getElementById('life-panel');
+    this.card = document.getElementById('life-card');
+    this.btn = document.getElementById('btn-life');
+    this.open = false;
+    this.cardMinimized = false;
+    this.outcome = null;
+    this.draft = this.newDraft();
+
+    this.btn.addEventListener('click', () => this.toggle());
+    this.panel.addEventListener('click', (e) => this.onPanelClick(e));
+    this.panel.addEventListener('input', (e) => this.onPanelInput(e));
+    this.panel.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.submitDraft();
+    });
+    this.card.addEventListener('click', (e) => this.onCardClick(e));
+    // While the event card is up, number keys answer it instead of picking tools.
+    window.addEventListener(
+      'keydown',
+      (e) => {
+        if (this.card.hidden || e.metaKey || e.ctrlKey || e.altKey) return;
+        const n = Number(e.key);
+        if (this.outcome && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          this.closeOutcome();
+        } else if (!this.outcome && n >= 1 && n <= 4) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          this.choose(n - 1);
+        }
+      },
+      true
+    );
+    this.render();
+  }
+
+  get life() {
+    return this.h.life;
+  }
+
+  newDraft() {
+    const { first, last } = this.h.life.randomName();
+    const pickOne = (a) => a[Math.floor(Math.random() * a.length)];
+    return {
+      first,
+      last,
+      pronouns: pickOne(Object.keys(PRONOUNS)),
+      look: { skin: pickOne(SKIN_TONES), hair: pickOne(HAIR_COLORS), outfit: pickOne(OUTFIT_COLORS) },
+      traits: [],
+    };
+  }
+
+  toggle(force) {
+    this.open = force ?? !this.open;
+    this.render();
+  }
+
+  // ---- Panel ---------------------------------------------------------------
+
+  render() {
+    const c = this.life.char;
+    this.btn.classList.toggle('is-on', this.open);
+    this.btn.querySelector('.badge').hidden = !c?.pending || (!this.cardMinimized && !this.card.hidden);
+    this.renderCard();
+    // On phones the event card and the panel share the same space; the card wins.
+    const narrow = window.innerWidth < 560;
+    this.panel.hidden = !this.open || (narrow && !this.card.hidden);
+    if (!this.panel.hidden) {
+      this.panel.innerHTML = !c ? this.createHTML() : c.alive ? this.lifeHTML(c) : this.deathHTML(c);
+    }
+  }
+
+  // Light refresh for the year progress bar, without rebuilding the panel.
+  tick() {
+    const c = this.life.char;
+    if (!this.open || !c?.alive) return;
+    const bar = this.panel.querySelector('.year-bar span');
+    if (bar) bar.style.width = `${Math.min(100, c.yearProgress * 100).toFixed(1)}%`;
+  }
+
+  createHTML() {
+    const d = this.draft;
+    const swatches = (name, colors, value) =>
+      `<div class="swatches" role="radiogroup" aria-label="${name}">${colors
+        .map((col) => `<button type="button" class="swatch" data-look="${name}" data-value="${col}" aria-pressed="${col === value}" style="--c:${col}" aria-label="${name} ${col}"></button>`)
+        .join('')}</div>`;
+    return `<form class="life-create">
+      <header class="life-head">
+        <div class="avatar">${avatarSVG(d.look, 64)}</div>
+        <div><span class="life-kicker">Life Story</span><h2>Start a life</h2><p class="life-sub">Born as a baby in your city. Your choices, and the city you build, shape the story.</p></div>
+      </header>
+      <div class="field-row">
+        <label class="field"><span>First name</span><input id="life-first" name="first" value="${esc(d.first)}" maxlength="20" required autocomplete="off"></label>
+        <label class="field"><span>Last name</span><input id="life-last" name="last" value="${esc(d.last)}" maxlength="20" required autocomplete="off"></label>
+        <button type="button" class="icon-btn" data-act="reroll" aria-label="Random name" title="Random name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 9h.01M15 15h.01M12 12h.01" stroke-width="2.8"/></svg></button>
+      </div>
+      <fieldset class="field"><legend>Pronouns</legend><div class="seg">${Object.entries(PRONOUNS)
+        .map(([id, p]) => `<button type="button" data-pronouns="${id}" aria-pressed="${id === d.pronouns}">${p.label}</button>`)
+        .join('')}</div></fieldset>
+      <fieldset class="field"><legend>Skin</legend>${swatches('skin', SKIN_TONES, d.look.skin)}</fieldset>
+      <fieldset class="field"><legend>Hair</legend>${swatches('hair', HAIR_COLORS, d.look.hair)}</fieldset>
+      <fieldset class="field"><legend>Outfit</legend>${swatches('outfit', OUTFIT_COLORS, d.look.outfit)}</fieldset>
+      <fieldset class="field"><legend>Traits <small>pick two</small></legend><div class="chips">${TRAITS.map(
+        (t) => `<button type="button" class="chip" data-trait="${t.id}" aria-pressed="${d.traits.includes(t.id)}" title="${t.hint}">${t.label}<small>${t.hint}</small></button>`
+      ).join('')}</div></fieldset>
+      <button type="submit" class="primary-btn" ${d.traits.length === 2 ? '' : 'disabled'}>${d.traits.length === 2 ? 'Be born' : `Pick ${2 - d.traits.length} more trait${d.traits.length === 1 ? '' : 's'}`}</button>
+    </form>`;
+  }
+
+  lifeHTML(c) {
+    const life = this.life;
+    const stage = stageFor(c.age);
+    const f = life.facts();
+    const bars = ['happiness', 'health', 'smarts', 'looks']
+      .map((k) => `<li><span>${STAT_LABELS[k]}</span><span class="sbar"><span class="s-${k}" style="width:${c.stats[k]}%"></span></span><b>${c.stats[k]}</b></li>`)
+      .join('');
+    const career = c.job && CAREERS[c.job.type];
+    const occupation = c.job
+      ? `${career.titles[c.job.level]} at the ${STRUCTURES[c.job.type].label.toLowerCase()} (${c.job.x}, ${c.job.y})`
+      : c.age >= 6 && c.age <= 17
+        ? f.schoolCoverage > 0.25
+          ? 'At school'
+          : 'Learning at home (no school nearby)'
+        : c.flags.retired
+          ? 'Retired'
+          : c.age < 6
+            ? 'Too young for school'
+            : 'Looking for work';
+    const people = [
+      ...['mother', 'father'].map((k) => c.family[k] && { ...c.family[k], role: k === 'mother' ? 'Parent' : 'Parent' }),
+      c.partner && { ...c.partner, role: c.partner.married ? 'Spouse' : 'Partner', alive: true },
+      ...c.children.map((k) => ({ ...k, role: 'Child', closeness: 80 })),
+      ...c.friends.map((fr) => ({ ...fr, role: 'Friend', alive: true })),
+    ].filter(Boolean);
+    const log = c.log
+      .slice(0, 40)
+      .map((l) => `<li><span class="log-age">${l.age}</span><span>${esc(l.text)}</span></li>`)
+      .join('');
+    const waiting = !!c.pending;
+    return `<header class="life-head">
+        <div class="avatar">${avatarSVG(c.look, 64)}</div>
+        <div class="life-id"><span class="life-kicker">${c.generation > 1 ? `Generation ${c.generation}` : 'Life Story'}</span><h2>${esc(c.first)} ${esc(c.last)}</h2>
+        <p class="life-sub">Age ${c.age} · ${stage.label}</p>
+        <div class="year-bar" title="Progress to next birthday"><span style="width:${Math.min(100, c.yearProgress * 100).toFixed(1)}%"></span></div></div>
+        <button type="button" class="icon-btn" data-act="close" aria-label="Close life panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </header>
+      <div class="life-actions">
+        ${waiting ? '<button type="button" class="primary-btn" data-act="showcard">Open the waiting event</button>' : '<button type="button" class="primary-btn" data-act="ageup">Age up · +1 year</button>'}
+        <button type="button" class="ghost-btn" data-act="focus" ${c.home ? '' : 'disabled'}>Show home</button>
+      </div>
+      <p class="life-hint">Life moves one year per city day. Age up skips ahead; time stops while an event waits.</p>
+      <ul class="stat-bars">${bars}<li><span>Money</span><span></span><b>${money(c.money)}</b></li></ul>
+      <dl class="life-facts">
+        <div><dt>Home</dt><dd>${c.home ? `${c.livesWithParents ? 'With family' : 'Own place'} at ${c.home.x}, ${c.home.y} · ${Math.round(f.desirability * 100)}% desirable` : 'No home'}</dd></div>
+        <div><dt>Daily life</dt><dd>${esc(occupation)}</dd></div>
+        <div><dt>Traits</dt><dd>${c.traits.map((t) => TRAITS.find((x) => x.id === t)?.label).join(', ')}</dd></div>
+      </dl>
+      <h3>People</h3>
+      <ul class="people">${people
+        .map(
+          (p) =>
+            `<li class="${p.alive === false ? 'gone' : ''}"><span><b>${esc(p.name)}</b><small>${p.role}${p.alive === false ? ' · passed away' : p.age != null && p.role === 'Child' ? ` · ${p.age}` : ''}</small></span><span class="sbar"><span class="s-rel" style="width:${p.closeness}%"></span></span></li>`
+        )
+        .join('')}</ul>
+      <h3>Life so far</h3>
+      <ol class="life-log">${log}</ol>`;
+  }
+
+  deathHTML(c) {
+    const kid = c.children.find((k) => k.alive !== false);
+    const career = c.job && CAREERS[c.job.type];
+    return `<header class="life-head">
+        <div class="avatar gone">${avatarSVG(c.look, 64)}</div>
+        <div><span class="life-kicker">In memory</span><h2>${esc(c.first)} ${esc(c.last)}</h2><p class="life-sub">Lived to ${c.death.age} · ${esc(c.death.cause)}</p></div>
+      </header>
+      <dl class="life-facts">
+        <div><dt>Last job</dt><dd>${career ? career.titles[c.job.level] : c.flags.retired ? 'Retired' : 'None'}</dd></div>
+        <div><dt>Savings</dt><dd>${money(c.money)}</dd></div>
+        <div><dt>Children</dt><dd>${c.children.length || 'None'}</dd></div>
+        <div><dt>Friends</dt><dd>${c.friends.length}</dd></div>
+      </dl>
+      <div class="life-actions">
+        ${kid ? `<button type="button" class="primary-btn" data-act="continue">Continue as ${esc(kid.name.split(' ')[0])}</button>` : ''}
+        <button type="button" class="${kid ? 'ghost-btn' : 'primary-btn'}" data-act="newlife">Start a new life</button>
+      </div>
+      <h3>Life story</h3>
+      <ol class="life-log">${c.log
+        .slice(0, 60)
+        .map((l) => `<li><span class="log-age">${l.age}</span><span>${esc(l.text)}</span></li>`)
+        .join('')}</ol>`;
+  }
+
+  onPanelInput(e) {
+    if (e.target.id === 'life-first') this.draft.first = e.target.value;
+    if (e.target.id === 'life-last') this.draft.last = e.target.value;
+  }
+
+  onPanelClick(e) {
+    const t = e.target.closest('button');
+    if (!t) return;
+    const d = this.draft;
+    if (t.dataset.pronouns) d.pronouns = t.dataset.pronouns;
+    else if (t.dataset.look) d.look[t.dataset.look] = t.dataset.value;
+    else if (t.dataset.trait) {
+      const id = t.dataset.trait;
+      d.traits = d.traits.includes(id) ? d.traits.filter((x) => x !== id) : [...d.traits, id].slice(-2);
+    } else if (t.dataset.act === 'reroll') Object.assign(d, this.h.life.randomName());
+    else if (t.dataset.act === 'close') return this.toggle(false);
+    else if (t.dataset.act === 'ageup') {
+      this.h.onAgeUp();
+      this.cardMinimized = false;
+    } else if (t.dataset.act === 'showcard') this.cardMinimized = false;
+    else if (t.dataset.act === 'focus') return this.h.onFocus();
+    else if (t.dataset.act === 'continue') this.h.onContinue();
+    else if (t.dataset.act === 'newlife') {
+      this.draft = this.newDraft();
+      this.h.onNewLife();
+    } else return;
+    this.render();
+  }
+
+  submitDraft() {
+    const d = this.draft;
+    if (d.traits.length !== 2) return;
+    this.h.onCreate({ first: d.first.trim() || 'Ava', last: d.last.trim() || 'Park', pronouns: d.pronouns, look: { ...d.look }, traits: d.traits });
+    this.draft = this.newDraft();
+    this.render();
+  }
+
+  // ---- Event card ------------------------------------------------------------
+
+  // A new event arrived: show it unless the player tucked the card away.
+  eventArrived() {
+    this.cardMinimized = false;
+    this.render();
+  }
+
+  renderCard() {
+    const c = this.life.char;
+    if (this.outcome) {
+      this.card.hidden = false;
+      const chips = this.outcome.changes
+        .map((ch) => {
+          const up = ch.delta > 0;
+          const label = ch.key === 'rel' ? `${ch.who.split(' ')[0]}` : ch.key === 'money' ? 'Money' : STAT_LABELS[ch.key];
+          const amount = ch.key === 'money' ? money(Math.abs(ch.delta)) : Math.abs(ch.delta);
+          return `<span class="delta ${up ? 'up' : 'down'}">${up ? '+' : '−'}${amount} ${label}</span>`;
+        })
+        .join('');
+      this.card.innerHTML = `<div class="card-head">${avatarSVG(c?.look, 36)}<span>${esc(c ? `${c.first}, ${this.outcome.age}` : '')}</span></div>
+        <p class="bubble reply">${esc(this.outcome.text)}</p>
+        ${chips ? `<div class="deltas">${chips}</div>` : ''}
+        <button type="button" class="primary-btn" data-act="ok">Continue</button>`;
+      return;
+    }
+    const view = this.life.current();
+    if (!view || this.cardMinimized) {
+      this.card.hidden = true;
+      return;
+    }
+    this.card.hidden = false;
+    if (this._cardFor === `${view.id}|${c.age}`) return;
+    this._cardFor = `${view.id}|${c.age}`;
+    this.card.innerHTML = `<div class="card-head">${avatarSVG(c.look, 36)}<span>${esc(c.first)}, ${c.age} · ${stageFor(c.age).label}</span>
+        <button type="button" class="later" data-act="later">Later</button></div>
+      ${view.title ? `<h3>${esc(view.title)}</h3>` : ''}
+      <p class="bubble">${esc(view.text)}</p>
+      <div class="choices">${view.choices.map((ch, i) => `<button type="button" class="choice" data-choice="${i}"><kbd>${i + 1}</kbd><span>${esc(ch)}</span></button>`).join('')}</div>`;
+  }
+
+  onCardClick(e) {
+    const t = e.target.closest('button');
+    if (!t) return;
+    if (t.dataset.choice != null) this.choose(Number(t.dataset.choice));
+    else if (t.dataset.act === 'ok') this.closeOutcome();
+    else if (t.dataset.act === 'later') {
+      this.cardMinimized = true;
+      this._cardFor = null;
+      this.render();
+    }
+  }
+
+  choose(i) {
+    const age = this.life.char?.age;
+    const result = this.h.onChoose(i);
+    if (!result) return;
+    this.outcome = { ...result, age };
+    this._cardFor = null;
+    this.render();
+  }
+
+  closeOutcome() {
+    this.outcome = null;
+    this._cardFor = null;
+    this.render();
+  }
+}

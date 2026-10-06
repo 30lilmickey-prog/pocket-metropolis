@@ -5,6 +5,7 @@ import { recomputeDesirability } from './desirability.js';
 import { computeLaborMarket } from './labor.js';
 import { computeCoverage } from './coverage.js';
 import { AgentSystem } from './agents.js';
+import { LifeSystem } from './life.js';
 import { daylightAt } from './time.js';
 import { clamp, pickWeighted } from './utils.js';
 
@@ -12,6 +13,7 @@ export class Simulation {
   constructor(city) {
     this.city = city;
     this.agents = new AgentSystem(city);
+    this.life = new LifeSystem(city);
     this.speed = 1; // 0 pauses; 1–3 run faster
     this._acc = 0;
     this._marketTimer = 0;
@@ -32,6 +34,7 @@ export class Simulation {
       this.tick();
     }
     this.agents.update(step, daylightAt(city.clock));
+    this.life.update(step);
   }
 
   tick() {
