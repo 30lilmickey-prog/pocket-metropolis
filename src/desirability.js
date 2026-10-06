@@ -95,7 +95,12 @@ export const FACTORS = [
   { id: 'overcrowding', label: 'Overcrowding', enabled: false, compute: () => 0 },
   { id: 'walkability', label: 'Walkability', enabled: false, compute: () => 0 },
   { id: 'utilities', label: 'Utilities', enabled: false, compute: () => 0 },
-  { id: 'entertainment', label: 'Entertainment', enabled: false, compute: () => 0 },
+  {
+    id: 'entertainment',
+    label: 'Playgrounds & sport',
+    enabled: true,
+    compute: (city, tile) => 0.1 * (tile.coverage?.fun || 0),
+  },
 ];
 
 export function recomputeDesirability(city) {

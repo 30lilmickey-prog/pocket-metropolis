@@ -7,6 +7,8 @@ import { computeCoverage } from './coverage.js';
 import { AgentSystem } from './agents.js';
 import { LifeSystem } from './life.js';
 import { WeatherSystem } from './weather.js';
+import { Milestones } from './milestones.js';
+import { computeThoughts } from './advisor.js';
 import { daylightAt } from './time.js';
 import { clamp, pickWeighted } from './utils.js';
 
@@ -16,6 +18,8 @@ export class Simulation {
     this.agents = new AgentSystem(city);
     this.life = new LifeSystem(city);
     this.weather = new WeatherSystem(city);
+    this.milestones = new Milestones(city);
+    this._thoughtTimer = 0;
     this.speed = 1; // 0 pauses; 1–3 run faster
     this._acc = 0;
     this._marketTimer = 0;
@@ -52,6 +56,12 @@ export class Simulation {
     }
     this.updateHousing();
     this.updateStats();
+    this.milestones.update();
+    this._thoughtTimer -= SIM_STEP;
+    if (this._thoughtTimer <= 0) {
+      city.derived.thoughts = computeThoughts(city, this.milestones);
+      this._thoughtTimer = 4;
+    }
   }
 
   // Run the derived systems immediately, e.g. right after loading or generating a city.
@@ -60,6 +70,8 @@ export class Simulation {
     this.city.derived.labor = computeLaborMarket(this.city);
     recomputeDesirability(this.city);
     this.updateStats();
+    void this.milestones.state; // settle the starting title without a celebration
+    this.city.derived.thoughts = computeThoughts(this.city, this.milestones);
   }
 
   // Desirability maps to how full a home can get: a bare lot fills a little, a leafy one fills up.

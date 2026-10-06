@@ -115,6 +115,9 @@ export function generateTown(city, seed = (Math.random() * 2 ** 32) >>> 0) {
     .sort((a, b) => b.score - a.score);
   const parks = Math.max(2, Math.round((half * half) / 18));
   for (let i = 0; i < Math.min(parks, parkSpots.length); i++) place(parkSpots[i].t.x, parkSpots[i].t.y, 'park');
+  // One playground among the homes.
+  const play = parkSpots.slice(parks).find((s) => isEmpty(s.t.x, s.t.y) && nearRoad(s.t.x, s.t.y));
+  if (play) place(play.t.x, play.t.y, 'playground');
 
   // Trees: scattered in town, thick woods in the countryside.
   const forests = Array.from({ length: Math.max(2, Math.round(W / 6)) }, () => ({ x: ri(0, W - 1), y: ri(0, H - 1), r: 2 + rand() * 4 }));

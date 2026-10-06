@@ -28,6 +28,9 @@ const ICONS = {
   pause: svg('<path d="M9 5v14M15 5v14" stroke-width="2.6"/>'),
   play: svg('<path d="M7 4.5v15l12-7.5z"/>'),
   layers: svg('<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 12.5 9 5 9-5"/><path d="m3 17 9 5 9-5"/>'),
+  lock: svg('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'),
+  playground: svg('<path d="M4 20 7 6h3l3 14"/><path d="M5.5 13h6"/><path d="M14 8h6v12"/><path d="M14 8c0 5 2 8 6 9"/>'),
+  field: svg('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/><circle cx="12" cy="12" r="2.5"/><path d="M3 9.5h2.5v5H3M21 9.5h-2.5v5H21"/>'),
   close: svg('<path d="M6 6l12 12M18 6 6 18"/>'),
   soundOn: svg('<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>'),
   soundOff: svg('<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/>'),
@@ -48,8 +51,9 @@ const LEGENDS = {
 const pct = (v) => `${Math.round(v * 100)}%`;
 
 export class Interface {
-  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect, sound }) {
+  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect, sound, locks }) {
     this.sound = sound;
+    this.locks = locks; // { isUnlocked(tool), unlockLabel(tool) }
     this.soundBtn = document.getElementById('btn-sound');
     this.toolbar = document.getElementById('toolbar');
     this.tray = document.getElementById('tray');
@@ -142,11 +146,15 @@ export class Interface {
     return TOOL_GROUPS.find((g) => g.tools.some((t) => t.id === toolId));
   }
 
+  locked(toolId) {
+    return !!this.locks && !this.locks.isUnlocked(toolId);
+  }
+
   pressGroup(groupId) {
     const g = TOOL_GROUPS.find((x) => x.id === groupId);
     if (g.tools.length > 1) {
       if (!this.tray.hidden && this.trayGroup === groupId) return this.closeTray();
-      this.setTool(this.groupChoice[groupId]);
+      if (!this.locked(this.groupChoice[groupId])) this.setTool(this.groupChoice[groupId]);
       this.openTray(g);
       return;
     }
@@ -159,13 +167,15 @@ export class Interface {
     this.tray.innerHTML = g.tools
       .map(
         (t) =>
-          `<button type="button" class="tray-item" data-tool="${t.id}" aria-pressed="${t.id === this.tool}">` +
-          `<span class="tool-icon tint-${t.id}">${ICONS[t.id]}</span><span>${t.label}</span><kbd>${t.key.toUpperCase()}</kbd></button>`
+          `<button type="button" class="tray-item${this.locked(t.id) ? ' locked' : ''}" data-tool="${t.id}" aria-pressed="${t.id === this.tool}"` +
+          `${this.locked(t.id) ? ` aria-label="${t.label}, locked until ${this.locks.unlockLabel(t.id)}"` : ''}>` +
+          `<span class="tool-icon tint-${t.id}">${ICONS[t.id]}</span><span>${t.label}</span><kbd>${t.key.toUpperCase()}</kbd>` +
+          `${this.locked(t.id) ? `<span class="lock" aria-hidden="true">${ICONS.lock}</span>` : ''}</button>`
       )
       .join('');
     for (const b of this.tray.querySelectorAll('.tray-item')) {
       b.addEventListener('click', () => {
-        this.setTool(b.dataset.tool);
+        if (!this.setTool(b.dataset.tool)) return;
         this.closeTray();
       });
     }
@@ -181,7 +191,13 @@ export class Interface {
     this.tray.hidden = true;
   }
 
+  // Returns false (and explains why) when the tool is still locked.
   setTool(id) {
+    if (this.locked(id)) {
+      this.toast(`${TOOLS.find((t) => t.id === id).label} unlocks when your town becomes a ${this.locks.unlockLabel(id)}`);
+      this.onLocked?.(id);
+      return false;
+    }
     this.tool = id;
     const group = this.groupOf(id);
     this.groupChoice[group.id] = id;
@@ -196,7 +212,26 @@ export class Interface {
         (g.tools.length > 1 ? '<span class="more" aria-hidden="true"></span>' : '');
     }
     if (!this.tray.hidden) for (const b of this.tray.querySelectorAll('.tray-item')) b.setAttribute('aria-pressed', String(b.dataset.tool === id));
+    this.renderLocks();
     this.onTool(id);
+    return true;
+  }
+
+  // Lock badges on toolbar buttons whose shown tool still waits for a milestone.
+  renderLocks() {
+    for (const b of this.toolbar.querySelectorAll('.tool')) {
+      const locked = this.locked(this.groupChoice[b.dataset.group]);
+      b.classList.toggle('locked', locked);
+      const lock = b.querySelector('.lock');
+      if (locked && !lock) b.insertAdjacentHTML('beforeend', `<span class="lock" aria-hidden="true">${ICONS.lock}</span>`);
+      else if (!locked && lock) lock.remove();
+    }
+  }
+
+  // After a milestone: redraw badges and any open tray.
+  refreshLocks() {
+    this.renderLocks();
+    if (!this.tray.hidden && this.trayGroup) this.openTray(TOOL_GROUPS.find((g) => g.id === this.trayGroup));
   }
 
   // ---- City controls sheet (phones and short screens) ------------------------
@@ -209,6 +244,7 @@ export class Interface {
     this.moreBtn.classList.toggle('is-on', open);
     if (open) {
       this.closeTray();
+      this.onOpenMore?.();
       this.renderMore();
     }
   }

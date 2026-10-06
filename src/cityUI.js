@@ -1,0 +1,102 @@
+// City panel: the town's title, progress to the next milestone, what it unlocks, and what residents
+// are wishing for. Opened from the stats bubble. Reads state only; actions go through handlers.
+
+import { MILESTONES, STRUCTURES, TOOLS } from './config.js';
+
+const labelOf = (id) => STRUCTURES[id]?.label || TOOLS.find((t) => t.id === id)?.label || id;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const CLOSE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+
+export class CityPanel {
+  constructor({ milestones, onShow, onOpen }) {
+    this.milestones = milestones; // () => Milestones
+    this.onShow = onShow; // (thought) → move the camera there
+    this.onOpen = onOpen; // () → close other panels
+    this.panel = document.getElementById('city-panel');
+    this.btn = document.getElementById('stats');
+    this.badge = document.getElementById('tier-badge');
+    this.tierEl = document.getElementById('tier-name');
+    this.meterEl = document.getElementById('tier-meter');
+    this.open = false;
+    this._key = '';
+    this.btn.addEventListener('click', () => this.toggle());
+    this.btn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        this.toggle();
+      }
+    });
+    this.panel.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      if (b.dataset.close != null) this.toggle(false);
+      else if (b.dataset.show != null) {
+        const th = this.thoughts[Number(b.dataset.show)];
+        if (th) this.onShow(th);
+      }
+    });
+  }
+
+  toggle(force) {
+    this.open = force ?? !this.open;
+    if (this.open) this.onOpen?.();
+    this.btn.setAttribute('aria-expanded', String(this.open));
+    this._key = '';
+    this.panel.hidden = !this.open;
+  }
+
+  // Called a few times a second: refreshes the stats-bubble tier line and, when open, the panel.
+  update(city) {
+    const m = this.milestones();
+    const p = m.progress();
+    this.thoughts = city.derived.thoughts || [];
+    const wishes = this.thoughts.filter((t) => t.kind === 'wish').length;
+    this.tierEl.textContent = p.current.label;
+    this.meterEl.style.width = `${Math.round((p.next ? p.fraction : 1) * 100)}%`;
+    this.badge.hidden = !wishes || this.open;
+    this.btn.setAttribute('aria-label', `${p.current.label}. ${wishes ? `${wishes} resident wish${wishes > 1 ? 'es' : ''}. ` : ''}Open city panel`);
+    if (!this.open) return;
+    // Rebuild only when the content changes shape, so buttons stay put under a finger.
+    const key = JSON.stringify([p.tier, this.thoughts.map((t) => [t.id, t.x, t.y, t.text])]);
+    if (key !== this._key) {
+      this._key = key;
+      this.panel.innerHTML = this.html(city, m, p);
+    }
+    const bar = this.panel.querySelector('.tier-progress span');
+    if (bar) bar.style.width = `${Math.round(p.fraction * 100)}%`;
+    const pop = this.panel.querySelector('.tier-pop');
+    if (pop) pop.textContent = city.stats.population.toLocaleString();
+  }
+
+  html(city, m, p) {
+    const pop = city.stats.population;
+    const next = p.next
+      ? `<div class="tier-next"><div class="tier-progress"><span style="width:${Math.round(p.fraction * 100)}%"></span></div>` +
+        `<p><b class="tier-pop">${pop.toLocaleString()}</b> of <b>${p.next.pop.toLocaleString()}</b> residents to become a <b>${p.next.label}</b>.</p>` +
+        (p.next.unlocks.length ? `<p class="tier-unlocks">Unlocks ${p.next.unlocks.map((u) => `<span class="unlock-chip">${esc(labelOf(u))}</span>`).join('')}</p>` : '') +
+        '</div>'
+      : '<p class="tier-done">Your town has become a Metropolis. Everything is unlocked.</p>';
+    const thoughts = this.thoughts.length
+      ? `<ul class="thoughts">${this.thoughts
+          .map(
+            (t, i) =>
+              `<li class="${t.kind}"><span class="th-icon" aria-hidden="true">${t.kind === 'happy' ? '♥' : '!'}</span>` +
+              `<span class="th-text"><span>${esc(t.text)}</span><small>${esc(t.hint)}</small></span>` +
+              (t.x != null ? `<button type="button" class="ghost-btn small" data-show="${i}">Show me</button>` : '') +
+              '</li>'
+          )
+          .join('')}</ul>`
+      : '<p class="insp-note">Build some homes and residents will tell you what they think.</p>';
+    const ladder = `<ol class="ladder">${MILESTONES.map(
+      (ms, i) =>
+        `<li class="${i <= m.reached ? 'done' : ''}${i === p.tier ? ' now' : ''}"><span class="dot"></span><span>${ms.label}</span><small>${ms.pop ? `${ms.pop.toLocaleString()}+` : 'Start'}</small></li>`
+    ).join('')}</ol>`;
+    return (
+      `<header><div><span class="insp-kicker">Your town</span><h2>${p.current.label}</h2></div>` +
+      `<button type="button" class="insp-close" data-close aria-label="Close city panel">${CLOSE}</button></header>` +
+      next +
+      ladder +
+      `<h3>What residents are saying</h3>${thoughts}`
+    );
+  }
+}
