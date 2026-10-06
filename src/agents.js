@@ -259,6 +259,8 @@ export class AgentSystem {
     const dest = pickWeighted(reachable, (n) => {
       const type = city.getTile(n.x, n.y).structure?.type;
       if (type === 'park') return 8;
+      if (type === 'playground') return 7;
+      if (type === 'field') return 6;
       if (type === 'tree') return 2;
       if (type === 'road') return 0.15;
       return 0.4;
@@ -299,7 +301,7 @@ export class AgentSystem {
       if (w.state === 'out') {
         const type = city.getTile(a.x, a.y)?.structure?.type;
         w.state = 'linger';
-        w.wait = type === 'park' ? 5 + Math.random() * 8 : 2 + Math.random() * 3;
+        w.wait = type === 'park' || type === 'playground' || type === 'field' ? 5 + Math.random() * 8 : 2 + Math.random() * 3;
       } else {
         w.leaving = true; // home again
       }

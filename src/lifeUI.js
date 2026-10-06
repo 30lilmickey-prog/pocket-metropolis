@@ -79,7 +79,9 @@ export class LifeInterface {
   }
 
   toggle(force) {
+    const was = this.open;
     this.open = force ?? !this.open;
+    if (this.open && !was) this.h.onOpen?.();
     this.render();
   }
 

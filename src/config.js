@@ -54,6 +54,8 @@ export const STRUCTURES = {
   office: { label: 'Office', capacity: 0, jobs: 16, greenery: 0, height: 58 },
   school: { label: 'School', capacity: 0, jobs: 4, greenery: 0, height: 30, service: 'school', radius: 7 },
   clinic: { label: 'Clinic', capacity: 0, jobs: 4, greenery: 0, height: 28, service: 'health', radius: 7 },
+  playground: { label: 'Playground', capacity: 0, jobs: 0, greenery: 0.5, walkable: true, height: 14, service: 'fun', radius: 4 },
+  field: { label: 'Sports field', capacity: 0, jobs: 2, greenery: 1, walkable: true, height: 12, service: 'fun', radius: 6 },
   tree: { label: 'Tree', capacity: 0, jobs: 0, greenery: 1, walkable: true, height: 26 },
   park: { label: 'Park', capacity: 0, jobs: 0, greenery: 3, walkable: true, height: 0 },
   road: { label: 'Road', capacity: 0, jobs: 0, greenery: 0, walkable: true, road: true, height: 0 },
@@ -66,6 +68,18 @@ export const ROAD_CAPACITY = 24;
 export const SERVICES = [
   { id: 'school', label: 'Schools' },
   { id: 'health', label: 'Clinics' },
+];
+// Every kind of coverage a building can provide (services above, plus recreation).
+export const COVERAGE_IDS = ['school', 'health', 'fun'];
+
+// Milestones: the town's title grows with its population, and each step unlocks new buildings.
+// Unlocks are permanent. Tools not listed here are always available.
+export const MILESTONES = [
+  { id: 'hamlet', label: 'Hamlet', pop: 0, unlocks: [] },
+  { id: 'village', label: 'Village', pop: 60, unlocks: ['school', 'playground'] },
+  { id: 'town', label: 'Town', pop: 200, unlocks: ['tower', 'office', 'clinic'] },
+  { id: 'city', label: 'City', pop: 450, unlocks: ['field'] },
+  { id: 'metropolis', label: 'Metropolis', pop: 900, unlocks: [] },
 ];
 
 // Toolbar: each group is one button; groups with several tools open a small tray.
@@ -101,6 +115,8 @@ export const TOOL_GROUPS = [
     tools: [
       { id: 'tree', label: 'Tree', key: '7' },
       { id: 'park', label: 'Park', key: '8' },
+      { id: 'playground', label: 'Playground', key: 'p' },
+      { id: 'field', label: 'Sports field', key: 'f' },
       { id: 'water', label: 'Water', key: '0' },
     ],
   },

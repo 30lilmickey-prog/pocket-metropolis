@@ -160,6 +160,9 @@ export class Renderer {
     this.snowCover = 0;
     this.drops = [];
     this._weatherL = { key: '', L: null };
+    this.confettiBits = [];
+    this.thoughtRects = []; // screen-space hit boxes for the resident thought bubbles
+    this.showThoughts = true;
     city.on((ev) => this.onCityEvent(ev));
   }
 
@@ -376,6 +379,124 @@ export class Renderer {
     this.drawPrecipitation(ctx, dt, w);
     this.drawFog(ctx, w, L);
     this.drawVignette(ctx, L);
+    this.drawThoughts(ctx);
+    this.drawConfetti(ctx, dt);
+  }
+
+  worldToScreen(p) {
+    const cam = this.camera;
+    return { x: this.w / 2 + (p.x - cam.x) * cam.zoom, y: this.h / 2 + (p.y - cam.y) * cam.zoom };
+  }
+
+  // Up to two resident thoughts float over their homes, taking turns every few seconds.
+  drawThoughts(ctx) {
+    this.thoughtRects = [];
+    const all = this.showThoughts ? this.city.derived.thoughts || [] : [];
+    const placed = all.filter((t) => t.x != null);
+    if (!placed.length) return;
+    const shown = [];
+    const turn = Math.max(0, Math.floor(this.time / 6));
+    for (let i = 0; i < Math.min(2, placed.length); i++) shown.push(placed[(turn * 2 + i) % placed.length]);
+    const phase = (this.time % 6) / 6;
+    const fade = Math.min(1, phase * 8, (1 - phase) * 8);
+    ctx.save();
+    ctx.font = '600 11px system-ui, -apple-system, "Segoe UI", sans-serif';
+    ctx.textBaseline = 'middle';
+    for (const th of new Set(shown)) {
+      const tile = this.city.getTile(th.x, th.y);
+      if (!tile) continue;
+      const f = tile.structure ? this.footprint(tile) : null;
+      const bob = this.reduceMotion ? 0 : Math.sin(this.time * 1.8 + th.x) * 1.5;
+      const s = this.worldToScreen(gridToWorld(th.x + 0.5, th.y + 0.5, (f?.h || 8) + 8));
+      const text = th.text.length > 34 ? `${th.text.slice(0, 32)}…` : th.text;
+      const icon = th.kind === 'happy' ? '♥' : '!';
+      const tw = ctx.measureText(text).width;
+      const w = tw + 34;
+      const h = 24;
+      const x = clamp(s.x - w / 2, 6, this.w - w - 6);
+      const y = clamp(s.y - h - 10 + bob, 6, this.h - h - 6);
+      if (s.x < -40 || s.x > this.w + 40 || s.y < -20 || s.y > this.h + 60) continue;
+      ctx.globalAlpha = fade;
+      ctx.fillStyle = 'rgba(52,44,96,0.18)';
+      ctx.beginPath();
+      ctx.roundRect(x, y + 2, w, h, 12);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.96)';
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, 12);
+      ctx.fill();
+      // Tail pointing at the home.
+      const tx = clamp(s.x, x + 14, x + w - 14);
+      ctx.beginPath();
+      ctx.moveTo(tx - 5, y + h - 1);
+      ctx.lineTo(tx, y + h + 6);
+      ctx.lineTo(tx + 5, y + h - 1);
+      ctx.fill();
+      ctx.fillStyle = th.kind === 'happy' ? '#ff8fa3' : '#ffb35c';
+      ctx.beginPath();
+      ctx.arc(x + 13, y + h / 2, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText(icon, x + 13, y + h / 2 + 0.5);
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#4a4270';
+      ctx.fillText(text, x + 26, y + h / 2 + 0.5);
+      this.thoughtRects.push({ x, y, w, h: h + 6, thought: th });
+    }
+    ctx.restore();
+  }
+
+  thoughtAt(sx, sy) {
+    for (const r of this.thoughtRects) if (sx >= r.x && sx <= r.x + r.w && sy >= r.y && sy <= r.y + r.h) return r.thought;
+    return null;
+  }
+
+  // Rising "+3%" style labels over tiles: placement feedback.
+  floatText(x, y, text, color, delay = 0, z = 26) {
+    const p = gridToWorld(x + 0.5, y + 0.5, z);
+    this.particles.push({ kind: 'float', x: p.x, y: p.y, text, color, age: -delay, life: 1.6 });
+  }
+
+  confetti() {
+    if (this.reduceMotion) return;
+    const colors = [PALETTE.peach, PALETTE.mint, PALETTE.lavender, '#ffd98f', '#9cc4ea', '#ffffff'];
+    for (let i = 0; i < 90; i++) {
+      this.confettiBits.push({
+        x: this.w * (0.2 + Math.random() * 0.6),
+        y: -10 - Math.random() * this.h * 0.3,
+        vx: (Math.random() - 0.5) * 80,
+        vy: 60 + Math.random() * 80,
+        r: Math.random() * 6.28,
+        vr: (Math.random() - 0.5) * 10,
+        size: 4 + Math.random() * 4,
+        color: colors[i % colors.length],
+        life: 3 + Math.random(),
+        age: 0,
+      });
+    }
+  }
+
+  drawConfetti(ctx, dt) {
+    if (!this.confettiBits.length) return;
+    const keep = [];
+    for (const c of this.confettiBits) {
+      c.age += dt;
+      if (c.age >= c.life || c.y > this.h + 20) continue;
+      keep.push(c);
+      c.x += (c.vx + Math.sin(c.age * 3 + c.r) * 30) * dt;
+      c.y += c.vy * dt;
+      c.r += c.vr * dt;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, (c.life - c.age) * 2);
+      ctx.translate(c.x, c.y);
+      ctx.rotate(c.r);
+      ctx.scale(1, Math.cos(c.age * 6 + c.r));
+      ctx.fillStyle = c.color;
+      ctx.fillRect(-c.size / 2, -c.size / 4, c.size, c.size / 2);
+      ctx.restore();
+    }
+    this.confettiBits = keep;
   }
 
   // Overcast skies dim and cool the light. Cached so the colour cache survives between frames.
@@ -738,6 +859,8 @@ export class Renderer {
     tilePoly(ctx, x, y);
     ctx.fill();
     if (s?.type === 'park') this.drawParkGround(ctx, t, L);
+    else if (s?.type === 'playground') this.drawPlaygroundGround(ctx, t, L);
+    else if (s?.type === 'field') this.drawFieldGround(ctx, t, L);
     else if (!s) this.drawMeadow(ctx, t, L);
   }
 
@@ -922,6 +1045,61 @@ export class Renderer {
     }
   }
 
+  // A sandpit with a soft rubber path around it.
+  drawPlaygroundGround(ctx, t, L) {
+    const { x, y } = t;
+    ctx.fillStyle = lit(PALETTE.blush, 0.98, L);
+    tilePoly(ctx, x, y, 0.06);
+    ctx.fill();
+    ctx.fillStyle = lit(this.snowCover >= 0.5 ? SNOW : PALETTE.sand, 1, L);
+    tilePoly(ctx, x, y, 0.14);
+    ctx.fill();
+    ctx.fillStyle = lit(PALETTE.sand, 0.9, L);
+    for (let i = 0; i < 5; i++) {
+      const p = gridToWorld(x + 0.25 + hash2(x, y, 60 + i) * 0.5, y + 0.25 + hash2(x, y, 70 + i) * 0.5);
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, 1.6, 0.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // A mown pitch with striped grass and white lines.
+  drawFieldGround(ctx, t, L) {
+    const { x, y } = t;
+    const grass = this.grassColor('#8fd08c');
+    for (let i = 0; i < 4; i++) {
+      ctx.fillStyle = lit(grass, i % 2 ? 0.9 : 1.06, L);
+      poly(ctx, [
+        [x + 0.06 + i * 0.22, y + 0.06],
+        [x + 0.06 + (i + 1) * 0.22, y + 0.06],
+        [x + 0.06 + (i + 1) * 0.22, y + 0.94],
+        [x + 0.06 + i * 0.22, y + 0.94],
+      ]);
+      ctx.fill();
+    }
+    ctx.strokeStyle = litA('#ffffff', 1, L, 0.9);
+    ctx.lineWidth = 1;
+    tilePoly(ctx, x, y, 0.1);
+    ctx.stroke();
+    poly(ctx, [
+      [x + 0.5, y + 0.1],
+      [x + 0.5, y + 0.9],
+    ]);
+    ctx.stroke();
+    gridEllipse(ctx, x + 0.5, y + 0.5, 0, 0.13);
+    ctx.stroke();
+    for (const gx of [0.1, 0.9]) {
+      const d = gx < 0.5 ? 0.14 : -0.14;
+      poly(ctx, [
+        [x + gx, y + 0.32],
+        [x + gx + d, y + 0.32],
+        [x + gx + d, y + 0.68],
+        [x + gx, y + 0.68],
+      ]);
+      ctx.stroke();
+    }
+  }
+
   // Data views tint the ground so buildings stay readable on top.
   drawOverlay(ctx, t, overlay) {
     let color = null;
@@ -939,13 +1117,14 @@ export class Renderer {
       const c = t.coverage || {};
       const school = c.school || 0;
       const health = c.health || 0;
-      if (school < 0.02 && health < 0.02) color = 'rgba(70,60,110,0.22)';
+      const fun = c.fun || 0;
+      if (school < 0.02 && health < 0.02 && fun < 0.02) color = 'rgba(70,60,110,0.22)';
       else {
-        // Schools tint lavender, clinics tint mint; both together read as a soft blue-violet.
-        const r = Math.round(200 - 60 * health);
+        // Schools tint lavender, clinics mint, play areas peach; together they read as a soft blend.
+        const r = Math.round(200 - 60 * health + 55 * fun);
         const g = Math.round(180 + 40 * health - 20 * school);
-        const b = Math.round(200 + 40 * school);
-        color = `rgba(${r},${g},${b},${(0.25 + 0.45 * Math.max(school, health)).toFixed(3)})`;
+        const b = Math.round(200 + 40 * school - 50 * fun);
+        color = `rgba(${Math.min(255, r)},${g},${Math.max(0, b)},${(0.25 + 0.45 * Math.max(school, health, fun)).toFixed(3)})`;
       }
     }
     if (!color) return;
@@ -1095,6 +1274,12 @@ export class Renderer {
         return this.drawTree(ctx, x + 0.5, y + 0.5, s.shape || 0, L, hash2(x, y, 12) * 6.28, 1, x, y);
       case 'park':
         return this.drawParkProps(ctx, x, y, L);
+      case 'playground':
+        if (ghost) this.drawPlaygroundGround(ctx, { x, y }, L);
+        return this.drawPlayground(ctx, x, y, L);
+      case 'field':
+        if (ghost) this.drawFieldGround(ctx, { x, y }, L);
+        return this.drawField(ctx, x, y, L);
       case 'road':
         if (ghost) {
           ctx.fillStyle = lit(PALETTE.road, 1, L);
@@ -1689,6 +1874,97 @@ export class Renderer {
     ctx.restore();
   }
 
+  // Line between two grid points at given heights.
+  stick(ctx, a, b, color, width) {
+    const p = gridToWorld(a[0], a[1], a[2] || 0);
+    const q = gridToWorld(b[0], b[1], b[2] || 0);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(q.x, q.y);
+    ctx.stroke();
+  }
+
+  drawPlayground(ctx, x, y, L) {
+    ctx.lineCap = 'round';
+    // Swings: an A-frame at each end, a top bar and two seats swaying.
+    const pole = lit(PALETTE.lavender, 0.8, L);
+    for (const gy of [y + 0.22, y + 0.62]) {
+      this.stick(ctx, [x + 0.16, gy - 0.06, 0], [x + 0.2, gy, 15], pole, 1.6);
+      this.stick(ctx, [x + 0.24, gy + 0.06, 0], [x + 0.2, gy, 15], pole, 1.6);
+    }
+    this.stick(ctx, [x + 0.2, y + 0.22, 15], [x + 0.2, y + 0.62, 15], lit(PALETTE.lavender, 0.95, L), 2);
+    for (let i = 0; i < 2; i++) {
+      const gy = y + 0.34 + i * 0.16;
+      const sway = this.reduceMotion ? 0 : Math.sin(this.time * 2.2 + i * 1.7 + x) * 0.07;
+      const top = [x + 0.2, gy, 15];
+      const seat = [x + 0.2 + sway, gy, 4 + Math.abs(sway) * 10];
+      this.stick(ctx, top, seat, litA('#7c7396', 1, L, 0.8), 0.7);
+      this.stick(ctx, [seat[0] - 0.01, gy - 0.04, seat[2]], [seat[0] + 0.01, gy + 0.04, seat[2]], lit(PALETTE.peach, 0.85, L), 2.2);
+    }
+    // Slide: a ladder tower and a sloped chute.
+    this.drawBox(ctx, L, x + 0.58, y + 0.22, x + 0.74, y + 0.38, 0, 11, PALETTE.mint);
+    ctx.fillStyle = lit(PALETTE.peach, 0.92, L);
+    poly(ctx, [
+      [x + 0.6, y + 0.38, 11],
+      [x + 0.72, y + 0.38, 11],
+      [x + 0.72, y + 0.8, 1],
+      [x + 0.6, y + 0.8, 1],
+    ]);
+    ctx.fill();
+    ctx.fillStyle = lit(PALETTE.peach, 1.08, L);
+    poly(ctx, [
+      [x + 0.58, y + 0.22, 11],
+      [x + 0.74, y + 0.22, 11],
+      [x + 0.74, y + 0.38, 11],
+      [x + 0.58, y + 0.38, 11],
+    ]);
+    ctx.fill();
+    // Spring rider.
+    const r = gridToWorld(x + 0.8, y + 0.82, 0);
+    const bob = this.reduceMotion ? 0 : Math.sin(this.time * 3 + y) * 1.2;
+    ctx.fillStyle = lit('#ffd98f', 1, L);
+    ctx.beginPath();
+    ctx.ellipse(r.x + bob * 0.5, r.y - 5, 3.2, 2.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = lit('#b0a8c4', 1, L);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(r.x, r.y);
+    ctx.lineTo(r.x + bob * 0.5, r.y - 3);
+    ctx.stroke();
+  }
+
+  drawField(ctx, x, y, L) {
+    ctx.lineCap = 'round';
+    // Goals at each end.
+    for (const gx of [x + 0.1, x + 0.9]) {
+      const white = lit('#ffffff', 1, L);
+      this.stick(ctx, [gx, y + 0.4, 0], [gx, y + 0.4, 7], white, 1.3);
+      this.stick(ctx, [gx, y + 0.6, 0], [gx, y + 0.6, 7], white, 1.3);
+      this.stick(ctx, [gx, y + 0.4, 7], [gx, y + 0.6, 7], white, 1.3);
+      ctx.fillStyle = litA('#ffffff', 1, L, 0.25);
+      poly(ctx, [
+        [gx, y + 0.4, 7],
+        [gx, y + 0.6, 7],
+        [gx, y + 0.6, 0],
+        [gx, y + 0.4, 0],
+      ]);
+      ctx.fill();
+    }
+    // A little bleacher along the far edge.
+    this.drawBox(ctx, L, x + 0.3, y + 0.02, x + 0.7, y + 0.08, 0, 4, PALETTE.lavender);
+    this.drawBox(ctx, L, x + 0.3, y + 0.0, x + 0.7, y + 0.04, 4, 3, PALETTE.blush);
+    // The ball rolls about.
+    const t = this.reduceMotion ? 0 : this.time * 0.6 + hash2(x, y, 9) * 6;
+    const b = gridToWorld(x + 0.5 + Math.sin(t) * 0.25, y + 0.5 + Math.sin(t * 1.7) * 0.18, 1.5);
+    ctx.fillStyle = lit('#ffffff', 1, L);
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   drawParkProps(ctx, x, y, L) {
     this.drawTree(ctx, x + 0.2, y + 0.8, 2, L, hash2(x, y, 13) * 6, 0.62);
     // Fountain.
@@ -1936,6 +2212,23 @@ export class Renderer {
         ctx.lineTo(p.x - r * 0.6, y - r * 0.6);
         ctx.closePath();
         ctx.fill();
+      } else if (p.kind === 'float') {
+        const y = p.y - t * 20;
+        const a = t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3;
+        const z = this.camera.zoom;
+        ctx.save();
+        ctx.translate(p.x, y);
+        ctx.scale(1 / Math.sqrt(z), 1 / Math.sqrt(z));
+        ctx.font = '700 12px system-ui, -apple-system, "Segoe UI", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.globalAlpha = a;
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+        ctx.strokeText(p.text, 0, 0);
+        ctx.fillStyle = p.color;
+        ctx.fillText(p.text, 0, 0);
+        ctx.restore();
       } else if (p.kind === 'heart') {
         const y = p.y - t * 22;
         const s = 3.2 * (t < 0.15 ? t / 0.15 : 1);

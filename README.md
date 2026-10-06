@@ -5,8 +5,11 @@ A relaxing isometric tiny-city builder. You plan the city; residents decide for 
 **What's in it**
 
 - A 32×32 map: a starter town in the middle, with a river, woods and room to grow
-- Homes (house, tower), workplaces (shop, office), services (school, clinic), nature (tree, park, water) and roads
-- Residents move into the most desirable homes. Desirability comes from parks and trees, water views, road access, school and clinic coverage, jobs, and traffic
+- Homes (house, tower), workplaces (shop, office), services (school, clinic), recreation (playground, sports field), nature (tree, park, water) and roads
+- Residents move into the most desirable homes. Desirability comes from parks and trees, water views, road access, school and clinic coverage, playgrounds and sport, jobs, and traffic
+- **Milestones:** your town grows from Hamlet to Village (60 residents), Town (200), City (450) and Metropolis (900). Each title unlocks buildings for good, with a small celebration. Tap the stats bubble to see your progress
+- **Resident thoughts:** residents say what they wish for ("Our kids have no school nearby") in bubbles over their homes and in the City panel, with a **Show me** button that flies to the spot
+- Placing something shows how much nearby homes gained or lost (+6%), and a new home shows how appealing its lot is
 - A labor market matches workers to the nearest jobs they can reach by road. Commutes load the roads they use, and cars follow those routes at morning and evening rush hour
 - Inspect any tile to see its residents or jobs and a breakdown of its desirability
 - Map views for desirability, traffic and services; pause and 1×–3× speed
@@ -53,11 +56,12 @@ Events are plain data in `src/lifeEvents.js`; see the comment at the top of that
 | Inspect a tile | Inspect tool (I), then click | Inspect tool, then tap |
 | Pan | Right-drag or middle-drag (or drag with Inspect) | Two fingers (or one finger with Inspect) |
 | Zoom | Mouse wheel | Pinch |
-| Pick a tool | 1 House · 2 Tower · 3 Shop · 4 Office · 5 School · 6 Clinic · 7 Tree · 8 Park · 9 Road · 0 Water | Toolbar; buttons with a dot open more choices |
+| Pick a tool | 1 House · 2 Tower · 3 Shop · 4 Office · 5 School · 6 Clinic · 7 Tree · 8 Park · P Playground · F Sports field · 9 Road · 0 Water | Toolbar; buttons with a dot open more choices |
 | Pause / change speed | Space, or the speed button | ☰ City controls |
 | Switch map view | V, or the layers button | ☰ City controls |
 | Recenter | Recenter button (press again for the whole map) | ☰ City controls |
 | Random Town | Random Town button | ☰ City controls (tap twice to confirm) |
+| Milestones and resident wishes | Click the stats bubble, or a thought bubble | Tap the stats bubble, or a thought bubble |
 
 ## Architecture
 
@@ -74,9 +78,10 @@ Each system lives in its own module under `src/` and talks to the others only th
 | Weather | `weather.js` | Seasons from the day count; weather spells with seasonal odds; smoothed rain, snow, fog and snow cover for the renderer and agents. |
 | Audio | `audio.js` | Synthesised effects (ZzFX-based) and ambience through one master volume. |
 | History | `history.js` | Undo and redo of tile edits, plus the L-shaped road and brush stroke paths. |
-| Glue | `main.js`, `ui.js`, `generator.js` | Wires systems together, the toolbar and stats bubble, Random Town. |
+| Milestones | `milestones.js`, `advisor.js`, `cityUI.js` | Town titles and permanent unlocks (saved in `city.systems.milestones`); resident thoughts computed from the city every few seconds into `city.derived.thoughts`; the City panel. |
+| Glue | `main.js`, `ui.js`, `generator.js` | Wires systems together, the toolbar (with lock badges) and stats bubble, placement feedback, Random Town. |
 
-Derived data (labor market, commute routes, congestion, coverage) lives on tiles and in `city.derived`, is recomputed about once a second, and is never saved.
+Derived data (labor market, commute routes, congestion, coverage, resident thoughts) lives on tiles and in `city.derived`, is recomputed about once a second, and is never saved.
 
 ## Tests
 
@@ -84,12 +89,13 @@ Derived data (labor market, commute routes, congestion, coverage) lives on tiles
 npm test   # node --test, no dependencies
 ```
 
-The tests cover the labor market, road reachability, service coverage, save migration, town generation, pausing, and Life Story (aging, events, jobs and homes from the city, bulldozed homes, whole lives start to finish, saving).
+The tests cover the labor market, road reachability, service and play coverage, milestones and unlocks, resident thoughts, save migration, town generation, pausing, and Life Story (aging, events, jobs and homes from the city, bulldozed homes, whole lives start to finish, saving).
 
 ### Extending it
 
 - **New desirability factors** (services, jobs, pollution, …): `FACTORS` in `desirability.js` already lists them as disabled stubs. Implement `compute(city, tile)` and set `enabled: true`.
-- **New structures or zones**: add an entry to `STRUCTURES` in `config.js`, a draw routine in `renderer.js`, and a tool in `TOOLS`.
+- **New structures or zones**: add an entry to `STRUCTURES` in `config.js`, a draw routine in `renderer.js`, and a tool in `TOOL_GROUPS`. To gate it behind a milestone, list it in that milestone's `unlocks`.
+- **New resident thoughts**: add a rule to `computeThoughts` in `advisor.js` with a priority, text, hint and tile.
 - **Larger maps**: `CityState` takes any width/height and has `resize()`; the renderer culls to the visible tiles.
 - **New saved data**: store it under `city.systems.<name>`, bump `SAVE_VERSION` and add a `MIGRATIONS[n]` step.
 

@@ -11,6 +11,7 @@
 - [x] Life Story, first version (see section 1)
 - [x] Phone layout: Life and a controls sheet up top instead of a column of side buttons; compact landscape layout
 - [x] Phase 1 polish: sound effects and ambience, drag to build, undo and redo, buildings that grow and vary, seasons and weather
+- [x] Phase 2 goals: milestones (Hamlet → Metropolis) with unlocks and a celebration, playground and sports field, resident thoughts with Show me, +/− desirability feedback when placing
 
 ## 1. Life Story: live one resident's life
 
@@ -55,15 +56,16 @@ You create a main character who moves into your city. Every so often a text even
 ### 1f. Polish
 - [x] Badge on a Life button when an event is waiting
 - [ ] Settings: event frequency, pause the city while an event is open
-- [ ] More events: siblings, pets with names, neighbours from real nearby homes, city milestones ("the town reached 500 people")
+- [ ] More events: siblings, pets with names, neighbours from real nearby homes, city milestones (the `milestone` event is ready to hook into)
 - [x] Choose with the keyboard; respects reduced motion
 
 ## 2. Next up (from the GitHub research plan)
 
-- [ ] Milestones and unlocks: Hamlet → Village → Town → City, unlocking buildings with a small celebration
-- [ ] Resident thoughts and advisor hints that point to real places on the map
-- [ ] Floating "+8" desirability feedback when placing parks and services
-- [ ] **Decision:** a gentle economy (coins, no debt)
+- [x] Milestones and unlocks: Hamlet → Village → Town → City → Metropolis, unlocking buildings with a small celebration
+- [x] Resident thoughts and advisor hints that point to real places on the map
+- [x] Floating "+8" desirability feedback when placing parks and services
+- [x] **Decided:** no coins for now; milestones are the goal
+- [ ] More milestone unlocks as new buildings arrive (community centre, bus stop, police and fire)
 - [ ] Life Story activities you can do any time (study, gym, date, visit, shop)
 - [ ] More Life Story events (consider inkjs for writing them), achievements and life ribbons
 - [ ] Share a city as a link (lz-string)
@@ -73,12 +75,13 @@ You create a main character who moves into your city. Every so often a text even
 From [isometric-city](https://github.com/uxcaleb/isometric-city) (originally amilich/isometric-city) (MIT). Ideas to adapt, not code to copy.
 
 - [ ] Minimap for the bigger map; tap to jump there
-- [ ] Advisors: short hints such as "Downtown is jammed; add a parallel street"
+- [x] Advisors: short hints such as "The roads are jammed at rush hour" (resident thoughts)
 - [ ] Roads over water drawn as bridges
 - [ ] Buses and bus stops; trains later
 - [ ] More building variety: small and medium houses, apartments, a mall
 - [ ] Buildings bigger than one tile (2×2), which needs multi-tile footprints in the state
-- [ ] Recreation: playground, sports field, community centre; turns on the entertainment factor
+- [x] Recreation: playground and sports field; the entertainment factor is on
+- [ ] Community centre
 - [ ] Police and fire stations with gentle incidents (a small fire, a lost cat), turning on the safety factor
 - [ ] City name generator and several saved cities
 - [ ] Statistics panel with history sparklines

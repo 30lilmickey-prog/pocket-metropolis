@@ -1,6 +1,6 @@
 // Wiring: creates each system, connects input to state, and runs the frame loop.
 
-import { DEFAULT_MAP_SIZE, STRUCTURES } from './config.js';
+import { DEFAULT_MAP_SIZE, STRUCTURES, MILESTONES } from './config.js';
 import { CityState } from './state.js';
 import { Simulation } from './simulation.js';
 import { Renderer } from './renderer.js';
@@ -10,14 +10,31 @@ import { AutoSaver, loadCity } from './persistence.js';
 import { generateTown } from './generator.js';
 import { Interface } from './ui.js';
 import { LifeInterface } from './lifeUI.js';
+import { CityPanel } from './cityUI.js';
+import { unlockTier } from './milestones.js';
+import { computeCoverage } from './coverage.js';
+import { recomputeDesirability } from './desirability.js';
 import { worldToGrid, mapBounds, tileRectBounds, gridToWorld } from './iso.js';
 import { History, lPath, tileLine } from './history.js';
 import { Audio } from './audio.js';
 import { daylightAt } from './time.js';
 
 const MAX_STROKE = 160;
-const TOOL_SOUNDS = { house: 'pop', shop: 'pop', tower: 'popBig', office: 'popBig', school: 'popBig', clinic: 'popBig', tree: 'plant', park: 'plant', road: 'road' };
-const STROKE_LABELS = { road: 'road', water: 'water', bulldoze: 'bulldozing', tree: 'trees', park: 'parks' };
+const TOOL_SOUNDS = {
+  house: 'pop',
+  shop: 'pop',
+  tower: 'popBig',
+  office: 'popBig',
+  school: 'popBig',
+  clinic: 'popBig',
+  playground: 'pop',
+  field: 'plant',
+  tree: 'plant',
+  park: 'plant',
+  road: 'road',
+};
+const STROKE_LABELS = { road: 'road', water: 'water', bulldoze: 'bulldozing', tree: 'trees', park: 'parks', field: 'sports fields' };
+const FEEDBACK_RADIUS = 7;
 
 function start(hotData = {}) {
   const canvas = document.getElementById('city');
@@ -66,6 +83,8 @@ function start(hotData = {}) {
         return true;
       });
       sim.refresh();
+      sim.milestones.settleForCapacity();
+      ui.refreshLocks();
       selected = null;
       fitView(false);
       ui.toast('A fresh town, with room to grow');
@@ -81,6 +100,10 @@ function start(hotData = {}) {
     onCloseInspect: () => {
       selected = null;
     },
+    locks: {
+      isUnlocked: (id) => sim.milestones.isUnlocked(id),
+      unlockLabel: (id) => MILESTONES[unlockTier(id)]?.label || '',
+    },
     sound: {
       muted: () => audio.muted,
       toggle: () => {
@@ -93,6 +116,104 @@ function start(hotData = {}) {
       },
     },
   });
+
+  // ---- Placement feedback ------------------------------------------------------
+  // Edits run through here so nearby homes can show how much more (or less) appealing they became.
+  const isHome = (t) => t?.structure && STRUCTURES[t.structure.type].capacity > 0;
+  function withFeedback(coords, edit) {
+    if (!coords.length) return edit();
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (const c of coords) {
+      x0 = Math.min(x0, c.x);
+      y0 = Math.min(y0, c.y);
+      x1 = Math.max(x1, c.x);
+      y1 = Math.max(y1, c.y);
+    }
+    const before = new Map();
+    for (let y = y0 - FEEDBACK_RADIUS; y <= y1 + FEEDBACK_RADIUS; y++) {
+      for (let x = x0 - FEEDBACK_RADIUS; x <= x1 + FEEDBACK_RADIUS; x++) {
+        const t = city.getTile(x, y);
+        if (isHome(t)) before.set(t, { id: t.structure.id, d: t.desirability });
+      }
+    }
+    const changed = edit();
+    if (!changed) return changed;
+    computeCoverage(city);
+    recomputeDesirability(city);
+    city.dirty = true; // let the simulation refresh jobs and traffic on its next tick
+    const ups = [];
+    const downs = [];
+    for (const [t, b] of before) {
+      if (!isHome(t) || t.structure.id !== b.id) continue;
+      const delta = Math.round((t.desirability - b.d) * 100);
+      if (delta >= 1) ups.push({ t, delta });
+      else if (delta <= -1) downs.push({ t, delta });
+    }
+    ups.sort((a, b) => b.delta - a.delta);
+    downs.sort((a, b) => a.delta - b.delta);
+    [...ups.slice(0, 6), ...downs.slice(0, 4)].forEach(({ t, delta }, i) =>
+      renderer.floatText(t.x, t.y, `${delta > 0 ? '+' : '−'}${Math.abs(delta)}%`, delta > 0 ? '#3f9a68' : '#d0605a', 0.25 + i * 0.06)
+    );
+    // A brand-new home shows how appealing its lot is.
+    const placed = coords.map((c) => city.getTile(c.x, c.y)).filter((t) => isHome(t) && !before.has(t));
+    placed.slice(0, 4).forEach((t, i) => renderer.floatText(t.x, t.y, `${Math.round(t.desirability * 100)}% appeal`, '#7a5fa8', 0.35 + i * 0.08, 40));
+    return changed;
+  }
+  const build = (label, coords, edit) => history.record(label, coords, () => withFeedback(coords, edit));
+
+  // ---- Milestones -------------------------------------------------------------
+  const cityPanel = new CityPanel({
+    milestones: () => sim.milestones,
+    onOpen: () => {
+      lifeUI.toggle(false);
+      ui.toggleMore(false);
+      ui.closeTray();
+    },
+    onShow: (th) => {
+      focusTile(th.x, th.y);
+      if (window.innerWidth < 560) cityPanel.toggle(false);
+    },
+  });
+  function focusTile(x, y) {
+    const w = gridToWorld(x + 0.5, y + 0.5);
+    camera.tx = w.x;
+    camera.ty = w.y - 20;
+    camera.tzoom = Math.max(camera.tzoom, 1.2);
+    camera.clampTarget();
+    renderer.ring(x, y, '#ffffff');
+    selected = { x, y };
+    ui.inspect(city, selected);
+  }
+  ui.onOpenMore = () => {
+    cityPanel.toggle(false);
+    lifeUI.toggle(false);
+  };
+  let milestoneTimer = null;
+  function celebrate(m) {
+    audio.play('fanfare');
+    renderer.confetti();
+    ui.refreshLocks();
+    let card = document.getElementById('milestone-card');
+    if (!card) {
+      card = document.createElement('section');
+      card.id = 'milestone-card';
+      card.className = 'milestone-card glass';
+      card.setAttribute('role', 'status');
+      document.getElementById('app').appendChild(card);
+      card.addEventListener('click', () => (card.hidden = true));
+    }
+    const names = m.unlocks.map((u) => STRUCTURES[u]?.label || u);
+    card.innerHTML =
+      `<span class="insp-kicker">New milestone</span><h2>You're a ${m.label}!</h2>` +
+      `<p>${m.pop.toLocaleString()} people now call your town home.</p>` +
+      (names.length ? `<p class="tier-unlocks">Unlocked ${names.map((n) => `<span class="unlock-chip">${n}</span>`).join('')}</p>` : '');
+    card.hidden = false;
+    clearTimeout(milestoneTimer);
+    milestoneTimer = setTimeout(() => (card.hidden = true), 5200);
+  }
 
   // ---- Undo and redo --------------------------------------------------------
   const undoBtn = document.getElementById('btn-undo');
@@ -210,6 +331,10 @@ function start(hotData = {}) {
       if (s?.char) s.history = [...(s.history || []), { name: `${s.char.first} ${s.char.last}`, age: s.char.age }];
       city.systems.life = s ? { char: null, history: s.history } : null;
     },
+    onOpen: () => {
+      cityPanel.toggle(false);
+      ui.toggleMore(false);
+    },
     onFocus: () => {
       const home = sim.life.char?.home;
       if (!home) return;
@@ -229,6 +354,7 @@ function start(hotData = {}) {
     else if (ev.type === 'reset') audio.play('fanfare');
     else if (ev.type === 'restored') audio.play('undo');
     else if (ev.type === 'lifeEvent') audio.play('chime');
+    if (ev.type === 'milestone') celebrate(ev.milestone);
 
     if (ev.type === 'lifeEvent') lifeUI.eventArrived();
     else if (ev.type === 'lifeChanged') lifeUI.render();
@@ -243,6 +369,12 @@ function start(hotData = {}) {
 
   const input = new InputController(canvas, camera, {
     onTap: (sx, sy) => {
+      const th = renderer.thoughtAt(sx, sy);
+      if (th) {
+        audio.play('click');
+        if (!cityPanel.open) cityPanel.toggle(true);
+        return focusTile(th.x, th.y);
+      }
       const t = tileAt(sx, sy);
       if (tool === 'inspect') {
         selected = t && !(selected && selected.x === t.x && selected.y === t.y) ? t : null;
@@ -251,17 +383,18 @@ function start(hotData = {}) {
         return;
       }
       if (!t) return;
-      if (!history.record(labelFor(tool), [t], () => city.apply(tool, t.x, t.y))) nope(t.x, t.y);
+      if (!sim.milestones.isUnlocked(tool)) return ui.setTool(tool);
+      if (!build(labelFor(tool), [t], () => city.apply(tool, t.x, t.y))) nope(t.x, t.y);
     },
     onBulldoze: (sx, sy) => {
       const t = tileAt(sx, sy);
-      if (t && !history.record('bulldozing', [t], () => city.apply('bulldoze', t.x, t.y))) nope(t.x, t.y);
+      if (t && !build('bulldozing', [t], () => city.apply('bulldoze', t.x, t.y))) nope(t.x, t.y);
     },
     onHover: (sx, sy) => {
       hover = sx == null ? null : tileAt(sx, sy);
     },
     // Drag to build: roads follow an L from where the drag started; other tools paint as a brush.
-    canPaint: () => tool !== 'inspect',
+    canPaint: () => tool !== 'inspect' && sim.milestones.isUnlocked(tool),
     onPaintStart: (sx, sy) => {
       const t = tileAt(sx, sy);
       stroke = t ? { tool, start: t, last: t, tiles: [t] } : null;
@@ -296,13 +429,15 @@ function start(hotData = {}) {
       if (!commit || !s) return;
       const coords = s.tiles.filter((c) => city.canApply(s.tool, c.x, c.y));
       if (!coords.length) return nope(s.start.x, s.start.y);
-      history.record(labelFor(s.tool, coords.length), coords, () => city.applyMany(s.tool, coords));
+      build(labelFor(s.tool, coords.length), coords, () => city.applyMany(s.tool, coords));
     },
   });
 
   if (fresh) {
     generateTown(city);
     sim.refresh();
+    sim.milestones.settleForCapacity();
+    ui.refreshLocks();
     fitView(true);
     const touch = window.matchMedia?.('(pointer: coarse)').matches;
     ui.toast(
@@ -333,7 +468,7 @@ function start(hotData = {}) {
   let last = performance.now();
   let uiTimer = 0;
   function frame(now) {
-    const dt = Math.min(0.1, (now - last) / 1000);
+    const dt = Math.max(0, Math.min(0.1, (now - last) / 1000)); // the first frame can be stamped before `last`
     last = now;
     sim.update(dt);
     input.edgeScroll(dt);
@@ -346,6 +481,7 @@ function start(hotData = {}) {
       ui.update(city);
       ui.inspect(city, selected);
       lifeUI.tick();
+      cityPanel.update(city);
       uiTimer = 0.2;
     }
     requestAnimationFrame(frame);
@@ -353,7 +489,7 @@ function start(hotData = {}) {
   requestAnimationFrame(frame);
 
   // Handy for poking at the simulation from the console.
-  window.pocketMetropolis = { city, sim, camera, renderer, history, audio };
+  window.pocketMetropolis = { city, sim, camera, renderer, history, audio, ui, cityPanel };
 }
 
 const hot = window.claude?.hot;

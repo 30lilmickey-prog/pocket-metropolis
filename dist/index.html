@@ -120,7 +120,52 @@ body {
   row-gap: 6px;
   padding: 10px 16px 10px 12px;
   border-radius: 22px;
-  pointer-events: none;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.stats:active {
+  transform: scale(0.98);
+}
+.stats[aria-expanded='true'] {
+  outline: 2px solid var(--tint-tower);
+}
+.stats:focus-visible {
+  outline: 2.5px solid var(--focus);
+  outline-offset: 2px;
+}
+.tier {
+  grid-column: 1 / -1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 2px;
+}
+.tier-name {
+  font: 600 12.5px/1 var(--font-display);
+  color: var(--ink);
+  letter-spacing: 0.02em;
+}
+.tier-bar {
+  flex: 1;
+  height: 4px;
+  min-width: 40px;
+  border-radius: 4px;
+  background: var(--meter-track);
+  overflow: hidden;
+}
+.tier-bar span,
+.tier-progress span {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: var(--tint-tower);
+  transition: width 0.6s ease;
+}
+.tier .badge {
+  position: static;
+  flex: none;
 }
 .stat {
   display: flex;
@@ -312,6 +357,8 @@ body {
 .tint-office { --tint: #c9dcf2; }
 .tint-school { --tint: #ffc9b9; }
 .tint-clinic { --tint: #c4ead9; }
+.tint-playground { --tint: #ffe0b0; }
+.tint-field { --tint: #bfe3b4; }
 .tint-tree { --tint: var(--tint-tree); }
 .tint-park { --tint: var(--tint-park); }
 .tint-road { --tint: var(--tint-road); }
@@ -343,6 +390,7 @@ body {
   z-index: 3;
 }
 .tray-item {
+  position: relative;
   appearance: none;
   border: 0;
   background: transparent;
@@ -660,6 +708,213 @@ button:focus-visible {
 .toast.show {
   opacity: 1;
   transform: translate(-50%, 0);
+}
+
+/* City panel: milestones and resident thoughts */
+.city-panel {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 140px);
+  left: calc(env(safe-area-inset-left, 0px) + 16px);
+  width: 340px;
+  max-height: calc(100% - 260px);
+  overflow-y: auto;
+  padding: 16px;
+  border-radius: 24px;
+  z-index: 5;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  animation: card-in 0.3s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.city-panel header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+.city-panel h2 {
+  margin: 2px 0 0;
+  font: 600 22px/1.1 var(--font-display);
+}
+.city-panel h3 {
+  margin: 4px 0 0;
+  font: 600 15px/1.2 var(--font-display);
+}
+.city-panel p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+.tier-next {
+  display: grid;
+  gap: 6px;
+}
+.tier-progress {
+  height: 8px;
+  border-radius: 8px;
+  background: var(--meter-track);
+  overflow: hidden;
+}
+.tier-unlocks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-soft);
+}
+.unlock-chip {
+  padding: 3px 9px;
+  border-radius: 10px;
+  background: var(--tint-tower);
+  color: #4b3f5e;
+  font-size: 12px;
+}
+.tier-done {
+  color: var(--ink-soft);
+}
+.ladder {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+}
+.ladder li {
+  flex: 1;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--ink-soft);
+  text-align: center;
+}
+.ladder small {
+  font-size: 10px;
+  font-weight: 700;
+}
+.ladder .dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--meter-track);
+  background: transparent;
+}
+.ladder .done .dot {
+  background: var(--tint-tower);
+  border-color: var(--tint-tower);
+}
+.ladder .now {
+  color: var(--ink);
+}
+.ladder .now .dot {
+  box-shadow: 0 0 0 3px rgba(205, 180, 219, 0.45);
+}
+.thoughts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.thoughts li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: var(--meter-track);
+}
+.th-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #ffb35c;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 13px;
+}
+.thoughts .happy .th-icon {
+  background: #ff8fa3;
+}
+.th-text {
+  display: grid;
+  gap: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.th-text small {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+}
+.ghost-btn.small {
+  padding: 8px 10px;
+  font-size: 12px;
+  min-height: 36px;
+  white-space: nowrap;
+}
+
+/* Locked tools wait for a milestone */
+.tool.locked .tool-icon,
+.tray-item.locked .tool-icon {
+  opacity: 0.45;
+  filter: grayscale(0.6);
+}
+.lock {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--panel-edge);
+  color: var(--ink-soft);
+  box-shadow: 0 1px 3px rgba(84, 70, 130, 0.2);
+}
+.lock svg {
+  width: 10px;
+  height: 10px;
+}
+.tray-item.locked kbd {
+  visibility: hidden;
+}
+
+/* Milestone celebration */
+.milestone-card {
+  position: absolute;
+  left: 50%;
+  top: 28%;
+  transform: translate(-50%, -50%);
+  z-index: 9;
+  width: min(340px, calc(100vw - 32px));
+  padding: 20px;
+  border-radius: 26px;
+  text-align: center;
+  display: grid;
+  gap: 8px;
+  animation: card-in 0.45s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.milestone-card .insp-kicker {
+  color: #b48ad6;
+}
+.milestone-card h2 {
+  margin: 0;
+  font: 600 28px/1.1 var(--font-display);
+}
+.milestone-card p {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.milestone-card .tier-unlocks {
+  justify-content: center;
 }
 
 /* Life Story */
@@ -1190,6 +1445,14 @@ button:focus-visible {
   .tray-item {
     width: 58px;
   }
+  .city-panel {
+    top: calc(env(safe-area-inset-top, 0px) + 128px);
+    left: 12px;
+    right: 12px;
+    width: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 88px);
+    max-height: none;
+  }
   .life-panel {
     top: auto;
     left: 12px;
@@ -1321,6 +1584,17 @@ button:focus-visible {
 }
 
 /* Landscape phones: slim toolbar, panels fit between the top bar and the toolbar */
+/* Landscape phones: the City panel sits on the right, between the top buttons and the toolbar */
+@media (max-height: 520px) and (min-width: 561px) {
+  .city-panel {
+    top: calc(env(safe-area-inset-top, 0px) + 68px);
+    left: auto;
+    right: calc(env(safe-area-inset-right, 0px) + 12px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 70px);
+    width: min(340px, 48vw);
+    max-height: none;
+  }
+}
 @media (max-height: 520px) {
   .toolbar {
     bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
@@ -1454,7 +1728,7 @@ button:focus-visible {
 <main id="app">
       <canvas id="city" aria-label="Your city. Tap a tile to build, drag to pan, pinch or scroll to zoom."></canvas>
 
-      <section class="stats glass" aria-label="City stats" aria-live="polite">
+      <section class="stats glass" id="stats" role="button" tabindex="0" aria-expanded="false" aria-controls="city-panel" aria-label="City stats. Open city panel">
         <div class="stat">
           <span class="stat-badge badge-pop">
             <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19.5c0-3.2 2.5-5.5 5.5-5.5s5.5 2.3 5.5 5.5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14.2c2.6-.3 4.6 1.6 4.6 4.3"/></svg>
@@ -1475,6 +1749,7 @@ button:focus-visible {
           </span>
         </div>
         <div class="clock" id="stat-clock">Day 1</div>
+        <div class="tier"><span class="tier-name" id="tier-name">Hamlet</span><span class="tier-bar" aria-hidden="true"><span id="tier-meter"></span></span><span class="badge" id="tier-badge" hidden></span></div>
       </section>
 
       <div class="legend glass" id="legend" hidden></div>
@@ -1501,6 +1776,7 @@ button:focus-visible {
 
       <section class="more-sheet glass" id="more-sheet" role="dialog" aria-label="City controls" hidden></section>
       <aside class="inspector glass" id="inspector" aria-live="polite" hidden></aside>
+      <aside class="city-panel glass" id="city-panel" aria-label="Your town" hidden></aside>
       <aside class="life-panel glass" id="life-panel" aria-label="Life Story" hidden></aside>
       <section class="life-card glass" id="life-card" role="dialog" aria-live="polite" aria-label="Life event" hidden></section>
       <div class="tray glass" id="tray" role="menu" hidden></div>
@@ -1576,6 +1852,8 @@ const STRUCTURES = {
   office: { label: 'Office', capacity: 0, jobs: 16, greenery: 0, height: 58 },
   school: { label: 'School', capacity: 0, jobs: 4, greenery: 0, height: 30, service: 'school', radius: 7 },
   clinic: { label: 'Clinic', capacity: 0, jobs: 4, greenery: 0, height: 28, service: 'health', radius: 7 },
+  playground: { label: 'Playground', capacity: 0, jobs: 0, greenery: 0.5, walkable: true, height: 14, service: 'fun', radius: 4 },
+  field: { label: 'Sports field', capacity: 0, jobs: 2, greenery: 1, walkable: true, height: 12, service: 'fun', radius: 6 },
   tree: { label: 'Tree', capacity: 0, jobs: 0, greenery: 1, walkable: true, height: 26 },
   park: { label: 'Park', capacity: 0, jobs: 0, greenery: 3, walkable: true, height: 0 },
   road: { label: 'Road', capacity: 0, jobs: 0, greenery: 0, walkable: true, road: true, height: 0 },
@@ -1588,6 +1866,18 @@ const ROAD_CAPACITY = 24;
 const SERVICES = [
   { id: 'school', label: 'Schools' },
   { id: 'health', label: 'Clinics' },
+];
+// Every kind of coverage a building can provide (services above, plus recreation).
+const COVERAGE_IDS = ['school', 'health', 'fun'];
+
+// Milestones: the town's title grows with its population, and each step unlocks new buildings.
+// Unlocks are permanent. Tools not listed here are always available.
+const MILESTONES = [
+  { id: 'hamlet', label: 'Hamlet', pop: 0, unlocks: [] },
+  { id: 'village', label: 'Village', pop: 60, unlocks: ['school', 'playground'] },
+  { id: 'town', label: 'Town', pop: 200, unlocks: ['tower', 'office', 'clinic'] },
+  { id: 'city', label: 'City', pop: 450, unlocks: ['field'] },
+  { id: 'metropolis', label: 'Metropolis', pop: 900, unlocks: [] },
 ];
 
 // Toolbar: each group is one button; groups with several tools open a small tray.
@@ -1623,6 +1913,8 @@ const TOOL_GROUPS = [
     tools: [
       { id: 'tree', label: 'Tree', key: '7' },
       { id: 'park', label: 'Park', key: '8' },
+      { id: 'playground', label: 'Playground', key: 'p' },
+      { id: 'field', label: 'Sports field', key: 'f' },
       { id: 'water', label: 'Water', key: '0' },
     ],
   },
@@ -1642,7 +1934,7 @@ const CAR_COLORS = ['#ff9f8f', '#8fd0bd', '#b49ad1', '#ffd98f', '#9cc4ea', '#f7f
 const SHIRT_COLORS = ['#ff8f7e', '#7fc4ad', '#a98bd0', '#ffcf6e', '#86b5e6', '#f49ab8', '#ffffff'];
 const SKIN_TONES = ['#f6d5bd', '#e8b896', '#c98e6a', '#8d5a3f', '#f1c7a5'];
 
-return { TILE_W, TILE_H, DEFAULT_MAP_SIZE, SAVE_VERSION, DAY_LENGTH_SECONDS, SIM_STEP, PALETTE, BUILDING_VARIANTS, VARIANT_KEYS, STRUCTURES, WORKER_SHARE, ROAD_CAPACITY, SERVICES, TOOL_GROUPS, TOOLS, VIEWS, CAR_COLORS, SHIRT_COLORS, SKIN_TONES };
+return { TILE_W, TILE_H, DEFAULT_MAP_SIZE, SAVE_VERSION, DAY_LENGTH_SECONDS, SIM_STEP, PALETTE, BUILDING_VARIANTS, VARIANT_KEYS, STRUCTURES, WORKER_SHARE, ROAD_CAPACITY, SERVICES, COVERAGE_IDS, MILESTONES, TOOL_GROUPS, TOOLS, VIEWS, CAR_COLORS, SHIRT_COLORS, SKIN_TONES };
 })();
 
 // ---- state.js ----
@@ -2053,7 +2345,12 @@ const FACTORS = [
   { id: 'overcrowding', label: 'Overcrowding', enabled: false, compute: () => 0 },
   { id: 'walkability', label: 'Walkability', enabled: false, compute: () => 0 },
   { id: 'utilities', label: 'Utilities', enabled: false, compute: () => 0 },
-  { id: 'entertainment', label: 'Entertainment', enabled: false, compute: () => 0 },
+  {
+    id: 'entertainment',
+    label: 'Playgrounds & sport',
+    enabled: true,
+    compute: (city, tile) => 0.1 * (tile.coverage?.fun || 0),
+  },
 ];
 
 function recomputeDesirability(city) {
@@ -2189,13 +2486,13 @@ return { workersIn, computeLaborMarket };
 
 // ---- coverage.js ----
 const __mod_coverage = (() => {
-// Service coverage: each school or clinic covers the tiles around it, strongest nearby.
+// Coverage: each school, clinic, playground or sports field covers the tiles around it, strongest nearby.
 
-const { STRUCTURES, SERVICES } = __mod_config;
+const { STRUCTURES, COVERAGE_IDS } = __mod_config;
 function computeCoverage(city) {
   for (const t of city.tiles) {
     const c = {};
-    for (const s of SERVICES) c[s.id] = 0;
+    for (const id of COVERAGE_IDS) c[id] = 0;
     t.coverage = c;
   }
   for (const src of city.tiles) {
@@ -2480,6 +2777,8 @@ class AgentSystem {
     const dest = pickWeighted(reachable, (n) => {
       const type = city.getTile(n.x, n.y).structure?.type;
       if (type === 'park') return 8;
+      if (type === 'playground') return 7;
+      if (type === 'field') return 6;
       if (type === 'tree') return 2;
       if (type === 'road') return 0.15;
       return 0.4;
@@ -2520,7 +2819,7 @@ class AgentSystem {
       if (w.state === 'out') {
         const type = city.getTile(a.x, a.y)?.structure?.type;
         w.state = 'linger';
-        w.wait = type === 'park' ? 5 + Math.random() * 8 : 2 + Math.random() * 3;
+        w.wait = type === 'park' || type === 'playground' || type === 'field' ? 5 + Math.random() * 8 : 2 + Math.random() * 3;
       } else {
         w.leaving = true; // home again
       }
@@ -3893,6 +4192,178 @@ class WeatherSystem {
 return { DAYS_PER_SEASON, SEASONS, WEATHER_LABELS, seasonFor, seasonProgress, WeatherSystem };
 })();
 
+// ---- milestones.js ----
+const __mod_milestones = (() => {
+// Milestones: the town's title follows its population, and reaching a new title unlocks buildings.
+// Progress is saved in city.systems.milestones; unlocks never go away, even if people move out.
+
+const { MILESTONES } = __mod_config;
+function tierFor(population) {
+  let tier = 0;
+  MILESTONES.forEach((m, i) => {
+    if (population >= m.pop) tier = i;
+  });
+  return tier;
+}
+
+// The milestone that unlocks a tool, or -1 if the tool is always available.
+function unlockTier(tool) {
+  return MILESTONES.findIndex((m) => m.unlocks.includes(tool));
+}
+
+class Milestones {
+  constructor(city) {
+    this.city = city;
+  }
+
+  get state() {
+    const s = this.city.systems;
+    // A city loaded without milestones starts at whatever title it has already earned, quietly.
+    if (!s.milestones) s.milestones = { reached: tierFor(this.city.stats.population || 0) };
+    return s.milestones;
+  }
+
+  get reached() {
+    return this.state.reached;
+  }
+
+  isUnlocked(tool) {
+    return unlockTier(tool) <= this.reached;
+  }
+
+  // Quietly grant a title without a celebration, e.g. for a ready-made town. Never lowers it.
+  settle(tier) {
+    this.state.reached = Math.max(this.state.reached, Math.min(tier, MILESTONES.length - 1));
+  }
+
+  // A generated town is built for about this many people, so it starts with that title.
+  settleForCapacity() {
+    this.settle(tierFor(Math.round(this.city.stats.capacity * 0.75)));
+  }
+
+  // Call after stats update. Returns the newly reached milestone, if any.
+  update() {
+    const tier = tierFor(this.city.stats.population);
+    if (tier <= this.state.reached) return null;
+    this.state.reached = tier;
+    const m = MILESTONES[tier];
+    this.city.emit('milestone', { tier, milestone: m });
+    return m;
+  }
+
+  // Where the town stands: its title and progress towards the next one.
+  progress() {
+    const tier = this.reached;
+    const cur = MILESTONES[tier];
+    const next = MILESTONES[tier + 1] || null;
+    const pop = this.city.stats.population;
+    return {
+      tier,
+      current: cur,
+      next,
+      fraction: next ? Math.max(0, Math.min(1, (pop - cur.pop) / (next.pop - cur.pop))) : 1,
+    };
+  }
+}
+
+return { tierFor, unlockTier, Milestones };
+})();
+
+// ---- advisor.js ----
+const __mod_advisor = (() => {
+// Advisor: turns the city's state into a few short resident "thoughts". Each one is a wish (something
+// residents would like) or a happy note, with a tile to point the camera at. Read-only: nothing is changed.
+
+const { STRUCTURES } = __mod_config;
+const MAX_THOUGHTS = 5;
+
+function isHome(t) {
+  return !!t.structure && STRUCTURES[t.structure.type].capacity > 0;
+}
+
+// The occupied home that best stands for a problem: the most residents, ties broken by position.
+function worstOf(tiles) {
+  let best = null;
+  for (const t of tiles) if (!best || t.structure.residents > best.structure.residents) best = t;
+  return best;
+}
+
+function hasWaterNear(city, tile, r = 2) {
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) if (city.getTile(tile.x + dx, tile.y + dy)?.terrain === 'water') return true;
+  }
+  return false;
+}
+
+function computeThoughts(city, milestones) {
+  const out = [];
+  const add = (id, kind, priority, text, hint, tile) =>
+    out.push({ id, kind, priority, text, hint, x: tile ? tile.x : null, y: tile ? tile.y : null });
+  const unlocked = (tool) => !milestones || milestones.isUnlocked(tool);
+
+  const homes = city.tiles.filter(isHome);
+  const lived = homes.filter((h) => h.structure.residents > 0);
+
+  const cutOff = homes.filter((h) => !city.accessRoad(h.x, h.y));
+  if (cutOff.length) {
+    add('no-road', 'wish', 5, cutOff.length === 1 ? 'A home has no road. Nobody can get to work.' : `${cutOff.length} homes have no road. Nobody there can get to work.`, 'Connect them with a road', cutOff[0]);
+  }
+
+  const labor = city.derived.labor;
+  const workers = labor ? labor.employed + labor.unemployed : 0;
+  if (workers >= 6 && labor.unemployed / workers > 0.15) {
+    const jobless = lived.filter((h) => h.employment < 0.5);
+    add('jobs', 'wish', 4, `We need jobs! ${labor.unemployed} people are looking for work.`, 'Build shops or offices near homes', worstOf(jobless) || worstOf(lived));
+  }
+
+  if (unlocked('school')) {
+    const far = lived.filter((h) => (h.coverage.school || 0) < 0.1);
+    if (far.length) add('school', 'wish', 3, 'Our kids have no school nearby.', 'Build a school', worstOf(far));
+  }
+
+  let jam = null;
+  for (const t of city.tiles) if (t.roadMask && t.congestion >= 0.85 && (!jam || t.congestion > jam.congestion)) jam = t;
+  if (jam) add('traffic', 'wish', 3, 'The roads are jammed at rush hour.', 'Add another route or put jobs closer to homes', jam);
+
+  if (unlocked('clinic')) {
+    const far = lived.filter((h) => (h.coverage.health || 0) < 0.1);
+    if (far.length) add('health', 'wish', 2.5, "There's no clinic if someone gets sick.", 'Build a clinic', worstOf(far));
+  }
+
+  const bare = lived.filter((h) => (h.factors.greenery || 0) < 0.02);
+  if (bare.length) add('green', 'wish', 2, "It's all concrete here. A few trees would be lovely.", 'Plant trees or a park', worstOf(bare));
+
+  const quiet = city.tiles.filter(
+    (t) => t.structure && STRUCTURES[t.structure.type].jobs >= 4 && t.workersFilled < STRUCTURES[t.structure.type].jobs * 0.5,
+  );
+  if (quiet.length && homes.length) add('workers', 'wish', 2, 'Some workplaces are short of staff.', 'Build homes nearby, linked by road', quiet[0]);
+
+  if (unlocked('playground')) {
+    const far = lived.filter((h) => (h.coverage.fun || 0) < 0.1);
+    if (far.length) add('fun', 'wish', 1.5, 'Nowhere to play around here!', 'Build a playground', worstOf(far));
+  }
+
+  // Always one happy note from the nicest occupied home.
+  let best = null;
+  for (const h of lived) if (!best || h.desirability > best.desirability) best = h;
+  if (best) {
+    const text = hasWaterNear(city, best)
+      ? 'I love waking up to the water view.'
+      : (best.factors.greenery || 0) > 0.15
+        ? 'So much green on our street. Love it here!'
+        : 'This is a lovely little neighbourhood.';
+    add('happy', 'happy', 1, text, 'Your happiest home', best);
+  }
+
+  // Keep the happy note even on a bad day: the top wishes first, then the happy one.
+  const happy = out.filter((t) => t.kind === 'happy');
+  const wishes = out.filter((t) => t.kind !== 'happy').sort((a, b) => b.priority - a.priority);
+  return [...wishes.slice(0, MAX_THOUGHTS - happy.length), ...happy];
+}
+
+return { computeThoughts };
+})();
+
 // ---- time.js ----
 const __mod_time = (() => {
 // Time of day as simulation data. `clock` runs 0..1 per day: 0 = midnight, 0.25 = sunrise, 0.5 = noon.
@@ -3929,6 +4400,8 @@ const { computeCoverage } = __mod_coverage;
 const { AgentSystem } = __mod_agents;
 const { LifeSystem } = __mod_life;
 const { WeatherSystem } = __mod_weather;
+const { Milestones } = __mod_milestones;
+const { computeThoughts } = __mod_advisor;
 const { daylightAt } = __mod_time;
 const { clamp, pickWeighted } = __mod_utils;
 class Simulation {
@@ -3937,6 +4410,8 @@ class Simulation {
     this.agents = new AgentSystem(city);
     this.life = new LifeSystem(city);
     this.weather = new WeatherSystem(city);
+    this.milestones = new Milestones(city);
+    this._thoughtTimer = 0;
     this.speed = 1; // 0 pauses; 1–3 run faster
     this._acc = 0;
     this._marketTimer = 0;
@@ -3973,6 +4448,12 @@ class Simulation {
     }
     this.updateHousing();
     this.updateStats();
+    this.milestones.update();
+    this._thoughtTimer -= SIM_STEP;
+    if (this._thoughtTimer <= 0) {
+      city.derived.thoughts = computeThoughts(city, this.milestones);
+      this._thoughtTimer = 4;
+    }
   }
 
   // Run the derived systems immediately, e.g. right after loading or generating a city.
@@ -3981,6 +4462,8 @@ class Simulation {
     this.city.derived.labor = computeLaborMarket(this.city);
     recomputeDesirability(this.city);
     this.updateStats();
+    void this.milestones.state; // settle the starting title without a celebration
+    this.city.derived.thoughts = computeThoughts(this.city, this.milestones);
   }
 
   // Desirability maps to how full a home can get: a bare lot fills a little, a leafy one fills up.
@@ -4389,6 +4872,9 @@ class Renderer {
     this.snowCover = 0;
     this.drops = [];
     this._weatherL = { key: '', L: null };
+    this.confettiBits = [];
+    this.thoughtRects = []; // screen-space hit boxes for the resident thought bubbles
+    this.showThoughts = true;
     city.on((ev) => this.onCityEvent(ev));
   }
 
@@ -4605,6 +5091,124 @@ class Renderer {
     this.drawPrecipitation(ctx, dt, w);
     this.drawFog(ctx, w, L);
     this.drawVignette(ctx, L);
+    this.drawThoughts(ctx);
+    this.drawConfetti(ctx, dt);
+  }
+
+  worldToScreen(p) {
+    const cam = this.camera;
+    return { x: this.w / 2 + (p.x - cam.x) * cam.zoom, y: this.h / 2 + (p.y - cam.y) * cam.zoom };
+  }
+
+  // Up to two resident thoughts float over their homes, taking turns every few seconds.
+  drawThoughts(ctx) {
+    this.thoughtRects = [];
+    const all = this.showThoughts ? this.city.derived.thoughts || [] : [];
+    const placed = all.filter((t) => t.x != null);
+    if (!placed.length) return;
+    const shown = [];
+    const turn = Math.max(0, Math.floor(this.time / 6));
+    for (let i = 0; i < Math.min(2, placed.length); i++) shown.push(placed[(turn * 2 + i) % placed.length]);
+    const phase = (this.time % 6) / 6;
+    const fade = Math.min(1, phase * 8, (1 - phase) * 8);
+    ctx.save();
+    ctx.font = '600 11px system-ui, -apple-system, "Segoe UI", sans-serif';
+    ctx.textBaseline = 'middle';
+    for (const th of new Set(shown)) {
+      const tile = this.city.getTile(th.x, th.y);
+      if (!tile) continue;
+      const f = tile.structure ? this.footprint(tile) : null;
+      const bob = this.reduceMotion ? 0 : Math.sin(this.time * 1.8 + th.x) * 1.5;
+      const s = this.worldToScreen(gridToWorld(th.x + 0.5, th.y + 0.5, (f?.h || 8) + 8));
+      const text = th.text.length > 34 ? `${th.text.slice(0, 32)}…` : th.text;
+      const icon = th.kind === 'happy' ? '♥' : '!';
+      const tw = ctx.measureText(text).width;
+      const w = tw + 34;
+      const h = 24;
+      const x = clamp(s.x - w / 2, 6, this.w - w - 6);
+      const y = clamp(s.y - h - 10 + bob, 6, this.h - h - 6);
+      if (s.x < -40 || s.x > this.w + 40 || s.y < -20 || s.y > this.h + 60) continue;
+      ctx.globalAlpha = fade;
+      ctx.fillStyle = 'rgba(52,44,96,0.18)';
+      ctx.beginPath();
+      ctx.roundRect(x, y + 2, w, h, 12);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.96)';
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, 12);
+      ctx.fill();
+      // Tail pointing at the home.
+      const tx = clamp(s.x, x + 14, x + w - 14);
+      ctx.beginPath();
+      ctx.moveTo(tx - 5, y + h - 1);
+      ctx.lineTo(tx, y + h + 6);
+      ctx.lineTo(tx + 5, y + h - 1);
+      ctx.fill();
+      ctx.fillStyle = th.kind === 'happy' ? '#ff8fa3' : '#ffb35c';
+      ctx.beginPath();
+      ctx.arc(x + 13, y + h / 2, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText(icon, x + 13, y + h / 2 + 0.5);
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#4a4270';
+      ctx.fillText(text, x + 26, y + h / 2 + 0.5);
+      this.thoughtRects.push({ x, y, w, h: h + 6, thought: th });
+    }
+    ctx.restore();
+  }
+
+  thoughtAt(sx, sy) {
+    for (const r of this.thoughtRects) if (sx >= r.x && sx <= r.x + r.w && sy >= r.y && sy <= r.y + r.h) return r.thought;
+    return null;
+  }
+
+  // Rising "+3%" style labels over tiles: placement feedback.
+  floatText(x, y, text, color, delay = 0, z = 26) {
+    const p = gridToWorld(x + 0.5, y + 0.5, z);
+    this.particles.push({ kind: 'float', x: p.x, y: p.y, text, color, age: -delay, life: 1.6 });
+  }
+
+  confetti() {
+    if (this.reduceMotion) return;
+    const colors = [PALETTE.peach, PALETTE.mint, PALETTE.lavender, '#ffd98f', '#9cc4ea', '#ffffff'];
+    for (let i = 0; i < 90; i++) {
+      this.confettiBits.push({
+        x: this.w * (0.2 + Math.random() * 0.6),
+        y: -10 - Math.random() * this.h * 0.3,
+        vx: (Math.random() - 0.5) * 80,
+        vy: 60 + Math.random() * 80,
+        r: Math.random() * 6.28,
+        vr: (Math.random() - 0.5) * 10,
+        size: 4 + Math.random() * 4,
+        color: colors[i % colors.length],
+        life: 3 + Math.random(),
+        age: 0,
+      });
+    }
+  }
+
+  drawConfetti(ctx, dt) {
+    if (!this.confettiBits.length) return;
+    const keep = [];
+    for (const c of this.confettiBits) {
+      c.age += dt;
+      if (c.age >= c.life || c.y > this.h + 20) continue;
+      keep.push(c);
+      c.x += (c.vx + Math.sin(c.age * 3 + c.r) * 30) * dt;
+      c.y += c.vy * dt;
+      c.r += c.vr * dt;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, (c.life - c.age) * 2);
+      ctx.translate(c.x, c.y);
+      ctx.rotate(c.r);
+      ctx.scale(1, Math.cos(c.age * 6 + c.r));
+      ctx.fillStyle = c.color;
+      ctx.fillRect(-c.size / 2, -c.size / 4, c.size, c.size / 2);
+      ctx.restore();
+    }
+    this.confettiBits = keep;
   }
 
   // Overcast skies dim and cool the light. Cached so the colour cache survives between frames.
@@ -4967,6 +5571,8 @@ class Renderer {
     tilePoly(ctx, x, y);
     ctx.fill();
     if (s?.type === 'park') this.drawParkGround(ctx, t, L);
+    else if (s?.type === 'playground') this.drawPlaygroundGround(ctx, t, L);
+    else if (s?.type === 'field') this.drawFieldGround(ctx, t, L);
     else if (!s) this.drawMeadow(ctx, t, L);
   }
 
@@ -5151,6 +5757,61 @@ class Renderer {
     }
   }
 
+  // A sandpit with a soft rubber path around it.
+  drawPlaygroundGround(ctx, t, L) {
+    const { x, y } = t;
+    ctx.fillStyle = lit(PALETTE.blush, 0.98, L);
+    tilePoly(ctx, x, y, 0.06);
+    ctx.fill();
+    ctx.fillStyle = lit(this.snowCover >= 0.5 ? SNOW : PALETTE.sand, 1, L);
+    tilePoly(ctx, x, y, 0.14);
+    ctx.fill();
+    ctx.fillStyle = lit(PALETTE.sand, 0.9, L);
+    for (let i = 0; i < 5; i++) {
+      const p = gridToWorld(x + 0.25 + hash2(x, y, 60 + i) * 0.5, y + 0.25 + hash2(x, y, 70 + i) * 0.5);
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, 1.6, 0.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // A mown pitch with striped grass and white lines.
+  drawFieldGround(ctx, t, L) {
+    const { x, y } = t;
+    const grass = this.grassColor('#8fd08c');
+    for (let i = 0; i < 4; i++) {
+      ctx.fillStyle = lit(grass, i % 2 ? 0.9 : 1.06, L);
+      poly(ctx, [
+        [x + 0.06 + i * 0.22, y + 0.06],
+        [x + 0.06 + (i + 1) * 0.22, y + 0.06],
+        [x + 0.06 + (i + 1) * 0.22, y + 0.94],
+        [x + 0.06 + i * 0.22, y + 0.94],
+      ]);
+      ctx.fill();
+    }
+    ctx.strokeStyle = litA('#ffffff', 1, L, 0.9);
+    ctx.lineWidth = 1;
+    tilePoly(ctx, x, y, 0.1);
+    ctx.stroke();
+    poly(ctx, [
+      [x + 0.5, y + 0.1],
+      [x + 0.5, y + 0.9],
+    ]);
+    ctx.stroke();
+    gridEllipse(ctx, x + 0.5, y + 0.5, 0, 0.13);
+    ctx.stroke();
+    for (const gx of [0.1, 0.9]) {
+      const d = gx < 0.5 ? 0.14 : -0.14;
+      poly(ctx, [
+        [x + gx, y + 0.32],
+        [x + gx + d, y + 0.32],
+        [x + gx + d, y + 0.68],
+        [x + gx, y + 0.68],
+      ]);
+      ctx.stroke();
+    }
+  }
+
   // Data views tint the ground so buildings stay readable on top.
   drawOverlay(ctx, t, overlay) {
     let color = null;
@@ -5168,13 +5829,14 @@ class Renderer {
       const c = t.coverage || {};
       const school = c.school || 0;
       const health = c.health || 0;
-      if (school < 0.02 && health < 0.02) color = 'rgba(70,60,110,0.22)';
+      const fun = c.fun || 0;
+      if (school < 0.02 && health < 0.02 && fun < 0.02) color = 'rgba(70,60,110,0.22)';
       else {
-        // Schools tint lavender, clinics tint mint; both together read as a soft blue-violet.
-        const r = Math.round(200 - 60 * health);
+        // Schools tint lavender, clinics mint, play areas peach; together they read as a soft blend.
+        const r = Math.round(200 - 60 * health + 55 * fun);
         const g = Math.round(180 + 40 * health - 20 * school);
-        const b = Math.round(200 + 40 * school);
-        color = `rgba(${r},${g},${b},${(0.25 + 0.45 * Math.max(school, health)).toFixed(3)})`;
+        const b = Math.round(200 + 40 * school - 50 * fun);
+        color = `rgba(${Math.min(255, r)},${g},${Math.max(0, b)},${(0.25 + 0.45 * Math.max(school, health, fun)).toFixed(3)})`;
       }
     }
     if (!color) return;
@@ -5324,6 +5986,12 @@ class Renderer {
         return this.drawTree(ctx, x + 0.5, y + 0.5, s.shape || 0, L, hash2(x, y, 12) * 6.28, 1, x, y);
       case 'park':
         return this.drawParkProps(ctx, x, y, L);
+      case 'playground':
+        if (ghost) this.drawPlaygroundGround(ctx, { x, y }, L);
+        return this.drawPlayground(ctx, x, y, L);
+      case 'field':
+        if (ghost) this.drawFieldGround(ctx, { x, y }, L);
+        return this.drawField(ctx, x, y, L);
       case 'road':
         if (ghost) {
           ctx.fillStyle = lit(PALETTE.road, 1, L);
@@ -5918,6 +6586,97 @@ class Renderer {
     ctx.restore();
   }
 
+  // Line between two grid points at given heights.
+  stick(ctx, a, b, color, width) {
+    const p = gridToWorld(a[0], a[1], a[2] || 0);
+    const q = gridToWorld(b[0], b[1], b[2] || 0);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(q.x, q.y);
+    ctx.stroke();
+  }
+
+  drawPlayground(ctx, x, y, L) {
+    ctx.lineCap = 'round';
+    // Swings: an A-frame at each end, a top bar and two seats swaying.
+    const pole = lit(PALETTE.lavender, 0.8, L);
+    for (const gy of [y + 0.22, y + 0.62]) {
+      this.stick(ctx, [x + 0.16, gy - 0.06, 0], [x + 0.2, gy, 15], pole, 1.6);
+      this.stick(ctx, [x + 0.24, gy + 0.06, 0], [x + 0.2, gy, 15], pole, 1.6);
+    }
+    this.stick(ctx, [x + 0.2, y + 0.22, 15], [x + 0.2, y + 0.62, 15], lit(PALETTE.lavender, 0.95, L), 2);
+    for (let i = 0; i < 2; i++) {
+      const gy = y + 0.34 + i * 0.16;
+      const sway = this.reduceMotion ? 0 : Math.sin(this.time * 2.2 + i * 1.7 + x) * 0.07;
+      const top = [x + 0.2, gy, 15];
+      const seat = [x + 0.2 + sway, gy, 4 + Math.abs(sway) * 10];
+      this.stick(ctx, top, seat, litA('#7c7396', 1, L, 0.8), 0.7);
+      this.stick(ctx, [seat[0] - 0.01, gy - 0.04, seat[2]], [seat[0] + 0.01, gy + 0.04, seat[2]], lit(PALETTE.peach, 0.85, L), 2.2);
+    }
+    // Slide: a ladder tower and a sloped chute.
+    this.drawBox(ctx, L, x + 0.58, y + 0.22, x + 0.74, y + 0.38, 0, 11, PALETTE.mint);
+    ctx.fillStyle = lit(PALETTE.peach, 0.92, L);
+    poly(ctx, [
+      [x + 0.6, y + 0.38, 11],
+      [x + 0.72, y + 0.38, 11],
+      [x + 0.72, y + 0.8, 1],
+      [x + 0.6, y + 0.8, 1],
+    ]);
+    ctx.fill();
+    ctx.fillStyle = lit(PALETTE.peach, 1.08, L);
+    poly(ctx, [
+      [x + 0.58, y + 0.22, 11],
+      [x + 0.74, y + 0.22, 11],
+      [x + 0.74, y + 0.38, 11],
+      [x + 0.58, y + 0.38, 11],
+    ]);
+    ctx.fill();
+    // Spring rider.
+    const r = gridToWorld(x + 0.8, y + 0.82, 0);
+    const bob = this.reduceMotion ? 0 : Math.sin(this.time * 3 + y) * 1.2;
+    ctx.fillStyle = lit('#ffd98f', 1, L);
+    ctx.beginPath();
+    ctx.ellipse(r.x + bob * 0.5, r.y - 5, 3.2, 2.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = lit('#b0a8c4', 1, L);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(r.x, r.y);
+    ctx.lineTo(r.x + bob * 0.5, r.y - 3);
+    ctx.stroke();
+  }
+
+  drawField(ctx, x, y, L) {
+    ctx.lineCap = 'round';
+    // Goals at each end.
+    for (const gx of [x + 0.1, x + 0.9]) {
+      const white = lit('#ffffff', 1, L);
+      this.stick(ctx, [gx, y + 0.4, 0], [gx, y + 0.4, 7], white, 1.3);
+      this.stick(ctx, [gx, y + 0.6, 0], [gx, y + 0.6, 7], white, 1.3);
+      this.stick(ctx, [gx, y + 0.4, 7], [gx, y + 0.6, 7], white, 1.3);
+      ctx.fillStyle = litA('#ffffff', 1, L, 0.25);
+      poly(ctx, [
+        [gx, y + 0.4, 7],
+        [gx, y + 0.6, 7],
+        [gx, y + 0.6, 0],
+        [gx, y + 0.4, 0],
+      ]);
+      ctx.fill();
+    }
+    // A little bleacher along the far edge.
+    this.drawBox(ctx, L, x + 0.3, y + 0.02, x + 0.7, y + 0.08, 0, 4, PALETTE.lavender);
+    this.drawBox(ctx, L, x + 0.3, y + 0.0, x + 0.7, y + 0.04, 4, 3, PALETTE.blush);
+    // The ball rolls about.
+    const t = this.reduceMotion ? 0 : this.time * 0.6 + hash2(x, y, 9) * 6;
+    const b = gridToWorld(x + 0.5 + Math.sin(t) * 0.25, y + 0.5 + Math.sin(t * 1.7) * 0.18, 1.5);
+    ctx.fillStyle = lit('#ffffff', 1, L);
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   drawParkProps(ctx, x, y, L) {
     this.drawTree(ctx, x + 0.2, y + 0.8, 2, L, hash2(x, y, 13) * 6, 0.62);
     // Fountain.
@@ -6165,6 +6924,23 @@ class Renderer {
         ctx.lineTo(p.x - r * 0.6, y - r * 0.6);
         ctx.closePath();
         ctx.fill();
+      } else if (p.kind === 'float') {
+        const y = p.y - t * 20;
+        const a = t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3;
+        const z = this.camera.zoom;
+        ctx.save();
+        ctx.translate(p.x, y);
+        ctx.scale(1 / Math.sqrt(z), 1 / Math.sqrt(z));
+        ctx.font = '700 12px system-ui, -apple-system, "Segoe UI", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.globalAlpha = a;
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+        ctx.strokeText(p.text, 0, 0);
+        ctx.fillStyle = p.color;
+        ctx.fillText(p.text, 0, 0);
+        ctx.restore();
       } else if (p.kind === 'heart') {
         const y = p.y - t * 22;
         const s = 3.2 * (t < 0.15 ? t / 0.15 : 1);
@@ -6713,6 +7489,9 @@ function generateTown(city, seed = (Math.random() * 2 ** 32) >>> 0) {
     .sort((a, b) => b.score - a.score);
   const parks = Math.max(2, Math.round((half * half) / 18));
   for (let i = 0; i < Math.min(parks, parkSpots.length); i++) place(parkSpots[i].t.x, parkSpots[i].t.y, 'park');
+  // One playground among the homes.
+  const play = parkSpots.slice(parks).find((s) => isEmpty(s.t.x, s.t.y) && nearRoad(s.t.x, s.t.y));
+  if (play) place(play.t.x, play.t.y, 'playground');
 
   // Trees: scattered in town, thick woods in the countryside.
   const forests = Array.from({ length: Math.max(2, Math.round(W / 6)) }, () => ({ x: ri(0, W - 1), y: ri(0, H - 1), r: 2 + rand() * 4 }));
@@ -6769,6 +7548,9 @@ const ICONS = {
   pause: svg('<path d="M9 5v14M15 5v14" stroke-width="2.6"/>'),
   play: svg('<path d="M7 4.5v15l12-7.5z"/>'),
   layers: svg('<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 12.5 9 5 9-5"/><path d="m3 17 9 5 9-5"/>'),
+  lock: svg('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'),
+  playground: svg('<path d="M4 20 7 6h3l3 14"/><path d="M5.5 13h6"/><path d="M14 8h6v12"/><path d="M14 8c0 5 2 8 6 9"/>'),
+  field: svg('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/><circle cx="12" cy="12" r="2.5"/><path d="M3 9.5h2.5v5H3M21 9.5h-2.5v5H21"/>'),
   close: svg('<path d="M6 6l12 12M18 6 6 18"/>'),
   soundOn: svg('<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>'),
   soundOff: svg('<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/>'),
@@ -6789,8 +7571,9 @@ const LEGENDS = {
 const pct = (v) => `${Math.round(v * 100)}%`;
 
 class Interface {
-  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect, sound }) {
+  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect, sound, locks }) {
     this.sound = sound;
+    this.locks = locks; // { isUnlocked(tool), unlockLabel(tool) }
     this.soundBtn = document.getElementById('btn-sound');
     this.toolbar = document.getElementById('toolbar');
     this.tray = document.getElementById('tray');
@@ -6883,11 +7666,15 @@ class Interface {
     return TOOL_GROUPS.find((g) => g.tools.some((t) => t.id === toolId));
   }
 
+  locked(toolId) {
+    return !!this.locks && !this.locks.isUnlocked(toolId);
+  }
+
   pressGroup(groupId) {
     const g = TOOL_GROUPS.find((x) => x.id === groupId);
     if (g.tools.length > 1) {
       if (!this.tray.hidden && this.trayGroup === groupId) return this.closeTray();
-      this.setTool(this.groupChoice[groupId]);
+      if (!this.locked(this.groupChoice[groupId])) this.setTool(this.groupChoice[groupId]);
       this.openTray(g);
       return;
     }
@@ -6900,13 +7687,15 @@ class Interface {
     this.tray.innerHTML = g.tools
       .map(
         (t) =>
-          `<button type="button" class="tray-item" data-tool="${t.id}" aria-pressed="${t.id === this.tool}">` +
-          `<span class="tool-icon tint-${t.id}">${ICONS[t.id]}</span><span>${t.label}</span><kbd>${t.key.toUpperCase()}</kbd></button>`
+          `<button type="button" class="tray-item${this.locked(t.id) ? ' locked' : ''}" data-tool="${t.id}" aria-pressed="${t.id === this.tool}"` +
+          `${this.locked(t.id) ? ` aria-label="${t.label}, locked until ${this.locks.unlockLabel(t.id)}"` : ''}>` +
+          `<span class="tool-icon tint-${t.id}">${ICONS[t.id]}</span><span>${t.label}</span><kbd>${t.key.toUpperCase()}</kbd>` +
+          `${this.locked(t.id) ? `<span class="lock" aria-hidden="true">${ICONS.lock}</span>` : ''}</button>`
       )
       .join('');
     for (const b of this.tray.querySelectorAll('.tray-item')) {
       b.addEventListener('click', () => {
-        this.setTool(b.dataset.tool);
+        if (!this.setTool(b.dataset.tool)) return;
         this.closeTray();
       });
     }
@@ -6922,7 +7711,13 @@ class Interface {
     this.tray.hidden = true;
   }
 
+  // Returns false (and explains why) when the tool is still locked.
   setTool(id) {
+    if (this.locked(id)) {
+      this.toast(`${TOOLS.find((t) => t.id === id).label} unlocks when your town becomes a ${this.locks.unlockLabel(id)}`);
+      this.onLocked?.(id);
+      return false;
+    }
     this.tool = id;
     const group = this.groupOf(id);
     this.groupChoice[group.id] = id;
@@ -6937,7 +7732,26 @@ class Interface {
         (g.tools.length > 1 ? '<span class="more" aria-hidden="true"></span>' : '');
     }
     if (!this.tray.hidden) for (const b of this.tray.querySelectorAll('.tray-item')) b.setAttribute('aria-pressed', String(b.dataset.tool === id));
+    this.renderLocks();
     this.onTool(id);
+    return true;
+  }
+
+  // Lock badges on toolbar buttons whose shown tool still waits for a milestone.
+  renderLocks() {
+    for (const b of this.toolbar.querySelectorAll('.tool')) {
+      const locked = this.locked(this.groupChoice[b.dataset.group]);
+      b.classList.toggle('locked', locked);
+      const lock = b.querySelector('.lock');
+      if (locked && !lock) b.insertAdjacentHTML('beforeend', `<span class="lock" aria-hidden="true">${ICONS.lock}</span>`);
+      else if (!locked && lock) lock.remove();
+    }
+  }
+
+  // After a milestone: redraw badges and any open tray.
+  refreshLocks() {
+    this.renderLocks();
+    if (!this.tray.hidden && this.trayGroup) this.openTray(TOOL_GROUPS.find((g) => g.id === this.trayGroup));
   }
 
   // ---- City controls sheet (phones and short screens) ------------------------
@@ -6950,6 +7764,7 @@ class Interface {
     this.moreBtn.classList.toggle('is-on', open);
     if (open) {
       this.closeTray();
+      this.onOpenMore?.();
       this.renderMore();
     }
   }
@@ -7200,7 +8015,9 @@ class LifeInterface {
   }
 
   toggle(force) {
+    const was = this.open;
     this.open = force ?? !this.open;
+    if (this.open && !was) this.h.onOpen?.();
     this.render();
   }
 
@@ -7446,6 +8263,113 @@ class LifeInterface {
 }
 
 return { avatarSVG, LifeInterface };
+})();
+
+// ---- cityUI.js ----
+const __mod_cityUI = (() => {
+// City panel: the town's title, progress to the next milestone, what it unlocks, and what residents
+// are wishing for. Opened from the stats bubble. Reads state only; actions go through handlers.
+
+const { MILESTONES, STRUCTURES, TOOLS } = __mod_config;
+const labelOf = (id) => STRUCTURES[id]?.label || TOOLS.find((t) => t.id === id)?.label || id;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const CLOSE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+
+class CityPanel {
+  constructor({ milestones, onShow, onOpen }) {
+    this.milestones = milestones; // () => Milestones
+    this.onShow = onShow; // (thought) → move the camera there
+    this.onOpen = onOpen; // () → close other panels
+    this.panel = document.getElementById('city-panel');
+    this.btn = document.getElementById('stats');
+    this.badge = document.getElementById('tier-badge');
+    this.tierEl = document.getElementById('tier-name');
+    this.meterEl = document.getElementById('tier-meter');
+    this.open = false;
+    this._key = '';
+    this.btn.addEventListener('click', () => this.toggle());
+    this.btn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        this.toggle();
+      }
+    });
+    this.panel.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      if (b.dataset.close != null) this.toggle(false);
+      else if (b.dataset.show != null) {
+        const th = this.thoughts[Number(b.dataset.show)];
+        if (th) this.onShow(th);
+      }
+    });
+  }
+
+  toggle(force) {
+    this.open = force ?? !this.open;
+    if (this.open) this.onOpen?.();
+    this.btn.setAttribute('aria-expanded', String(this.open));
+    this._key = '';
+    this.panel.hidden = !this.open;
+  }
+
+  // Called a few times a second: refreshes the stats-bubble tier line and, when open, the panel.
+  update(city) {
+    const m = this.milestones();
+    const p = m.progress();
+    this.thoughts = city.derived.thoughts || [];
+    const wishes = this.thoughts.filter((t) => t.kind === 'wish').length;
+    this.tierEl.textContent = p.current.label;
+    this.meterEl.style.width = `${Math.round((p.next ? p.fraction : 1) * 100)}%`;
+    this.badge.hidden = !wishes || this.open;
+    this.btn.setAttribute('aria-label', `${p.current.label}. ${wishes ? `${wishes} resident wish${wishes > 1 ? 'es' : ''}. ` : ''}Open city panel`);
+    if (!this.open) return;
+    // Rebuild only when the content changes shape, so buttons stay put under a finger.
+    const key = JSON.stringify([p.tier, this.thoughts.map((t) => [t.id, t.x, t.y, t.text])]);
+    if (key !== this._key) {
+      this._key = key;
+      this.panel.innerHTML = this.html(city, m, p);
+    }
+    const bar = this.panel.querySelector('.tier-progress span');
+    if (bar) bar.style.width = `${Math.round(p.fraction * 100)}%`;
+    const pop = this.panel.querySelector('.tier-pop');
+    if (pop) pop.textContent = city.stats.population.toLocaleString();
+  }
+
+  html(city, m, p) {
+    const pop = city.stats.population;
+    const next = p.next
+      ? `<div class="tier-next"><div class="tier-progress"><span style="width:${Math.round(p.fraction * 100)}%"></span></div>` +
+        `<p><b class="tier-pop">${pop.toLocaleString()}</b> of <b>${p.next.pop.toLocaleString()}</b> residents to become a <b>${p.next.label}</b>.</p>` +
+        (p.next.unlocks.length ? `<p class="tier-unlocks">Unlocks ${p.next.unlocks.map((u) => `<span class="unlock-chip">${esc(labelOf(u))}</span>`).join('')}</p>` : '') +
+        '</div>'
+      : '<p class="tier-done">Your town has become a Metropolis. Everything is unlocked.</p>';
+    const thoughts = this.thoughts.length
+      ? `<ul class="thoughts">${this.thoughts
+          .map(
+            (t, i) =>
+              `<li class="${t.kind}"><span class="th-icon" aria-hidden="true">${t.kind === 'happy' ? '♥' : '!'}</span>` +
+              `<span class="th-text"><span>${esc(t.text)}</span><small>${esc(t.hint)}</small></span>` +
+              (t.x != null ? `<button type="button" class="ghost-btn small" data-show="${i}">Show me</button>` : '') +
+              '</li>'
+          )
+          .join('')}</ul>`
+      : '<p class="insp-note">Build some homes and residents will tell you what they think.</p>';
+    const ladder = `<ol class="ladder">${MILESTONES.map(
+      (ms, i) =>
+        `<li class="${i <= m.reached ? 'done' : ''}${i === p.tier ? ' now' : ''}"><span class="dot"></span><span>${ms.label}</span><small>${ms.pop ? `${ms.pop.toLocaleString()}+` : 'Start'}</small></li>`
+    ).join('')}</ol>`;
+    return (
+      `<header><div><span class="insp-kicker">Your town</span><h2>${p.current.label}</h2></div>` +
+      `<button type="button" class="insp-close" data-close aria-label="Close city panel">${CLOSE}</button></header>` +
+      next +
+      ladder +
+      `<h3>What residents are saying</h3>${thoughts}`
+    );
+  }
+}
+
+return { CityPanel };
 })();
 
 // ---- history.js ----
@@ -7820,7 +8744,7 @@ return { zzfxG, SOUNDS, Audio };
 const __mod_main = (() => {
 // Wiring: creates each system, connects input to state, and runs the frame loop.
 
-const { DEFAULT_MAP_SIZE, STRUCTURES } = __mod_config;
+const { DEFAULT_MAP_SIZE, STRUCTURES, MILESTONES } = __mod_config;
 const { CityState } = __mod_state;
 const { Simulation } = __mod_simulation;
 const { Renderer } = __mod_renderer;
@@ -7830,13 +8754,30 @@ const { AutoSaver, loadCity } = __mod_persistence;
 const { generateTown } = __mod_generator;
 const { Interface } = __mod_ui;
 const { LifeInterface } = __mod_lifeUI;
+const { CityPanel } = __mod_cityUI;
+const { unlockTier } = __mod_milestones;
+const { computeCoverage } = __mod_coverage;
+const { recomputeDesirability } = __mod_desirability;
 const { worldToGrid, mapBounds, tileRectBounds, gridToWorld } = __mod_iso;
 const { History, lPath, tileLine } = __mod_history;
 const { Audio } = __mod_audio;
 const { daylightAt } = __mod_time;
 const MAX_STROKE = 160;
-const TOOL_SOUNDS = { house: 'pop', shop: 'pop', tower: 'popBig', office: 'popBig', school: 'popBig', clinic: 'popBig', tree: 'plant', park: 'plant', road: 'road' };
-const STROKE_LABELS = { road: 'road', water: 'water', bulldoze: 'bulldozing', tree: 'trees', park: 'parks' };
+const TOOL_SOUNDS = {
+  house: 'pop',
+  shop: 'pop',
+  tower: 'popBig',
+  office: 'popBig',
+  school: 'popBig',
+  clinic: 'popBig',
+  playground: 'pop',
+  field: 'plant',
+  tree: 'plant',
+  park: 'plant',
+  road: 'road',
+};
+const STROKE_LABELS = { road: 'road', water: 'water', bulldoze: 'bulldozing', tree: 'trees', park: 'parks', field: 'sports fields' };
+const FEEDBACK_RADIUS = 7;
 
 function start(hotData = {}) {
   const canvas = document.getElementById('city');
@@ -7885,6 +8826,8 @@ function start(hotData = {}) {
         return true;
       });
       sim.refresh();
+      sim.milestones.settleForCapacity();
+      ui.refreshLocks();
       selected = null;
       fitView(false);
       ui.toast('A fresh town, with room to grow');
@@ -7900,6 +8843,10 @@ function start(hotData = {}) {
     onCloseInspect: () => {
       selected = null;
     },
+    locks: {
+      isUnlocked: (id) => sim.milestones.isUnlocked(id),
+      unlockLabel: (id) => MILESTONES[unlockTier(id)]?.label || '',
+    },
     sound: {
       muted: () => audio.muted,
       toggle: () => {
@@ -7912,6 +8859,104 @@ function start(hotData = {}) {
       },
     },
   });
+
+  // ---- Placement feedback ------------------------------------------------------
+  // Edits run through here so nearby homes can show how much more (or less) appealing they became.
+  const isHome = (t) => t?.structure && STRUCTURES[t.structure.type].capacity > 0;
+  function withFeedback(coords, edit) {
+    if (!coords.length) return edit();
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (const c of coords) {
+      x0 = Math.min(x0, c.x);
+      y0 = Math.min(y0, c.y);
+      x1 = Math.max(x1, c.x);
+      y1 = Math.max(y1, c.y);
+    }
+    const before = new Map();
+    for (let y = y0 - FEEDBACK_RADIUS; y <= y1 + FEEDBACK_RADIUS; y++) {
+      for (let x = x0 - FEEDBACK_RADIUS; x <= x1 + FEEDBACK_RADIUS; x++) {
+        const t = city.getTile(x, y);
+        if (isHome(t)) before.set(t, { id: t.structure.id, d: t.desirability });
+      }
+    }
+    const changed = edit();
+    if (!changed) return changed;
+    computeCoverage(city);
+    recomputeDesirability(city);
+    city.dirty = true; // let the simulation refresh jobs and traffic on its next tick
+    const ups = [];
+    const downs = [];
+    for (const [t, b] of before) {
+      if (!isHome(t) || t.structure.id !== b.id) continue;
+      const delta = Math.round((t.desirability - b.d) * 100);
+      if (delta >= 1) ups.push({ t, delta });
+      else if (delta <= -1) downs.push({ t, delta });
+    }
+    ups.sort((a, b) => b.delta - a.delta);
+    downs.sort((a, b) => a.delta - b.delta);
+    [...ups.slice(0, 6), ...downs.slice(0, 4)].forEach(({ t, delta }, i) =>
+      renderer.floatText(t.x, t.y, `${delta > 0 ? '+' : '−'}${Math.abs(delta)}%`, delta > 0 ? '#3f9a68' : '#d0605a', 0.25 + i * 0.06)
+    );
+    // A brand-new home shows how appealing its lot is.
+    const placed = coords.map((c) => city.getTile(c.x, c.y)).filter((t) => isHome(t) && !before.has(t));
+    placed.slice(0, 4).forEach((t, i) => renderer.floatText(t.x, t.y, `${Math.round(t.desirability * 100)}% appeal`, '#7a5fa8', 0.35 + i * 0.08, 40));
+    return changed;
+  }
+  const build = (label, coords, edit) => history.record(label, coords, () => withFeedback(coords, edit));
+
+  // ---- Milestones -------------------------------------------------------------
+  const cityPanel = new CityPanel({
+    milestones: () => sim.milestones,
+    onOpen: () => {
+      lifeUI.toggle(false);
+      ui.toggleMore(false);
+      ui.closeTray();
+    },
+    onShow: (th) => {
+      focusTile(th.x, th.y);
+      if (window.innerWidth < 560) cityPanel.toggle(false);
+    },
+  });
+  function focusTile(x, y) {
+    const w = gridToWorld(x + 0.5, y + 0.5);
+    camera.tx = w.x;
+    camera.ty = w.y - 20;
+    camera.tzoom = Math.max(camera.tzoom, 1.2);
+    camera.clampTarget();
+    renderer.ring(x, y, '#ffffff');
+    selected = { x, y };
+    ui.inspect(city, selected);
+  }
+  ui.onOpenMore = () => {
+    cityPanel.toggle(false);
+    lifeUI.toggle(false);
+  };
+  let milestoneTimer = null;
+  function celebrate(m) {
+    audio.play('fanfare');
+    renderer.confetti();
+    ui.refreshLocks();
+    let card = document.getElementById('milestone-card');
+    if (!card) {
+      card = document.createElement('section');
+      card.id = 'milestone-card';
+      card.className = 'milestone-card glass';
+      card.setAttribute('role', 'status');
+      document.getElementById('app').appendChild(card);
+      card.addEventListener('click', () => (card.hidden = true));
+    }
+    const names = m.unlocks.map((u) => STRUCTURES[u]?.label || u);
+    card.innerHTML =
+      `<span class="insp-kicker">New milestone</span><h2>You're a ${m.label}!</h2>` +
+      `<p>${m.pop.toLocaleString()} people now call your town home.</p>` +
+      (names.length ? `<p class="tier-unlocks">Unlocked ${names.map((n) => `<span class="unlock-chip">${n}</span>`).join('')}</p>` : '');
+    card.hidden = false;
+    clearTimeout(milestoneTimer);
+    milestoneTimer = setTimeout(() => (card.hidden = true), 5200);
+  }
 
   // ---- Undo and redo --------------------------------------------------------
   const undoBtn = document.getElementById('btn-undo');
@@ -8029,6 +9074,10 @@ function start(hotData = {}) {
       if (s?.char) s.history = [...(s.history || []), { name: `${s.char.first} ${s.char.last}`, age: s.char.age }];
       city.systems.life = s ? { char: null, history: s.history } : null;
     },
+    onOpen: () => {
+      cityPanel.toggle(false);
+      ui.toggleMore(false);
+    },
     onFocus: () => {
       const home = sim.life.char?.home;
       if (!home) return;
@@ -8048,6 +9097,7 @@ function start(hotData = {}) {
     else if (ev.type === 'reset') audio.play('fanfare');
     else if (ev.type === 'restored') audio.play('undo');
     else if (ev.type === 'lifeEvent') audio.play('chime');
+    if (ev.type === 'milestone') celebrate(ev.milestone);
 
     if (ev.type === 'lifeEvent') lifeUI.eventArrived();
     else if (ev.type === 'lifeChanged') lifeUI.render();
@@ -8062,6 +9112,12 @@ function start(hotData = {}) {
 
   const input = new InputController(canvas, camera, {
     onTap: (sx, sy) => {
+      const th = renderer.thoughtAt(sx, sy);
+      if (th) {
+        audio.play('click');
+        if (!cityPanel.open) cityPanel.toggle(true);
+        return focusTile(th.x, th.y);
+      }
       const t = tileAt(sx, sy);
       if (tool === 'inspect') {
         selected = t && !(selected && selected.x === t.x && selected.y === t.y) ? t : null;
@@ -8070,17 +9126,18 @@ function start(hotData = {}) {
         return;
       }
       if (!t) return;
-      if (!history.record(labelFor(tool), [t], () => city.apply(tool, t.x, t.y))) nope(t.x, t.y);
+      if (!sim.milestones.isUnlocked(tool)) return ui.setTool(tool);
+      if (!build(labelFor(tool), [t], () => city.apply(tool, t.x, t.y))) nope(t.x, t.y);
     },
     onBulldoze: (sx, sy) => {
       const t = tileAt(sx, sy);
-      if (t && !history.record('bulldozing', [t], () => city.apply('bulldoze', t.x, t.y))) nope(t.x, t.y);
+      if (t && !build('bulldozing', [t], () => city.apply('bulldoze', t.x, t.y))) nope(t.x, t.y);
     },
     onHover: (sx, sy) => {
       hover = sx == null ? null : tileAt(sx, sy);
     },
     // Drag to build: roads follow an L from where the drag started; other tools paint as a brush.
-    canPaint: () => tool !== 'inspect',
+    canPaint: () => tool !== 'inspect' && sim.milestones.isUnlocked(tool),
     onPaintStart: (sx, sy) => {
       const t = tileAt(sx, sy);
       stroke = t ? { tool, start: t, last: t, tiles: [t] } : null;
@@ -8115,13 +9172,15 @@ function start(hotData = {}) {
       if (!commit || !s) return;
       const coords = s.tiles.filter((c) => city.canApply(s.tool, c.x, c.y));
       if (!coords.length) return nope(s.start.x, s.start.y);
-      history.record(labelFor(s.tool, coords.length), coords, () => city.applyMany(s.tool, coords));
+      build(labelFor(s.tool, coords.length), coords, () => city.applyMany(s.tool, coords));
     },
   });
 
   if (fresh) {
     generateTown(city);
     sim.refresh();
+    sim.milestones.settleForCapacity();
+    ui.refreshLocks();
     fitView(true);
     const touch = window.matchMedia?.('(pointer: coarse)').matches;
     ui.toast(
@@ -8152,7 +9211,7 @@ function start(hotData = {}) {
   let last = performance.now();
   let uiTimer = 0;
   function frame(now) {
-    const dt = Math.min(0.1, (now - last) / 1000);
+    const dt = Math.max(0, Math.min(0.1, (now - last) / 1000)); // the first frame can be stamped before `last`
     last = now;
     sim.update(dt);
     input.edgeScroll(dt);
@@ -8165,6 +9224,7 @@ function start(hotData = {}) {
       ui.update(city);
       ui.inspect(city, selected);
       lifeUI.tick();
+      cityPanel.update(city);
       uiTimer = 0.2;
     }
     requestAnimationFrame(frame);
@@ -8172,7 +9232,7 @@ function start(hotData = {}) {
   requestAnimationFrame(frame);
 
   // Handy for poking at the simulation from the console.
-  window.pocketMetropolis = { city, sim, camera, renderer, history, audio };
+  window.pocketMetropolis = { city, sim, camera, renderer, history, audio, ui, cityPanel };
 }
 
 const hot = window.claude?.hot;

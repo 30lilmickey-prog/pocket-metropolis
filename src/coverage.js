@@ -1,11 +1,11 @@
-// Service coverage: each school or clinic covers the tiles around it, strongest nearby.
+// Coverage: each school, clinic, playground or sports field covers the tiles around it, strongest nearby.
 
-import { STRUCTURES, SERVICES } from './config.js';
+import { STRUCTURES, COVERAGE_IDS } from './config.js';
 
 export function computeCoverage(city) {
   for (const t of city.tiles) {
     const c = {};
-    for (const s of SERVICES) c[s.id] = 0;
+    for (const id of COVERAGE_IDS) c[id] = 0;
     t.coverage = c;
   }
   for (const src of city.tiles) {
