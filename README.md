@@ -6,7 +6,9 @@ A relaxing isometric tiny-city builder. You plan the city; residents decide for 
 
 - **New town** (top-right button, or ☰ → New town…): choose **Sandbox** (everything unlocked) or **Milestones** (unlock buildings as you grow), a **small (16×16), medium (32×32) or large (48×48)** map, and **empty land** to build from scratch or a ready-made **starter town**. Your Life Story and achievements carry over
 - The first visit starts with a 32×32 starter town in the middle, with a river, woods and room to grow
-- Homes (house, tower), workplaces (shop, office), services (school, clinic), recreation (playground, sports field), nature (tree, park, water) and roads
+- Homes (house, cottage, apartments, tower), workplaces (shop, café, office, mall, factory), services (school, clinic), recreation (playground, sports field), nature (tree, park, water) and roads. Factories pay well but their smoke makes nearby homes less desirable
+- **Town budget:** building costs money (Sandbox builds for free). Residents and workers pay taxes, businesses pay per job filled, and roads, schools, clinics and parks cost upkeep. The balance and net per day sit in the stats bubble; the City panel's **Budget** shows what comes in and goes out by kind of building, the **top earning buildings** (with Show me), the last few days, and a balance trend. Undo refunds what an edit cost; the town can't go below zero
+- **Notable people:** like great people in Civilization, a famous resident is born in or moves to your town when its buildings inspire them: schools inspire scientists, clinics doctors, businesses merchants, factories engineers, parks and cafés artists, sports fields athletes, and a growing town planners. Each arrival gets a card and a badge over their home, and gives the whole town a bonus (wider school or clinic reach, more tax, cheaper building, less upkeep, nicer streets). The City panel lists everyone and who is likely to come next
 - Residents move into the most desirable homes. Desirability comes from parks and trees, water views, road access, school and clinic coverage, playgrounds and sport, jobs, and traffic
 - **Milestones:** your town grows from Hamlet to Village (60 residents), Town (200), City (450) and Metropolis (900). Each title unlocks buildings for good, with a small celebration. Tap the stats bubble to see your progress
 - **Resident thoughts:** residents say what they wish for ("Our kids have no school nearby") in bubbles over their homes and in the City panel, with a **Show me** button that flies to the spot. Issues are colour-coded: **red** needs fixing, **yellow** is worth a look, **green** is going well. While the City panel is open the affected tiles are tinted on the map in the same colour, and the issue you're looking at pulses with a marker over each tile
@@ -68,7 +70,7 @@ Events are plain data in `src/lifeEvents.js` and `src/lifeEventsMore.js` (78 in 
 | Inspect a tile | Inspect tool (I), then click | Inspect tool, then tap |
 | Pan | Right-drag or middle-drag (or drag with Inspect) | Two fingers (or one finger with Inspect) |
 | Zoom | Mouse wheel | Pinch |
-| Pick a tool | 1 House · 2 Tower · 3 Shop · 4 Office · 5 School · 6 Clinic · 7 Tree · 8 Park · P Playground · F Sports field · 9 Road · 0 Water | Toolbar; buttons with a dot open more choices |
+| Pick a tool | 1 House · K Cottage · A Apartments · 2 Tower · 3 Shop · E Café · 4 Office · L Mall · Y Factory · 5 School · 6 Clinic · 7 Tree · 8 Park · P Playground · F Sports field · 9 Road · 0 Water | Toolbar; buttons with a dot open more choices |
 | Pause / change speed | Space, or the speed button | ☰ City controls |
 | Switch map view | V, or the layers button | ☰ City controls |
 | Recenter | Recenter button (press again for the whole map) | ☰ City controls |
@@ -94,6 +96,7 @@ Each system lives in its own module under `src/` and talks to the others only th
 | Sharing and settings | `share.js`, `settings.js`, `minimap.js`, `trendsUI.js` | Town links (pack, deflate, base64url), viewer settings in localStorage, the minimap, and the trend tiles. Trend samples are saved in `city.systems.trends`. |
 | Streets | `streets.js` | Names straight runs of road and numbers the buildings along them; names are saved in `city.systems.streets` by tile. Writes `street` and `address` on tiles. |
 | History | `history.js` | Undo and redo of tile edits, plus the L-shaped road and brush stroke paths. |
+| Budget and notable people | `economy.js`, `budgetUI.js`, `notables.js`, `notablesUI.js` | Costs, taxes, upkeep and the daily ledger (`city.systems.economy`); per-building earnings in `tile.earning`. Notable people's inspiration, arrivals and bonuses (`city.systems.notables`). |
 | Milestones | `milestones.js`, `advisor.js`, `cityUI.js` | Town titles and permanent unlocks (saved in `city.systems.milestones`); resident thoughts computed from the city every few seconds into `city.derived.thoughts`; the City panel. |
 | Glue | `main.js`, `ui.js`, `generator.js`, `newTownUI.js` | Wires systems together, the toolbar (with lock badges) and stats bubble, placement feedback, and new towns (starter town or empty land, sandbox or milestones, three map sizes; the mode is saved in `city.systems.mode`). |
 
@@ -105,7 +108,7 @@ Derived data (labor market, commute routes, congestion, coverage, resident thoug
 npm test   # node --test, no dependencies
 ```
 
-The tests cover share links, trends, colour-blind colours, street names and addresses, the labor market, road reachability, service and play coverage, milestones and unlocks, resident thoughts, save migration, town generation, pausing, and Life Story (aging, events, jobs and homes from the city, bulldozed homes, activities, buying a home, neighbours, achievements and ribbons, the character's walker, whole lives start to finish, saving).
+The tests cover the budget (costs, taxes, upkeep, undo refunds, no debt), notable people, the new buildings, share links, trends, colour-blind colours, street names and addresses, the labor market, road reachability, service and play coverage, milestones and unlocks, resident thoughts, save migration, town generation, pausing, and Life Story (aging, events, jobs and homes from the city, bulldozed homes, activities, buying a home, neighbours, achievements and ribbons, the character's walker, whole lives start to finish, saving).
 
 ### Extending it
 

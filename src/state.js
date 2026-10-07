@@ -2,6 +2,9 @@
 
 import { STRUCTURES, VARIANT_KEYS, DEFAULT_MAP_SIZE } from './config.js';
 
+// Structures that come in the four pastel colourways.
+export const VARIANT_TYPES = new Set(['house', 'cottage', 'apartments', 'tower', 'shop', 'cafe', 'office', 'mall']);
+
 // Neighbour directions with the road-connection bit each one sets: N, E, S, W.
 export const DIRS = [
   { dx: 0, dy: -1, bit: 1 },
@@ -166,8 +169,9 @@ export class CityState {
 
   createStructure(type, rand = Math.random) {
     const s = { id: this.nextId++, type, residents: 0 };
-    if (type === 'house' || type === 'tower' || type === 'shop' || type === 'office') s.variant = VARIANT_KEYS[Math.floor(rand() * VARIANT_KEYS.length)];
+    if (VARIANT_TYPES.has(type)) s.variant = VARIANT_KEYS[Math.floor(rand() * VARIANT_KEYS.length)];
     if (type === 'tower') s.floors = 4 + Math.floor(rand() * 3);
+    if (type === 'apartments') s.floors = 3 + Math.floor(rand() * 2);
     if (type === 'office') s.floors = 3 + Math.floor(rand() * 3);
     if (type === 'tree') s.shape = Math.floor(rand() * 4);
     return s;

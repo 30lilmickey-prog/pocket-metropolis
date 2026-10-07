@@ -5,6 +5,7 @@
 import { formatClock } from './time.js';
 
 export const TREND_SERIES = [
+  { id: 'money', label: 'Balance', unit: '$', upIsGood: true },
   { id: 'pop', label: 'Population', unit: '', upIsGood: true },
   { id: 'happy', label: 'Happiness', unit: '%', upIsGood: true },
   { id: 'employ', label: 'Employment', unit: '%', upIsGood: true },
@@ -15,7 +16,7 @@ const W = 120;
 const H = 34;
 const PAD = 4;
 
-const fmt = (v, unit) => `${Math.round(v).toLocaleString()}${unit}`;
+const fmt = (v, unit) => (unit === '$' ? `$${Math.round(v).toLocaleString()}` : `${Math.round(v).toLocaleString()}${unit}`);
 export const timeLabel = (t) => `Day ${Math.floor(t)}, ${formatClock(t - Math.floor(t))}`;
 
 function points(values) {
@@ -32,7 +33,7 @@ function points(values) {
 export function trendsHTML(trends) {
   const n = trends?.t?.length || 0;
   if (n < 2) return '<p class="insp-note">Trends appear after a few in-game hours.</p>';
-  const tiles = TREND_SERIES.map((s) => {
+  const tiles = TREND_SERIES.filter((s) => trends[s.id]?.length === n).map((s) => {
     const values = trends[s.id];
     const now = values[values.length - 1];
     const delta = now - values[0];
@@ -58,7 +59,7 @@ export function trendsHTML(trends) {
     .map((t, i) => ({ t, i }))
     .slice(-8)
     .reverse()
-    .map(({ t, i }) => `<tr><th scope="row">${timeLabel(t)}</th>${TREND_SERIES.map((s) => `<td>${fmt(trends[s.id][i], s.unit)}</td>`).join('')}</tr>`)
+    .map(({ t, i }) => `<tr><th scope="row">${timeLabel(t)}</th>${TREND_SERIES.map((s) => `<td>${trends[s.id] ? fmt(trends[s.id][i], s.unit) : '–'}</td>`).join('')}</tr>`)
     .join('');
   return (
     `<div class="trend-grid">${tiles}</div>` +

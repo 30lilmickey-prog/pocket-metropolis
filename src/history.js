@@ -28,12 +28,13 @@ export class History {
   }
 
   // Run `edit` and remember what it changed. `coords` lists every tile the edit may touch.
-  record(label, coords, edit) {
+  // `cost` is what the edit spent, refunded on undo and charged again on redo (via onMoney).
+  record(label, coords, edit, { cost = 0 } = {}) {
     const before = this.city.snapshot(coords);
     const result = edit();
     if (!result) return result;
     const after = this.city.snapshot(coords);
-    this.undoStack.push({ label, before, after });
+    this.undoStack.push({ label, before, after, cost });
     if (this.undoStack.length > LIMIT) this.undoStack.shift();
     this.redoStack.length = 0;
     this.changed();
@@ -44,6 +45,7 @@ export class History {
     const e = this.undoStack.pop();
     if (!e) return null;
     this.city.restore(e.before);
+    if (e.cost) this.onMoney?.(e.cost);
     this.redoStack.push(e);
     this.changed();
     return e.label;
@@ -53,6 +55,7 @@ export class History {
     const e = this.redoStack.pop();
     if (!e) return null;
     this.city.restore(e.after);
+    if (e.cost) this.onMoney?.(-e.cost);
     this.undoStack.push(e);
     this.changed();
     return e.label;

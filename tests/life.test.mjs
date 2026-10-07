@@ -7,6 +7,7 @@ import { LifeSystem, YEAR_SECONDS } from '../src/life.js';
 import { fill } from '../src/lifeEngine.js';
 import { LIFE_EVENTS } from '../src/lifeEvents.js';
 import { mulberry32 } from '../src/utils.js';
+import { STRUCTURES } from '../src/config.js';
 
 function town(seed = 5) {
   const city = new CityState(32, 32);
@@ -29,7 +30,7 @@ test('a life starts as a baby in a home in the city', () => {
   const c = baby(life);
   assert.equal(c.age, 0);
   const home = city.getTile(c.home.x, c.home.y);
-  assert.ok(home.structure && ['house', 'tower'].includes(home.structure.type));
+  assert.ok(home.structure && STRUCTURES[home.structure.type].capacity > 0, 'a home of any kind');
   assert.ok(c.family.mother.name.endsWith('Park'));
   assert.equal(city.systems.life.char, c);
 });

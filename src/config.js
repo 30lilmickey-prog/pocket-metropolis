@@ -49,8 +49,13 @@ export const VARIANT_KEYS = Object.keys(BUILDING_VARIANTS);
 // Future per-structure data (upkeep, power draw, pollution, …) belongs here.
 export const STRUCTURES = {
   house: { label: 'House', capacity: 4, jobs: 0, greenery: 0, height: 27 },
+  cottage: { label: 'Cottage', capacity: 2, jobs: 0, greenery: 0, height: 20 },
+  apartments: { label: 'Apartments', capacity: 10, jobs: 0, greenery: 0, height: 44 },
   tower: { label: 'Tower', capacity: 16, jobs: 0, greenery: 0, height: 70 },
   shop: { label: 'Shop', capacity: 0, jobs: 5, greenery: 0, height: 22 },
+  cafe: { label: 'Café', capacity: 0, jobs: 3, greenery: 0, height: 18, service: 'fun', radius: 3 },
+  mall: { label: 'Mall', capacity: 0, jobs: 24, greenery: 0, height: 26 },
+  factory: { label: 'Factory', capacity: 0, jobs: 20, greenery: 0, height: 34, pollution: 1 },
   office: { label: 'Office', capacity: 0, jobs: 16, greenery: 0, height: 58 },
   school: { label: 'School', capacity: 0, jobs: 4, greenery: 0, height: 30, service: 'school', radius: 7 },
   clinic: { label: 'Clinic', capacity: 0, jobs: 4, greenery: 0, height: 28, service: 'health', radius: 7 },
@@ -76,11 +81,41 @@ export const COVERAGE_IDS = ['school', 'health', 'fun'];
 // Unlocks are permanent. Tools not listed here are always available.
 export const MILESTONES = [
   { id: 'hamlet', label: 'Hamlet', pop: 0, unlocks: [] },
-  { id: 'village', label: 'Village', pop: 60, unlocks: ['school', 'playground'] },
-  { id: 'town', label: 'Town', pop: 200, unlocks: ['tower', 'office', 'clinic'] },
+  { id: 'village', label: 'Village', pop: 60, unlocks: ['school', 'playground', 'apartments', 'factory'] },
+  { id: 'town', label: 'Town', pop: 200, unlocks: ['tower', 'office', 'clinic', 'mall'] },
   { id: 'city', label: 'City', pop: 450, unlocks: ['field'] },
   { id: 'metropolis', label: 'Metropolis', pop: 900, unlocks: [] },
 ];
+
+// ---- Town budget ----------------------------------------------------------------------
+// What each thing costs to build (Milestones mode; Sandbox builds for free).
+export const COSTS = {
+  road: 20,
+  house: 150,
+  cottage: 80,
+  apartments: 600,
+  tower: 1000,
+  shop: 300,
+  cafe: 200,
+  office: 1200,
+  mall: 2500,
+  factory: 1500,
+  school: 2000,
+  clinic: 2500,
+  playground: 400,
+  field: 1500,
+  tree: 10,
+  park: 100,
+  water: 50,
+  bulldoze: 0,
+};
+// Upkeep per in-game day.
+export const UPKEEP = { road: 0.5, school: 30, clinic: 35, park: 2, playground: 5, field: 12 };
+// Taxes per in-game day: every resident pays a little, every worker a little more, and each business
+// pays per filled job.
+export const TAX = { resident: 0.8, worker: 1.2 };
+export const BUSINESS_TAX = { shop: 1.5, cafe: 1.5, office: 2, mall: 1.5, factory: 2.2 };
+export const START_MONEY = { land: 10000, town: 25000 };
 
 // Resident thoughts: red needs fixing, yellow is worth a look, green is going well.
 export const SEVERITY_COLORS = { bad: '#ef6461', caution: '#f2b230', good: '#5cbf88' };
@@ -93,6 +128,8 @@ export const TOOL_GROUPS = [
     label: 'Homes',
     tools: [
       { id: 'house', label: 'House', key: '1' },
+      { id: 'cottage', label: 'Cottage', key: 'k' },
+      { id: 'apartments', label: 'Apartments', key: 'a' },
       { id: 'tower', label: 'Tower', key: '2' },
     ],
   },
@@ -101,7 +138,10 @@ export const TOOL_GROUPS = [
     label: 'Work',
     tools: [
       { id: 'shop', label: 'Shop', key: '3' },
+      { id: 'cafe', label: 'Café', key: 'e' },
       { id: 'office', label: 'Office', key: '4' },
+      { id: 'mall', label: 'Mall', key: 'l' },
+      { id: 'factory', label: 'Factory', key: 'y' },
     ],
   },
   {

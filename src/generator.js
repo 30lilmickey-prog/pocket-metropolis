@@ -95,17 +95,30 @@ export function generateTown(city, seed = (Math.random() * 2 ** 32) >>> 0, { tow
     const onAvenue = t.x === cx + 1 || t.x === cx - 1 || t.y === cy + 1 || t.y === cy - 1;
     const r = rand();
     if (d <= 3) {
-      if (r < 0.32) place(t.x, t.y, 'tower');
-      else if (r < 0.6) place(t.x, t.y, 'office');
-      else if (r < 0.86) place(t.x, t.y, 'shop');
-    } else if (d <= 7) {
-      if (onAvenue && r < 0.25) place(t.x, t.y, 'shop');
-      else if (r < 0.12) place(t.x, t.y, 'tower');
-      else if (r < 0.2) place(t.x, t.y, 'office');
-      else if (r < 0.82) place(t.x, t.y, 'house');
+      if (r < 0.28) place(t.x, t.y, 'tower');
+      else if (r < 0.52) place(t.x, t.y, 'office');
+      else if (r < 0.72) place(t.x, t.y, 'shop');
+      else if (r < 0.82) place(t.x, t.y, 'cafe');
+      else if (r < 0.92) place(t.x, t.y, 'apartments');
+    } else if (d <= Math.max(4, half - 1)) {
+      if (onAvenue && r < 0.2) place(t.x, t.y, 'shop');
+      else if (onAvenue && r < 0.28) place(t.x, t.y, 'cafe');
+      else if (r < 0.38) place(t.x, t.y, 'apartments');
+      else if (r < 0.46) place(t.x, t.y, 'tower');
+      else if (r < 0.52) place(t.x, t.y, 'office');
+      else if (r < 0.92) place(t.x, t.y, 'house');
     } else if (r < (onAvenue ? 0.12 : 0.03)) place(t.x, t.y, 'shop');
-    else if (r < 0.74) place(t.x, t.y, 'house');
+    else if (r < 0.62) place(t.x, t.y, 'house');
+    else if (r < 0.95) place(t.x, t.y, 'cottage');
   }
+
+  // A mall downtown and a factory out on the edge of town, away from most homes.
+  const downtown = lots.filter((t) => isEmpty(t.x, t.y) || ['shop', 'house'].includes(tile(t.x, t.y).structure?.type)).filter((t) => ring(t.x, t.y) <= 4);
+  const mallSpot = downtown.sort(() => rand() - 0.5)[0];
+  if (mallSpot) place(mallSpot.x, mallSpot.y, 'mall');
+  const edge = lots.filter((t) => ring(t.x, t.y) >= half - 1 && (isEmpty(t.x, t.y) || tile(t.x, t.y).structure?.type === 'cottage'));
+  const factorySpot = edge.sort(() => rand() - 0.5)[0];
+  if (factorySpot) place(factorySpot.x, factorySpot.y, 'factory');
 
   // A school and a clinic on opposite sides of downtown.
   const serviceSpot = (sx, sy) => {

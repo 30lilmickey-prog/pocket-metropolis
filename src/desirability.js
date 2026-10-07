@@ -90,8 +90,38 @@ export const FACTORS = [
       return -0.14 * worst;
     },
   },
-  { id: 'pollution', label: 'Pollution', enabled: false, compute: () => 0 },
+  {
+    id: 'pollution',
+    label: 'Factory smoke',
+    enabled: true,
+    // Homes near a factory are less pleasant; the effect fades over about five tiles.
+    compute: (city, tile) => {
+      let worst = 0;
+      for (let dy = -4; dy <= 4; dy++) {
+        for (let dx = -4; dx <= 4; dx++) {
+          const n = city.getTile(tile.x + dx, tile.y + dy);
+          if (!n?.structure || !STRUCTURES[n.structure.type].pollution) continue;
+          worst = Math.max(worst, 1 - Math.hypot(dx, dy) / 5.5);
+        }
+      }
+      return -0.18 * worst;
+    },
+  },
   { id: 'safety', label: 'Safety', enabled: false, compute: () => 0 },
+  {
+    id: 'culture',
+    label: 'Artist nearby',
+    enabled: true,
+    // A Great Artist makes their street more appealing.
+    compute: (city, tile) => {
+      let best = 0;
+      for (const a of city.derived.notableEffects?.artists || []) {
+        const d = Math.hypot(a.x - tile.x, a.y - tile.y);
+        if (d <= 3.5) best = Math.max(best, 1 - d / 4.5);
+      }
+      return 0.08 * best;
+    },
+  },
   { id: 'overcrowding', label: 'Overcrowding', enabled: false, compute: () => 0 },
   { id: 'walkability', label: 'Walkability', enabled: false, compute: () => 0 },
   { id: 'utilities', label: 'Utilities', enabled: false, compute: () => 0 },

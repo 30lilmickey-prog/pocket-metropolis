@@ -3,6 +3,8 @@
 
 import { MILESTONES, STRUCTURES, TOOLS } from './config.js';
 import { trendsHTML, bindTrendHover } from './trendsUI.js';
+import { budgetHTML, budgetKey } from './budgetUI.js';
+import { notablesHTML, notablesKey } from './notablesUI.js';
 
 const SEVERITY_LABEL = { bad: 'Needs fixing', caution: 'Worth a look', good: 'Going well' };
 
@@ -11,7 +13,10 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const CLOSE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
 
 export class CityPanel {
-  constructor({ milestones, onShow, onOpen, onBuild }) {
+  constructor({ milestones, onShow, onOpen, onBuild, economy, onShowTile, notables }) {
+    this.notables = notables; // () → Notables
+    this.economy = economy; // () → Economy
+    this.onShowTile = onShowTile; // (x, y) → fly there
     this.onBuild = onBuild; // (thought) → build its suggested road
     this.milestones = milestones; // () => Milestones
     this.onShow = onShow; // (thought) → move the camera there
@@ -39,7 +44,10 @@ export class CityPanel {
       const b = e.target.closest('button');
       if (!b) return;
       if (b.dataset.close != null) this.toggle(false);
-      else if (b.dataset.build != null) {
+      else if (b.dataset.showtile) {
+        const [x, y] = b.dataset.showtile.split(',').map(Number);
+        this.onShowTile?.(x, y);
+      } else if (b.dataset.build != null) {
         const th = this.thoughts[Number(b.dataset.build)];
         if (th?.plan) this.onBuild?.(th);
       } else if (b.dataset.show != null) {
@@ -96,6 +104,29 @@ export class CityPanel {
       this.panel.innerHTML = this.html(city, m, p);
       this._trendSlot = null;
     }
+    // The budget redraws only when its numbers change.
+    const budgetBox = this.panel.querySelector('.budget');
+    if (budgetBox && this.economy) {
+      const eco = this.economy();
+      const bkey = budgetKey(city.derived.economy, eco.state, eco.sandbox);
+      if (bkey !== this._budgetKey || this._budgetBox !== budgetBox) {
+        this._budgetKey = bkey;
+        this._budgetBox = budgetBox;
+        const open = !!budgetBox.querySelector('details')?.open;
+        budgetBox.innerHTML = budgetHTML(city.derived.economy, eco.state, eco.sandbox);
+        if (open) budgetBox.querySelector('details')?.setAttribute('open', '');
+      }
+    }
+    const npBox = this.panel.querySelector('.notable-people');
+    if (npBox && this.notables) {
+      const n = this.notables();
+      const nkey = notablesKey(n);
+      if (nkey !== this._npKey || this._npBox !== npBox) {
+        this._npKey = nkey;
+        this._npBox = npBox;
+        npBox.innerHTML = notablesHTML(city, n);
+      }
+    }
     // Charts redraw only when a new sample arrives, so a hover isn't interrupted.
     const tr = city.systems.trends;
     const box = this.panel.querySelector('.trends');
@@ -143,6 +174,8 @@ export class CityPanel {
     return (
       `<header><div><span class="insp-kicker">Your town</span><h2>${p.current.label}</h2></div>` +
       `<button type="button" class="insp-close" data-close aria-label="Close city panel">${CLOSE}</button></header>` +
+      `<h3>Budget</h3><div class="budget"></div>` +
+      `<h3>Notable people</h3><div class="notable-people"></div>` +
       next +
       ladder +
       `<h3>Trends</h3><div class="trends"></div>` +

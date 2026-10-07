@@ -134,6 +134,41 @@ body {
   outline: 2.5px solid var(--focus);
   outline-offset: 2px;
 }
+.money-row {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.money-coin {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffd98f;
+  color: #7a5a14;
+  font: 800 11px/1 var(--font-body);
+}
+#stat-money {
+  font: 600 15px/1 var(--font-display);
+}
+.net {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--sev-good-ink);
+}
+.net.down {
+  color: var(--sev-bad-ink);
+}
+.tray-item .price {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
 .tier {
   grid-column: 1 / -1;
   position: relative;
@@ -359,6 +394,11 @@ body {
 .tint-school { --tint: #ffc9b9; }
 .tint-clinic { --tint: #c4ead9; }
 .tint-playground { --tint: #ffe0b0; }
+.tint-cottage { --tint: #fcd5ce; }
+.tint-apartments { --tint: #c7e6da; }
+.tint-cafe { --tint: #ffd2b8; }
+.tint-mall { --tint: #dccbef; }
+.tint-factory { --tint: #d7d2e3; }
 .tint-field { --tint: #bfe3b4; }
 .tint-tree { --tint: var(--tint-tree); }
 .tint-park { --tint: var(--tint-park); }
@@ -948,6 +988,208 @@ button:focus-visible {
   font-size: 12px;
   min-height: 36px;
   white-space: nowrap;
+}
+
+/* Budget */
+.budget {
+  display: grid;
+  gap: 8px;
+}
+.budget-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+.budget-head strong {
+  display: block;
+  font: 600 26px/1.1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+.budget-net {
+  text-align: right;
+  font-weight: 800;
+}
+.budget-net span {
+  display: block;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+.budget-net small {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.budget-net.up span {
+  color: var(--sev-good-ink);
+}
+.budget-net.down span {
+  color: var(--sev-bad-ink);
+}
+.budget-warn {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--sev-bad) 16%, transparent);
+  color: var(--sev-bad-ink);
+  font-size: 12.5px !important;
+}
+.budget-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.budget-bars {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+}
+.budget-bars li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 'l v' 'b b';
+  gap: 2px 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.budget-bars .bl {
+  grid-area: l;
+  color: var(--ink-soft);
+}
+.budget-bars b {
+  grid-area: v;
+  font-variant-numeric: tabular-nums;
+}
+.budget-bars .bb {
+  grid-area: b;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--meter-track);
+  overflow: hidden;
+}
+.budget-bars .bb span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+.budget-bars.in .bb span {
+  background: var(--sev-good);
+}
+.budget-bars.out .bb span {
+  background: var(--sev-bad);
+  opacity: 0.75;
+}
+.earners {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.earners li {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: var(--meter-track);
+}
+.earners .rank {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffd98f;
+  color: #7a5a14;
+  font-size: 12px;
+  font-weight: 800;
+}
+.earners .who b {
+  display: block;
+  font-size: 12.5px;
+}
+.earners .who small,
+.earners .earn small {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.earners .earn {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--sev-good-ink);
+  font-variant-numeric: tabular-nums;
+}
+.trend-table td.up {
+  color: var(--sev-good-ink);
+}
+.trend-table td.down {
+  color: var(--sev-bad-ink);
+}
+
+/* Notable people */
+.nb {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border-radius: 50%;
+  background: var(--nb);
+  color: #3d3557;
+  font-weight: 800;
+  box-shadow: 0 0 0 2px var(--panel-edge);
+}
+.notables {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.notables li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: var(--meter-track);
+}
+.notables.next li {
+  grid-template-columns: auto 1fr;
+  padding: 6px 10px;
+}
+.np-text {
+  display: grid;
+  gap: 2px;
+  font-size: 12.5px;
+  line-height: 1.25;
+}
+.np-text small {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.np-bonus {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--sev-good-ink);
+}
+.np-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--panel-edge);
+  overflow: hidden;
+}
+.np-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+.notable-card .nb {
+  margin: 0 auto;
 }
 
 /* Trends: stat tiles with sparklines */
