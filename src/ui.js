@@ -4,6 +4,7 @@
 import { TOOL_GROUPS, TOOLS, VIEWS, STRUCTURES, SERVICES } from './config.js';
 import { money } from './economy.js';
 import { activityOf } from './townsfolk.js';
+import { ERAS, yearOf } from './eras.js';
 import { notableType } from './notables.js';
 import { FACTORS } from './desirability.js';
 import { formatClock } from './time.js';
@@ -58,8 +59,13 @@ const LEGENDS = {
 
 const pct = (v) => `${Math.round(v * 100)}%`;
 
+// Game speeds; the speed pill cycles through them, then pauses.
+export const SPEEDS = [1, 3, 10];
+
 export class Interface {
-  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect, sound, locks, onShare, onBackHome, hasBackup, display, costOf, budget }) {
+  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect, sound, locks, onShare, onBackHome, hasBackup, display, costOf, budget, growth, onSlots }) {
+    this.growth = growth; // { get(), set(on) }: the town building itself
+    this.onSlots = onSlots; // () → open the save slots sheet
     this.sound = sound;
     this.costOf = costOf || (() => 0); // tool → price in the current mode (0 in Sandbox)
     this.budget = budget; // () → { money, net, sandbox } for the stats bubble
@@ -108,7 +114,8 @@ export class Interface {
     }
     document.getElementById('btn-random').addEventListener('click', onRandom);
     document.getElementById('btn-fit').addEventListener('click', onFit);
-    this.speedBtn.addEventListener('click', () => this.setSpeed(this.speed === 0 ? this._resume || 1 : this.speed >= 3 ? 0 : this.speed + 1));
+    // Cycles 1× → 3× → 10× → pause.
+    this.speedBtn.addEventListener('click', () => this.setSpeed(this.speed === 0 ? this._resume || 1 : SPEEDS[SPEEDS.indexOf(this.speed) + 1] ?? 0));
     this.viewBtn.addEventListener('click', () => {
       const i = VIEWS.findIndex((v) => v.id === this.view);
       this.setView(VIEWS[(i + 1) % VIEWS.length].id);
@@ -267,17 +274,16 @@ export class Interface {
 
   renderMore() {
     if (this.moreSheet.hidden) return;
-    const speeds = [
-      [0, 'Pause'],
-      [1, '1×'],
-      [2, '2×'],
-      [3, '3×'],
-    ];
+    const speeds = [[0, 'Pause'], ...SPEEDS.map((v) => [v, `${v}×`])];
     this.moreSheet.innerHTML =
       `<header><h2>Settings &amp; more</h2><button type="button" class="insp-close" data-more="close" aria-label="Close">${ICONS.close}</button></header>` +
       `<span class="sheet-label">Speed</span><div class="seg big">${speeds
         .map(([v, l]) => `<button type="button" data-speed="${v}" aria-pressed="${this.speed === v}">${l}</button>`)
         .join('')}</div>` +
+      (this.growth
+        ? `<span class="sheet-label">Town grows by itself</span><div class="seg big"><button type="button" data-growth="1" aria-pressed="${this.growth.get()}">On</button><button type="button" data-growth="0" aria-pressed="${!this.growth.get()}">Off</button></div>` +
+          '<p class="sheet-hint">Homes, shops, streets and parks appear where your people need them. You can keep building too.</p>'
+        : '') +
       `<span class="sheet-label">Map view</span><div class="seg big views">${VIEWS.map(
         (v) => `<button type="button" data-view="${v.id}" aria-pressed="${this.view === v.id}">${v.label}</button>`
       ).join('')}</div>` +
@@ -298,7 +304,8 @@ export class Interface {
       (this.hasBackup() ? '<button type="button" class="ghost-btn" data-more="home">Back to my town</button>' : '<span></span>') +
       '</div>' +
       `<div class="sheet-actions"><button type="button" class="ghost-btn" data-more="fit">Recenter</button>` +
-      `<button type="button" class="ghost-btn" data-more="random">New town…</button></div>`;
+      `<button type="button" class="ghost-btn" data-more="random">New town…</button></div>` +
+      `<div class="sheet-actions"><button type="button" class="primary-btn" data-more="slots">Save slots…</button></div>`;
   }
 
   onMoreClick(e) {
@@ -311,6 +318,11 @@ export class Interface {
       return this.renderSound();
     }
     else if (t.dataset.display) this.display.set(t.dataset.display, t.dataset.value === '1');
+    else if (t.dataset.growth) this.growth.set(t.dataset.growth === '1');
+    else if (t.dataset.more === 'slots') {
+      this.toggleMore(false);
+      return this.onSlots?.();
+    }
     else if (t.dataset.more === 'share') {
       this.onShare?.();
       return this.toggleMore(false);
@@ -389,7 +401,7 @@ export class Interface {
       set('net', netEl, `${net >= 0 ? '▲' : '▼'} ${money(Math.abs(net))}/day`);
       netEl.classList.toggle('down', net < 0);
     }
-    set('clock', this.clockEl, `${seasonFor(city.day).label} · Day ${city.day} · ${formatClock(city.clock)}${sky}${work}`);
+    set('clock', this.clockEl, `${seasonFor(city.day).label} ${yearOf(city)} · ${ERAS[city.systems.era?.index ?? 0]?.label || ''} · ${formatClock(city.clock)}${sky}${work}`);
   }
 
   // Inspector: what is on a tile and why people do or don't want to live there.

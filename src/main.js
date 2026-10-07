@@ -6,11 +6,15 @@ import { Simulation } from './simulation.js';
 import { Renderer } from './renderer.js';
 import { Camera } from './camera.js';
 import { InputController } from './input.js';
-import { AutoSaver, loadCity, saveCity, saveBackup, loadBackup, clearBackup } from './persistence.js';
+import { AutoSaver, loadCity, saveCity, saveBackup, loadBackup, clearBackup, activeSlot, setActiveSlot, deleteSlot } from './persistence.js';
+import { SlotsSheet } from './slotsUI.js';
+import { DecisionCard } from './decisionUI.js';
+import { addChronicle } from './chronicle.js';
+import { yearOf } from './eras.js';
 import { encodeCity, decodeCity, shareUrl, codeFromHash } from './share.js';
 import { Minimap } from './minimap.js';
 import { settings, loadSettings, setSetting, onSettings } from './settings.js';
-import { generateTown, generateLand } from './generator.js';
+import { generateTown, generateLand, generateSeed } from './generator.js';
 import { NewTownSheet } from './newTownUI.js';
 import { Interface } from './ui.js';
 import { LifeInterface } from './lifeUI.js';
@@ -82,6 +86,8 @@ function start(hotData = {}) {
   let fitted = false;
   let framing = 'town'; // what the recenter button framed last
   let stroke = null; // drag-to-build in progress: { start, last, tiles }
+  let following = false; // the camera follows the main person
+  let carryTimer = null; // the family story moves on to the next generation shortly after a death
 
   const tileAt = (sx, sy) => {
     const w = camera.screenToWorld(sx, sy);
@@ -116,6 +122,14 @@ function start(hotData = {}) {
     budget: () => ({ money: sim.economy.money, net: city.derived.economy?.net || 0, sandbox: sim.economy.sandbox }),
     onShare: () => shareTown(),
     onBackHome: () => backHome(),
+    onSlots: () => slotsSheet.toggle(true),
+    growth: {
+      get: () => sim.growth.on,
+      set: (on) => {
+        sim.growth.on = on;
+        ui.toast(on ? 'Your town will grow by itself. Keep building too, if you like' : 'Growth is off: only you build now', 3200);
+      },
+    },
     hasBackup: () => hasBackup,
     display: {
       get: (k) => (k === 'minimap' ? minimapOn() : settings[k]),
@@ -214,6 +228,8 @@ function start(hotData = {}) {
     economy: () => sim.economy,
     notables: () => sim.notables,
     townsfolk: () => sim.townsfolk,
+    eras: () => sim.eras,
+    growth: () => sim.growth,
     onShowTile: (x, y) => {
       focusTile(x, y);
       if (window.innerWidth < 560) cityPanel.toggle(false);
@@ -391,33 +407,93 @@ function start(hotData = {}) {
   // ---- New town ----------------------------------------------------------------
   const newTownSheet = new NewTownSheet({
     onOpen: () => {
+      document.getElementById('milestone-card')?.setAttribute('hidden', '');
       ui.toggleMore(false);
       cityPanel.toggle(false);
       lifeUI.toggle(false);
       ui.closeTray();
     },
     onStart: (opts) => newTown(opts),
+    family: () => {
+      const c = sim.life.char;
+      return c ? `${c.first}` : null;
+    },
+  });
+
+  // ---- Save slots ----------------------------------------------------------------
+  const hideCard = () => {
+    const card = document.getElementById('milestone-card');
+    if (card) card.hidden = true;
+  };
+  const slotsSheet = new SlotsSheet({
+    onOpen: () => {
+      hideCard();
+      ui.toggleMore(false);
+      cityPanel.toggle(false);
+      lifeUI.toggle(false);
+      ui.closeTray();
+    },
+    beforeOpen: () => saver.flush(),
+    onPlay: (n) => {
+      saver.flush();
+      const other = loadCity(n);
+      if (!other) return ui.toast('That save slot could not be opened', 3000);
+      setActiveSlot(n);
+      swapCity(other);
+      ui.refreshLocks();
+      lifeUI.render();
+      stopFollow();
+      ui.toast(`Save slot ${n}: welcome back`, 2400);
+    },
+    onNew: (n) => newTownSheet.toggle(true, { slot: n }),
+    onCopy: (n) => {
+      if (saveCity(city, n)) ui.toast(`This town was saved to slot ${n}. You're still playing slot ${activeSlot()}`, 3600);
+      else ui.toast('There was no room to save. Delete a slot and try again', 3600);
+    },
+    onDelete: (n) => {
+      deleteSlot(n);
+      ui.toast(`Save slot ${n} is empty now`, 2400);
+    },
   });
 
   // Build a fresh town of the chosen size and mode. The Life Story and achievements carry over;
   // a character whose home is gone moves into whatever the new town offers (or waits for one).
-  function newTown({ mode, size, start }) {
+  // A town can start in another save slot (the current one is saved first) with a new main person.
+  function newTown({ mode, size, start, grow = start === 'seed', person = 'new', slot = null }) {
+    saver.flush();
+    if (slot && slot !== activeSlot()) setActiveSlot(slot);
     const fresh = new CityState(size, size);
     if (start === 'town') generateTown(fresh);
+    else if (start === 'seed') generateSeed(fresh);
     else generateLand(fresh);
     fresh.systems.mode = mode;
-    if (city.systems.life) fresh.systems.life = city.systems.life;
+    const keep = person === 'keep' && city.systems.life;
+    if (keep) fresh.systems.life = city.systems.life;
+    else if (city.systems.life?.achievements) fresh.systems.life = { char: null, history: [], achievements: city.systems.life.achievements };
     swapCity(fresh);
-    sim.economy.reset(start);
+    sim.economy.reset(start === 'town' ? 'town' : 'land');
     sim.economy.assess();
     if (start === 'town') sim.milestones.settleForCapacity();
+    else sim.eras.found(); // a seed or open land starts in 1850
+    sim.growth.on = grow;
     ui.refreshLocks();
     if (sim.life.char?.alive) sim.life.syncWithCity();
+    stopFollow();
     lifeUI.render();
     saveCity(city);
     audio.play('fanfare');
-    const where = start === 'town' ? 'A fresh town' : 'Open land';
-    ui.toast(mode === 'sandbox' ? `${where}, sandbox mode: everything is unlocked` : `${where}. Grow it to unlock new buildings`, 4200);
+    const where = start === 'town' ? 'A fresh town' : start === 'seed' ? `A little crossroads, ${yearOf(city)}` : 'Open land';
+    ui.toast(`${where}${slot ? ` in save slot ${slot}` : ''}${grow ? '. It will grow by itself' : ''}`, 4200);
+    if (!keep) askForMainPerson();
+  }
+
+  // A new town starts by choosing whose family to follow.
+  function askForMainPerson() {
+    setTimeout(() => {
+      if (sim.life.char) return;
+      lifeUI.toggle(true);
+      ui.toast('Create your main person. You will follow them, then their children and grandchildren', 5200);
+    }, 900);
   }
 
   // ---- Sharing -----------------------------------------------------------------
@@ -518,8 +594,10 @@ function start(hotData = {}) {
   const lifeUI = new LifeInterface({
     life: sim.life,
     onCreate: (draft) => {
-      sim.life.create(draft);
-      ui.toast(`${draft.first} was born. Watch for life events as the years go by.`, 3600);
+      const c = sim.life.create(draft);
+      const home = c.home && city.getTile(c.home.x, c.home.y);
+      addChronicle(city, `${draft.first} ${draft.last} was born${home ? ` at ${addressOf(home)}` : ''}. The family story begins.`, c.home, 'family');
+      ui.toast(`${draft.first} was born. Tap Follow to watch their life on the map.`, 3600);
     },
     onAgeUp: () => sim.life.ageUp(),
     onChoose: (i) => {
@@ -541,7 +619,9 @@ function start(hotData = {}) {
       else audio.play('nope');
       return result;
     },
-    onContinue: () => sim.life.continueAsChild(),
+    onContinue: () => carryOn(),
+    onFollow: () => (following ? stopFollow() : startFollow()),
+    isFollowing: () => following,
     onNewLife: () => {
       const s = city.systems.life;
       if (s?.char) s.history = [...(s.history || []), summaryOf(s.char)];
@@ -562,6 +642,101 @@ function start(hotData = {}) {
       renderer.ring(home.x, home.y, '#ffffff');
     },
   });
+  // ---- Following the main person ---------------------------------------------------
+  // The camera stays with them: on the street when they're out, at home or work otherwise.
+  // Moving the map by hand stops following.
+  const followBtn = document.getElementById('btn-follow');
+  const followChip = document.createElement('button');
+  followChip.type = 'button';
+  followChip.className = 'pill glass follow-chip';
+  followChip.hidden = true;
+  document.getElementById('app').appendChild(followChip);
+  followChip.addEventListener('click', () => stopFollow());
+  followBtn.addEventListener('click', () => (following ? stopFollow() : startFollow()));
+  function startFollow() {
+    const c = sim.life.char;
+    if (!c?.alive) return ui.toast('Create your main person in Life first', 2600);
+    following = true;
+    camera.tzoom = Math.max(camera.tzoom, 1.6);
+    syncFollowUI();
+    lifeUI.render();
+  }
+  function stopFollow() {
+    if (!following) return;
+    following = false;
+    syncFollowUI();
+    lifeUI.render();
+  }
+  function syncFollowUI() {
+    const c = sim.life.char;
+    followBtn.hidden = !c?.alive;
+    followBtn.setAttribute('aria-pressed', String(following));
+    followBtn.classList.toggle('is-on', following);
+    followChip.hidden = !following;
+    if (following && c) followChip.innerHTML = `<span aria-hidden="true">●</span> Following ${c.first} · Stop`;
+  }
+  const panBy = camera.panBy.bind(camera);
+  camera.panBy = (dx, dy) => {
+    if (following && (dx || dy)) stopFollow();
+    panBy(dx, dy);
+  };
+  function followTarget() {
+    const c = sim.life.char;
+    if (!c?.alive) return null;
+    const h = sim.agents.hero;
+    if (h && !h.dead && h.alpha > 0.3) return { gx: h.gx, gy: h.gy };
+    const at = c.home;
+    return at ? { gx: at.x + 0.5, gy: at.y + 0.5 } : null;
+  }
+
+  // ---- Generations -------------------------------------------------------------------
+  // When the main person dies, the story moves on to their child (or a niece or nephew) by itself.
+  function carryOn() {
+    clearTimeout(carryTimer);
+    carryTimer = null;
+    const parent = sim.life.char;
+    if (!parent || parent.alive) return null;
+    const heir = sim.life.heir();
+    const wasFollowing = following;
+    const next = sim.life.continueAsChild();
+    if (!next) return null;
+    const rel = heir?.relation || 'child';
+    addChronicle(city, `${parent.first} ${parent.last} passed away at ${parent.death?.age}. ${next.first}, their ${rel}, carries on the family story.`, next.home, 'family');
+    ui.toast(`${next.first}, ${parent.first}'s ${rel}, carries on the family story`, 4600);
+    audio.play('chime');
+    if (wasFollowing) startFollow();
+    lifeUI.render();
+    return next;
+  }
+  function scheduleCarryOn() {
+    if (carryTimer || !sim.life.char || sim.life.char.alive) return;
+    carryTimer = setTimeout(carryOn, 9000);
+  }
+
+  // ---- Eras ----------------------------------------------------------------------------
+  function newEra({ era, year }) {
+    audio.play('fanfare');
+    renderer.confetti();
+    const card = cardEl();
+    card.innerHTML = `<span class="insp-kicker">A new era · ${year}</span><h2>${era.label}</h2><p>${era.blurb}</p>`;
+    showCard(card, 6500);
+    addChronicle(city, `The town entered the ${era.label.toLowerCase()}. ${era.blurb}`, null, 'era');
+  }
+
+  // ---- Town decisions ------------------------------------------------------------------
+  const decisionCard = new DecisionCard({
+    decisions: () => sim.decisions,
+    onChoose: (i) => {
+      const r = sim.decisions.choose(i);
+      decisionCard.hide();
+      if (!r) return;
+      const good = (r.choice.spirit?.[0] ?? 0) >= 0 && (r.choice.growth?.[0] ?? 1) >= 1;
+      audio.play(good ? 'good' : 'bad');
+      ui.toast(r.choice.result, 3600);
+    },
+    onOpen: () => ui.closeTray(),
+  });
+
   // After a move, fly to the new home and say its address.
   const homeKey = () => {
     const h = sim.life.char?.home;
@@ -584,6 +759,23 @@ function start(hotData = {}) {
     else if (ev.type === 'restored') audio.play('undo');
     else if (ev.type === 'lifeEvent') audio.play('chime');
     if (ev.type === 'milestone') celebrate(ev.milestone);
+    if (ev.type === 'era') newEra(ev);
+    if (ev.type === 'decision') {
+      audio.play('chime');
+      decisionCard.show({ auto: true });
+    }
+    if (ev.type === 'decided' && ev.lapsed) {
+      decisionCard.hide();
+      ui.toast(`${ev.choice.result} (No decision was made in time.)`, 3600);
+    }
+    if (ev.type === 'lifeChanged') {
+      syncFollowUI();
+      if (sim.life.char && !sim.life.char.alive) scheduleCarryOn();
+    }
+    if (ev.type === 'loaded' || ev.type === 'reset') {
+      clearTimeout(carryTimer);
+      carryTimer = null;
+    }
     if (ev.type === 'notable') welcomeNotable(ev);
     if (ev.type === 'townNews') {
       // Big moments in townsfolk lives get a toast and a little heart over the spot.
@@ -676,11 +868,16 @@ function start(hotData = {}) {
   });
 
   if (fresh) {
-    generateTown(city);
+    // A first visit starts from a seed that grows by itself, with a main person to follow.
+    generateSeed(city);
+    city.systems.mode = 'milestones';
+    sim.economy.reset('land');
     sim.refresh();
-    sim.milestones.settleForCapacity();
+    sim.eras.found();
+    sim.growth.on = true;
     ui.refreshLocks();
     fitView(true);
+    askForMainPerson();
     const touch = window.matchMedia?.('(pointer: coarse)').matches;
     ui.toast(
       touch ? 'Tap or drag to build · two fingers to move · long-press to bulldoze' : 'Click or drag to build · right-drag to move · right-click to bulldoze',
@@ -715,6 +912,15 @@ function start(hotData = {}) {
     last = now;
     sim.update(dt);
     input.edgeScroll(dt);
+    if (following) {
+      const f = followTarget();
+      if (f) {
+        const w = gridToWorld(f.gx, f.gy);
+        camera.tx = w.x;
+        camera.ty = w.y - 10;
+        camera.clampTarget();
+      }
+    }
     camera.update(dt);
     audio.ambient(dt, { daylight: daylightAt(city.clock), rain: city.derived.weather?.rain || 0 });
     renderer.render(dt, viewState());
@@ -726,6 +932,8 @@ function start(hotData = {}) {
       ui.inspect(city, selected);
       lifeUI.tick();
       cityPanel.update(city);
+      decisionCard.tick();
+      syncFollowUI();
       uiTimer = 0.2;
     }
     requestAnimationFrame(frame);
@@ -733,7 +941,7 @@ function start(hotData = {}) {
   requestAnimationFrame(frame);
 
   // Handy for poking at the simulation from the console.
-  window.pocketMetropolis = { city, sim, camera, renderer, history, audio, ui, cityPanel };
+  window.pocketMetropolis = { city, sim, camera, renderer, history, audio, ui, cityPanel, decisionCard, slotsSheet, newTownSheet, lifeUI, startFollow, stopFollow, carryOn };
 }
 
 const hot = window.claude?.hot;

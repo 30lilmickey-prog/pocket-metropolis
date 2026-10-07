@@ -122,6 +122,13 @@ export const FACTORS = [
       return 0.08 * best;
     },
   },
+  {
+    id: 'spirit',
+    label: 'Town spirit',
+    enabled: true,
+    // Town decisions lift or dent how everyone feels about living here, for a while.
+    compute: (city) => city.derived.spirit || 0,
+  },
   { id: 'overcrowding', label: 'Overcrowding', enabled: false, compute: () => 0 },
   { id: 'walkability', label: 'Walkability', enabled: false, compute: () => 0 },
   { id: 'utilities', label: 'Utilities', enabled: false, compute: () => 0 },

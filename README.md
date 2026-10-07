@@ -1,11 +1,15 @@
 # Pocket Metropolis
 
-A relaxing isometric tiny-city builder. You plan the city; residents decide for themselves where to live, work and stroll.
+A relaxing isometric tiny-city builder. You plan the city; residents decide for themselves where to live, work and stroll. Or sit back and watch: from a seed of a crossroads in 1850, the town grows by itself through the eras while you follow one family down the generations.
 
 **What's in it**
 
-- **New town** (top-right button, or ☰ → New town…): choose **Sandbox** (everything unlocked) or **Milestones** (unlock buildings as you grow), a **small (16×16), medium (32×32) or large (48×48)** map, and **empty land** to build from scratch or a ready-made **starter town**. Your Life Story and achievements carry over
-- The first visit starts with a 32×32 starter town in the middle, with a river, woods and room to grow
+- **Grow from a seed:** a new town can start as a little crossroads with a few cottages in 1850 and grow by itself (see *Growing through the eras* below). The first visit starts this way
+- **Main person and generations:** you start by creating your main person. Follow them on the map, and when they die the story carries on with their child (or a niece or nephew), generation after generation
+- **Town decisions** every couple of in-game days, with good and bad effects on how the town grows
+- **Three save slots** (☰ → Save slots…): keep three towns, start a new town with a new main person in an empty slot, copy or delete
+
+- **New town** (top-right button, or ☰ → New town…): choose **Sandbox** (everything unlocked) or **Milestones** (unlock buildings as you grow), a **small (16×16), medium (32×32) or large (48×48)** map, and **a seed** that grows, **empty land** or a ready-made **starter town**; whether it **grows by itself**; and **someone new** or the same family as your main person. Achievements carry over
 - Homes (house, cottage, apartments, tower), workplaces (shop, café, office, mall, factory), services (school, clinic), recreation (playground, sports field), nature (tree, park, water) and roads. Factories pay well but their smoke makes nearby homes less desirable
 - **Town budget:** building costs money (Sandbox builds for free). Residents and workers pay taxes, businesses pay per job filled, and roads, schools, clinics and parks cost upkeep. The balance and net per day sit in the stats bubble; the City panel's **Budget** shows what comes in and goes out by kind of building, the **top earning buildings** (with Show me), the last few days, and a balance trend. Undo refunds what an edit cost; the town can't go below zero
 - **Notable people:** like great people in Civilization, a famous resident is born in or moves to your town when its buildings inspire them: schools inspire scientists, clinics doctors, businesses merchants, factories engineers, parks and cafés artists, sports fields athletes, and a growing town planners. Each arrival gets a card and a badge over their home, and gives the whole town a bonus (wider school or clinic reach, more tax, cheaper building, less upkeep, nicer streets). The City panel lists everyone and who is likely to come next
@@ -17,7 +21,7 @@ A relaxing isometric tiny-city builder. You plan the city; residents decide for 
 - **Road suggestions:** when a street is jammed, the town tries out possible new roads behind the scenes (extending a dead end, a link road, a road alongside or around the jam) and residents only complain where one would really help. The suggestion is sketched on the map with a dashed outline, and **Build it** in the City panel lays it down in one step (undo works)
 - **Street names and addresses:** every straight road gets a name (Maple Street, Lavender Avenue…) painted on the map when you zoom in, and every building gets a house number, odd on one side and even on the other. Names stay put as roads grow, and when a road is cut in two the longer part keeps the name. Life Story, the inspector and events all use addresses ("14 Maple Street") instead of map coordinates
 - Inspect any tile to see its address, residents or jobs and a breakdown of its desirability
-- Map views for desirability, traffic and services; pause and 1×–3× speed
+- Map views for desirability, traffic and services; pause and 1×, 3× or 10× speed
 - A slow day/night cycle with lit windows, street lights and headlights
 - Seasons (two in-game days each) and weather: rain with umbrellas and ripples, winter snow, morning fog
 - Homes grow as people move in, towers and offices add floors as they fill, and roofs vary from house to house
@@ -41,6 +45,47 @@ node build.mjs   # writes dist/pocket-metropolis.html
 `vercel.json` runs `node build.mjs` and serves `dist/` (no dependencies to install).
 
 Import this repository in Vercel (**Add New → Project**) with the framework preset left as **Other**; no other settings are needed.
+
+## Growing through the eras
+
+Inspired by [genesis](https://github.com/tan-zhuo/genesis): the town is something you watch grow, and technology changes what you see. Ideas only; no code was copied (that repository has no licence).
+
+- **Calendar:** a town is founded in 1850 and a year passes every in-game day, the same pace as a Life Story life. The stats bubble shows the season, year and era.
+- **Eras:** Pioneer days → Railway age → Motor age → Modern times → Bright future. Each needs enough people and enough years since founding (60 people and 15 years, then 180 and 35, 400 and 60, 800 and 90). A new era gets a card and an entry in the town history.
+- **The look changes with the era:**
+  - **Pioneer days:** dirt lanes with wheel ruts, lanterns on wooden posts, horse carts, timber walls and thatch-coloured roofs.
+  - **Railway age:** cobbles, brick and clay roofs, gas lamps, and the first dark motor cars.
+  - **Motor age:** asphalt with lane markings and electric street lights.
+  - **Bright future:** solar panels on house roofs.
+- **Let it grow** (on for seeds; ☰ → Town grows by itself): every so often the town makes one change from what its people need:
+  - homes when houses are about as full as their appeal allows
+  - shops, cafés, factories, offices and malls when people need work
+  - a café, park or playground where townsfolk have nowhere nearby to eat, play or meet
+  - a school or clinic where families have none
+  - a new street when lots run out
+  - now and then a tree
+- **How it grows:** what it builds follows the era, from cottages to flats to towers. Streets grow in tidy blocks, because it keeps the way on from a dead end free and leaves a gap for a side street every five tiles. When the map is full, older homes near the middle are rebuilt bigger. Homes and businesses are free (residents build them); roads, services, parks and trees come out of the town budget. A happy town grows faster. You can keep building alongside it.
+- **Town decisions:** every couple of days the town asks a question that fits the era and the moment: dig a well, clear the old woods, welcome newcomers, pay for the railway station, accept a mill, pave the roads, raise or cut taxes, take a gift of parkland, build a highway, allow towers, fund solar roofs, deal with a flood or a storm…
+  - Each choice shows its effects: money, faster or slower growth, happier or unhappier homes (Town spirit in the inspector), the next era sooner, tax income, a new building, more or fewer trees, cheered-up townsfolk.
+  - If nobody answers within a day, the last choice happens. **Later** tucks the question into a small pill, and a question that arrives during a Life Story event waits there too.
+- **City panel → Era and Town history:** progress to the next era, how fast the town is growing and why, and a dated chronicle of firsts (first shop, school, factory, tower…), new eras, decisions and family births and deaths, with Show buttons.
+
+## Your main person and their family
+
+- A new town asks you to **create your main person**. **Follow** (top bar, or the Life panel on phones) keeps the camera on them, on the street when they're out and at home otherwise. Moving the map stops following.
+- Grown-ups meet partners, marry and have children over the years.
+- When the main person dies, their oldest living child carries the story on by itself after a few seconds (or you can tap Continue). With no children, a niece or nephew does. The new generation inherits some savings and the family home, and the town history records it.
+
+## Save slots
+
+☰ → **Save slots…** shows three slots, each with the town's era, year, population, map size and the main person you're following.
+
+- **Play** switches to another town (the current one is saved first).
+- **Start a new town** or **New town here** opens the New town sheet for that slot, with a new main person by default.
+- **Save a copy here** keeps a snapshot of the current town.
+- **Delete** asks twice.
+
+The slot you're playing saves itself as you go. Towns saved before slots existed are in slot 1.
 
 ## Life Story
 
@@ -111,6 +156,8 @@ Each system lives in its own module under `src/` and talks to the others only th
 | History | `history.js` | Undo and redo of tile edits, plus the L-shaped road and brush stroke paths. |
 | Budget and notable people | `economy.js`, `budgetUI.js`, `notables.js`, `notablesUI.js` | Costs, taxes, upkeep and the daily ledger (`city.systems.economy`); per-building earnings in `tile.earning`. Notable people's inspiration, arrivals and bonuses (`city.systems.notables`). |
 | Townsfolk | `townsfolk.js`, `townsfolkUI.js` | Named residents with traits, needs and an hourly utility-AI schedule; meetings, relationships, memories and the town news (`city.systems.townsfolk`). Unmet needs go to `city.derived.townsfolkUnmet` for the advisor; trips become walkers in `agents.js`. |
+| Eras and growth | `eras.js`, `growth.js`, `decisions.js`, `chronicle.js`, `eraUI.js`, `decisionUI.js` | The calendar and eras (`city.systems.era`), the town building itself from demand (`city.systems.growth`), town decisions and their effects (`city.systems.decisions`; Town spirit in `city.derived.spirit`), and the town history (`city.systems.chronicle`). |
+| Save slots | `persistence.js`, `slotsUI.js` | Three localStorage slots with a short description of each town; the active slot autosaves. |
 | Milestones | `milestones.js`, `advisor.js`, `cityUI.js` | Town titles and permanent unlocks (saved in `city.systems.milestones`); resident thoughts computed from the city every few seconds into `city.derived.thoughts`; the City panel. |
 | Glue | `main.js`, `ui.js`, `generator.js`, `newTownUI.js` | Wires systems together, the toolbar (with lock badges) and stats bubble, placement feedback, and new towns (starter town or empty land, sandbox or milestones, three map sizes; the mode is saved in `city.systems.mode`). |
 
@@ -122,7 +169,7 @@ Derived data (labor market, commute routes, congestion, coverage, resident thoug
 npm test   # node --test, no dependencies
 ```
 
-The tests cover townsfolk (the cast following the population, the daily schedule, friendships and news, unmet needs as resident wishes, notables and bulldozed homes, saving), the budget (costs, taxes, upkeep, undo refunds, no debt), notable people, the new buildings, share links, trends, colour-blind colours, street names and addresses, the labor market, road reachability, service and play coverage, milestones and unlocks, resident thoughts, save migration, town generation, pausing, and Life Story (aging, events, jobs and homes from the city, bulldozed homes, activities, buying a home, neighbours, achievements and ribbons, the character's walker, whole lives start to finish, saving).
+The tests cover the seed, calendar and eras (people and years, hurrying, older towns), growth (a seed becoming a town, era limits, kept street gaps, off means off), decisions (effects, lapsing), heirs and family over a life, three save slots, townsfolk (the cast following the population, the daily schedule, friendships and news, unmet needs as resident wishes, notables and bulldozed homes, saving), the budget (costs, taxes, upkeep, undo refunds, no debt), notable people, the new buildings, share links, trends, colour-blind colours, street names and addresses, the labor market, road reachability, service and play coverage, milestones and unlocks, resident thoughts, save migration, town generation, pausing, and Life Story (aging, events, jobs and homes from the city, bulldozed homes, activities, buying a home, neighbours, achievements and ribbons, the character's walker, whole lives start to finish, saving).
 
 ### Extending it
 

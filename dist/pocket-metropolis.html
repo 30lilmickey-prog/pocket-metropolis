@@ -2542,6 +2542,281 @@ button:focus-visible {
   font-style: italic;
 }
 
+/* Town decisions */
+.decision-card {
+  position: absolute;
+  left: 50%;
+  top: calc(env(safe-area-inset-top, 0px) + 150px);
+  transform: translateX(-50%);
+  z-index: 8;
+  width: min(420px, calc(100vw - 24px));
+  max-height: calc(100% - 270px);
+  overflow-y: auto;
+  padding: 16px 16px 12px;
+  border-radius: 24px;
+  display: grid;
+  gap: 8px;
+  animation: card-in 0.4s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.decision-card h2 {
+  margin: 0;
+  font: 600 22px/1.15 var(--font-display);
+}
+.decision-card p {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.decision-choices {
+  display: grid;
+  gap: 8px;
+}
+.decision-choice {
+  display: grid;
+  gap: 5px;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 2px solid transparent;
+  background: var(--meter-track);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.decision-choice:hover:not(:disabled) {
+  border-color: var(--stat-rel, #b48ad6);
+  background: var(--press);
+}
+.decision-choice:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.decision-choice b {
+  font-size: 14.5px;
+}
+.decision-choice small {
+  color: var(--sev-bad-ink);
+  font-weight: 800;
+}
+.dtags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+}
+.dtag {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--panel-edge);
+  color: var(--ink-soft);
+}
+.dtag.good {
+  background: color-mix(in srgb, var(--sev-good) 22%, transparent);
+  color: var(--sev-good-ink);
+}
+.dtag.bad {
+  background: color-mix(in srgb, var(--sev-bad) 18%, transparent);
+  color: var(--sev-bad-ink);
+}
+.decision-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.decision-foot small {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.decision-pill,
+.follow-chip {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  gap: 6px;
+  font-weight: 800;
+}
+.decision-pill {
+  top: calc(env(safe-area-inset-top, 0px) + 126px);
+  outline: 2px solid var(--sev-caution);
+  white-space: nowrap;
+}
+.follow-chip {
+  top: calc(env(safe-area-inset-top, 0px) + 76px);
+  white-space: nowrap;
+}
+.follow-chip span {
+  color: var(--sev-bad);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+#btn-follow.is-on {
+  background: var(--press);
+  outline: 2px solid var(--stat-rel, #b48ad6);
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (max-width: 760px), (max-height: 520px) {
+  #btn-follow {
+    display: none;
+  }
+  .decision-card {
+    top: calc(env(safe-area-inset-top, 0px) + 112px);
+    max-height: calc(100% - 230px);
+  }
+  .follow-chip {
+    top: calc(env(safe-area-inset-top, 0px) + 118px);
+  }
+  .decision-pill {
+    top: calc(env(safe-area-inset-top, 0px) + 166px);
+  }
+}
+
+/* Save slots */
+.slots {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.slot {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: var(--meter-track);
+}
+.slot.playing {
+  outline: 2px solid var(--sev-good);
+}
+.slot-num {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--panel-edge);
+  font-weight: 800;
+}
+.slot-body p {
+  margin: 0 0 2px;
+  font-size: 12.5px;
+  font-weight: 650;
+}
+.slot-title {
+  font-size: 14px !important;
+}
+.slot-empty,
+.slot-when {
+  color: var(--ink-soft);
+}
+.slot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+  align-items: center;
+}
+.slot-badge {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--sev-good-ink);
+}
+.ghost-btn.danger {
+  color: var(--sev-bad-ink);
+}
+
+/* Era and town history */
+.era-now {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.era-now b {
+  font-size: 16px;
+}
+.era-now small {
+  display: block;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--ink-soft);
+}
+.era-dot {
+  display: grid;
+  gap: 3px;
+}
+.era-dot i {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--meter-track);
+}
+.era-dot i.on {
+  background: #b48ad6;
+}
+.era-need {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  font-weight: 650;
+}
+.chronicle-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.chronicle-list li {
+  display: grid;
+  grid-template-columns: 40px 18px 1fr auto;
+  gap: 6px;
+  align-items: center;
+  font-size: 12.5px;
+  font-weight: 650;
+  padding: 4px 6px;
+  border-radius: 10px;
+}
+.chronicle-list li.chron-era {
+  background: color-mix(in srgb, #b48ad6 16%, transparent);
+}
+.chronicle-list li.chron-family {
+  background: color-mix(in srgb, #f49ab8 14%, transparent);
+}
+.chron-year {
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+.decision-pill,
+.follow-chip {
+  width: auto !important;
+  height: 40px !important;
+  padding: 0 16px !important;
+  border-radius: 20px !important;
+  display: inline-flex;
+  align-items: center;
+  font-size: 13px;
+}
+.decision-pill[hidden],
+.follow-chip[hidden] {
+  display: none;
+}
+.decision-pill:hover,
+.decision-pill:active,
+.follow-chip:hover,
+.follow-chip:active {
+  transform: translateX(-50%);
+}
+
 </style>
 <main id="app">
       <canvas id="city" aria-label="Your city. Tap a tile to build, drag to pan, pinch or scroll to zoom."></canvas>
@@ -2579,6 +2854,10 @@ button:focus-visible {
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20.5c.8-4 3.6-6.5 7-6.5s6.2 2.5 7 6.5"/></svg>
           <span class="pill-text">Life</span><span class="badge" hidden></span>
         </button>
+        <button type="button" id="btn-follow" class="pill glass" aria-label="Follow your main person" aria-pressed="false" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></svg>
+          <span class="pill-text">Follow</span>
+        </button>
         <button type="button" id="btn-more" class="pill glass icon-only" aria-label="Settings and more" title="Settings and more" aria-haspopup="dialog" aria-expanded="false">
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
         </button>
@@ -2596,6 +2875,8 @@ button:focus-visible {
 
       <section class="more-sheet glass" id="more-sheet" role="dialog" aria-label="City controls" hidden></section>
       <section class="more-sheet glass" id="newtown-sheet" role="dialog" aria-label="New town" hidden></section>
+      <section class="more-sheet glass" id="slots-sheet" role="dialog" aria-label="Save slots" hidden></section>
+      <section class="decision-card glass" id="decision-card" role="dialog" aria-label="Town decision" hidden></section>
       <aside class="inspector glass" id="inspector" aria-live="polite" hidden></aside>
       <aside class="city-panel glass" id="city-panel" aria-label="Your town" hidden></aside>
       <aside class="life-panel glass" id="life-panel" aria-label="Life Story" hidden></aside>
@@ -3261,6 +3542,13 @@ const FACTORS = [
       return 0.08 * best;
     },
   },
+  {
+    id: 'spirit',
+    label: 'Town spirit',
+    enabled: true,
+    // Town decisions lift or dent how everyone feels about living here, for a while.
+    compute: (city) => city.derived.spirit || 0,
+  },
   { id: 'overcrowding', label: 'Overcrowding', enabled: false, compute: () => 0 },
   { id: 'walkability', label: 'Walkability', enabled: false, compute: () => 0 },
   { id: 'utilities', label: 'Utilities', enabled: false, compute: () => 0 },
@@ -3642,6 +3930,9 @@ const { pick, pickWeighted } = __mod_utils;
 const MAX_CARS = 70;
 const MAX_WALKERS = 60;
 const MAX_TOWN_WALKERS = 14;
+const CART_COLORS = ['#b88a5a', '#a87a52', '#c99b6a', '#9b7a5f'];
+const HORSE_COLORS = ['#8a5d3b', '#6f4a33', '#c9a27a', '#4e3a2e', '#e8dccb'];
+const VINTAGE_COLORS = ['#3d3a4f', '#5b4a6e', '#7a3f3f', '#2f4a4a', '#6b5a3a'];
 
 // How busy commuting is at this time of day: morning and evening rush hours, quiet nights.
 function commuteActivity(clock) {
@@ -3717,6 +4008,15 @@ class AgentSystem {
     this.cars = this.cars.filter((c) => !c.dead);
   }
 
+  // What drives on the roads depends on the era: horse carts first, then early motor cars.
+  vehicle() {
+    const era = this.city.systems.era?.index ?? 3;
+    const cartOdds = [1, 0.55, 0.12, 0, 0][era] ?? 0;
+    if (Math.random() < cartOdds) return { kind: 'cart', cartColor: pick(CART_COLORS), horse: pick(HORSE_COLORS) };
+    if (era <= 2 && Math.random() < 0.6) return { color: pick(VINTAGE_COLORS) };
+    return {};
+  }
+
   // Pick a commute weighted by how many people make it. Mornings head to work, evenings home.
   spawnCommuter() {
     const flows = this.city.derived.labor?.flows;
@@ -3742,6 +4042,7 @@ class AgentSystem {
       alpha: 0,
       leaving: false,
       dead: false,
+      ...this.vehicle(),
     });
     return true;
   }
@@ -3764,6 +4065,7 @@ class AgentSystem {
       alpha: 0,
       leaving: false,
       dead: false,
+      ...this.vehicle(),
     });
   }
 
@@ -3778,7 +4080,7 @@ class AgentSystem {
     if (!city.isRoad(c.nx, c.ny)) return;
     // Busy roads slow everyone down.
     const jam = city.getTile(c.x, c.y)?.congestion || 0;
-    c.t += c.speed * (1 - 0.55 * jam) * dt;
+    c.t += c.speed * (c.kind === 'cart' ? 0.55 : 1) * (1 - 0.55 * jam) * dt;
     while (c.t >= 1) {
       c.t -= 1;
       c.px = c.x;
@@ -5913,11 +6215,30 @@ class LifeSystem {
     return char;
   }
 
-  // Keep playing as your oldest child after a life ends.
+  // Who carries the family story on: the oldest living child, or else a niece or nephew.
+  heir() {
+    const parent = this.char;
+    if (!parent) return null;
+    const kid = parent.children?.find((c) => c.alive !== false);
+    if (kid) return { ...kid, relation: { she: 'daughter', he: 'son' }[kid.pronouns] || 'child' };
+    const pronouns = pick(['she', 'he', 'they'], this.rng);
+    return {
+      name: `${pick(FIRST_NAMES, this.rng)} ${parent.last}`,
+      age: 18 + Math.floor(this.rng() * 8),
+      pronouns,
+      look: parent.look,
+      relation: { she: 'niece', he: 'nephew' }[pronouns] || 'young relative',
+      relative: true,
+    };
+  }
+
+  // Keep playing as your oldest child after a life ends, or a niece or nephew if there are no children,
+  // so the family's story goes on generation after generation.
   continueAsChild() {
     const s = this.state;
     const parent = s?.char;
-    const kid = parent?.children?.find((c) => c.alive !== false);
+    if (!parent || parent.alive) return null;
+    const kid = this.heir();
     if (!kid) return null;
     s.history.push(summaryOf(parent));
     const otherParent = parent.partner ? { name: parent.partner.name, closeness: 70, age: parent.age, alive: true } : null;
@@ -5933,7 +6254,9 @@ class LifeSystem {
     char.energy = energyFor(char.age);
     if (parent.flags.ownsHome) char.flags.ownsHome = true; // the family home is inherited
     char.log = [];
-    this.log(`${char.first} carries on the ${parent.last} family story, inheriting $${char.money.toLocaleString()}.`);
+    if (kid.relative) char.livesWithParents = false;
+    char.heirOf = { name: `${parent.first} ${parent.last}`, relation: kid.relation };
+    this.log(`${char.first}, ${parent.first}'s ${kid.relation}, carries on the ${parent.last} family story, inheriting $${char.money.toLocaleString()}.`);
     this.planYear();
     this.city.emit('lifeChanged');
     return char;
@@ -6025,6 +6348,20 @@ class LifeSystem {
       c.job.years += 1;
     } else if (c.flags.partTime && c.age < 18) c.money += 1500;
     if (!c.livesWithParents && !c.job) c.money = Math.max(0, c.money - 3000);
+
+    // Family: grown-ups tend to meet someone and have children, so the story can pass down the line.
+    if (!c.partner && c.age >= 20 && c.age <= 45 && this.rng() < (c.traits.includes('outgoing') ? 0.24 : 0.16)) {
+      c.partner = { name: `${pick(FIRST_NAMES, this.rng)} ${pick(LAST_NAMES, this.rng)}`, closeness: 70, married: false };
+      this.log(`${c.first} fell in love with ${c.partner.name}.`);
+    } else if (c.partner && !c.partner.married && c.age >= 22 && this.rng() < 0.3) {
+      c.partner.married = true;
+      this.log(`${c.first} married ${c.partner.name}.`);
+    } else if (c.partner && c.age >= 22 && c.age <= 44 && c.children.length < 3 && this.rng() < (c.children.length ? 0.14 : 0.28)) {
+      const pronouns = pick(['she', 'he', 'they'], this.rng);
+      const kid = { name: `${pick(FIRST_NAMES, this.rng)} ${c.last}`, age: 0, pronouns, alive: true, look: c.look };
+      c.children.push(kid);
+      this.log(`${c.first} and ${c.partner.name.split(' ')[0]} welcomed a baby, ${kid.name.split(' ')[0]}.`);
+    }
 
     this.syncWithCity();
 
@@ -6642,7 +6979,7 @@ const CATEGORY_LABELS = {
 class Economy {
   constructor(city) {
     this.city = city;
-    this.modifiers = { businessTax: 1, buildCost: 1, upkeep: 1 }; // notable people can change these
+    this.modifiers = { businessTax: 1, buildCost: 1, upkeep: 1, residentTax: 1 }; // notable people and town decisions change these
   }
 
   get sandbox() {
@@ -6710,7 +7047,7 @@ class Economy {
       let e = 0;
       if (def.capacity) {
         const workers = Math.round(s.residents * WORKER_SHARE) * (t.employment || 0);
-        e = s.residents * TAX.resident + workers * TAX.worker;
+        e = (s.residents * TAX.resident + workers * TAX.worker) * (this.modifiers.residentTax ?? 1);
       } else if (BUSINESS_TAX[s.type]) {
         e = (t.workersFilled || 0) * BUSINESS_TAX[s.type] * this.modifiers.businessTax;
       } else if (UPKEEP[s.type]) {
@@ -7540,6 +7877,1018 @@ class Townsfolk {
 return { MAX_TOWNSFOLK, RESIDENTS_PER_TOWNSPERSON, NEEDS, NEED_LABELS, QUIRKS, quirkOf, activityOf, fullName, moodOf, moodWord, traitWords, chemistry, Townsfolk };
 })();
 
+// ---- eras.js ----
+const __mod_eras = (() => {
+// Eras and the town calendar. A town is founded in 1850 and a year passes each in-game day, the same
+// pace as a Life Story life, so a family's grandparents see dirt lanes and horse carts while their
+// grandchildren grow up with buses, asphalt and electric light.
+//
+// An era needs both people and time: enough residents, and enough years since the town was founded.
+// Town decisions can bring an era closer (`state.bonusYears`). Eras never go backwards.
+//
+// Saved in city.systems.era = { index, startYear, bonusYears, history: [{ index, year }] }.
+
+const FOUNDING_YEAR = 1850;
+
+const ERAS = [
+  {
+    id: 'pioneer',
+    label: 'Pioneer days',
+    pop: 0,
+    years: 0,
+    nominal: 1850,
+    blurb: 'Dirt lanes, timber cottages and horse carts.',
+    builds: ['cottage', 'house', 'shop', 'cafe', 'school', 'clinic', 'park', 'playground'],
+  },
+  {
+    id: 'railway',
+    label: 'Railway age',
+    pop: 60,
+    years: 15,
+    nominal: 1865,
+    blurb: 'Cobbled streets, brick houses and gas lamps. The first motor cars rattle by.',
+    builds: ['apartments', 'factory'],
+  },
+  {
+    id: 'motor',
+    label: 'Motor age',
+    pop: 180,
+    years: 35,
+    nominal: 1885,
+    blurb: 'Paved roads, electric street lights and cars for everyone.',
+    builds: ['office', 'mall', 'field'],
+  },
+  {
+    id: 'modern',
+    label: 'Modern times',
+    pop: 400,
+    years: 60,
+    nominal: 1910,
+    blurb: 'Towers rise downtown and the streets hum with traffic.',
+    builds: ['tower'],
+  },
+  {
+    id: 'future',
+    label: 'Bright future',
+    pop: 800,
+    years: 90,
+    nominal: 1940,
+    blurb: 'Solar roofs, quiet electric cars and gardens everywhere.',
+    builds: [],
+  },
+];
+
+// Every building the town can grow by itself in a given era (each era keeps the ones before).
+function buildsFor(index) {
+  return ERAS.slice(0, index + 1).flatMap((e) => e.builds);
+}
+
+// The highest era a town of this size could reach, ignoring the years needed (for older saves).
+function eraForPopulation(pop) {
+  let i = 0;
+  ERAS.forEach((e, k) => {
+    if (pop >= e.pop) i = k;
+  });
+  return i;
+}
+
+class Eras {
+  constructor(city) {
+    this.city = city;
+  }
+
+  get state() {
+    const s = this.city.systems;
+    if (!s.era) {
+      // A town from before eras existed starts in the era its size suggests, and the calendar is set so
+      // the year looks right for it. A brand-new town starts in 1850.
+      const index = eraForPopulation(this.city.stats?.population || 0);
+      const day = Math.max(1, this.city.day || 1);
+      s.era = { index, startYear: index ? ERAS[index].nominal - day : FOUNDING_YEAR - day, bonusYears: 0, foundedDay: index ? day - ERAS[index].years : day, history: [{ index, year: 0 }] };
+      s.era.history[0].year = this.year;
+    }
+    return s.era;
+  }
+
+  get index() {
+    return this.state.index;
+  }
+
+  get current() {
+    return ERAS[this.index];
+  }
+
+  get next() {
+    return ERAS[this.index + 1] || null;
+  }
+
+  // The calendar year right now.
+  get year() {
+    const s = this.city.systems.era;
+    return (s ? s.startYear : FOUNDING_YEAR - 1) + Math.max(1, this.city.day);
+  }
+
+  // Years since the town was founded, plus any head start from decisions.
+  get age() {
+    const st = this.state;
+    return Math.max(0, this.city.day - (st.foundedDay ?? 1)) + (st.bonusYears || 0);
+  }
+
+  // Start a brand-new town's calendar today.
+  found() {
+    const day = Math.max(1, this.city.day);
+    this.city.systems.era = { index: 0, startYear: FOUNDING_YEAR - day, bonusYears: 0, foundedDay: day, history: [{ index: 0, year: FOUNDING_YEAR }] };
+  }
+
+  // What the next era still needs: people and years.
+  progress() {
+    const next = this.next;
+    if (!next) return null;
+    const pop = this.city.stats?.population || 0;
+    return {
+      next,
+      pop,
+      needPop: next.pop,
+      years: this.age,
+      needYears: next.years,
+      fraction: Math.min(1, pop / next.pop) * 0.5 + Math.min(1, this.age / Math.max(1, next.years)) * 0.5,
+    };
+  }
+
+  // Called after stats update. Moves on one era at a time and announces it.
+  update() {
+    const st = this.state;
+    const next = this.next;
+    if (!next) return null;
+    const pop = this.city.stats?.population || 0;
+    if (pop < next.pop || this.age < next.years) return null;
+    st.index++;
+    st.history.push({ index: st.index, year: this.year });
+    this.city.revision++; // roads and lamps are redrawn in the new style
+    this.city.emit('era', { era: ERAS[st.index], index: st.index, year: this.year });
+    return ERAS[st.index];
+  }
+
+  // A decision can bring the next era closer.
+  hurry(years) {
+    this.state.bonusYears = (this.state.bonusYears || 0) + years;
+  }
+}
+
+// The calendar year for any city, without needing an Eras instance (for the UI and Life Story).
+function yearOf(city) {
+  const s = city.systems.era;
+  return (s ? s.startYear : FOUNDING_YEAR - 1) + Math.max(1, city.day);
+}
+
+return { FOUNDING_YEAR, ERAS, buildsFor, eraForPopulation, Eras, yearOf };
+})();
+
+// ---- chronicle.js ----
+const __mod_chronicle = (() => {
+// The town chronicle: a short history of firsts, new eras, decisions and family generations, with the
+// year each happened. Shown in the City panel. Saved in city.systems.chronicle (the latest 60 entries).
+
+const { yearOf } = __mod_eras;
+const KEEP = 60;
+
+function addChronicle(city, text, at = null, kind = 'note') {
+  const list = (city.systems.chronicle ||= []);
+  const item = { year: yearOf(city), day: city.day, text, kind, x: at?.x ?? null, y: at?.y ?? null };
+  list.push(item);
+  if (list.length > KEEP) list.splice(0, list.length - KEEP);
+  city.emit('chronicle', { item });
+  return item;
+}
+
+return { addChronicle };
+})();
+
+// ---- growth.js ----
+const __mod_growth = (() => {
+// Let it grow: the town builds itself from what its people need, like a seed becoming a plant.
+//
+// Every few in-game minutes the town looks at its demand and makes one change:
+//   - homes when the houses it has are filling up (or when jobs outnumber workers),
+//   - shops, cafés, factories and offices when people need work,
+//   - a café, park or playground where townsfolk have nowhere nearby to eat, play or meet,
+//   - a school or clinic where families have none,
+//   - a new street when it runs out of lots beside its roads,
+//   - and now and then a tree.
+// What it builds follows the era: cottages and shops in pioneer days, apartments and factories in the
+// railway age, offices and malls once there are cars, towers in modern times.
+//
+// Homes and businesses are built by residents (free); roads, services, parks and trees are paid
+// from the town's budget, and are skipped when it can't afford them. The player can keep building too.
+//
+// Saved in city.systems.growth = { on, timer, boosts: [{ mult, until, label }], built }.
+
+const { STRUCTURES } = __mod_config;
+const { DIRS } = __mod_state;
+const { buildsFor } = __mod_eras;
+const { clamp, pickWeighted } = __mod_utils;
+const { addChronicle } = __mod_chronicle;
+const GROWTH_INTERVAL = 45; // seconds of game time between changes at normal pace (about 6 a day)
+// One more of each per this many residents (homes, roads and trees have no cap).
+const CAPS = { shop: 35, cafe: 60, mall: 450, factory: 220, office: 120, school: 260, clinic: 360, park: 70, playground: 110, field: 320 };
+const BLOCK = 5; // a side street can branch every this many tiles
+const PUBLIC = new Set(['road', 'school', 'clinic', 'park', 'playground', 'field', 'tree']);
+const FIRSTS = {
+  shop: 'The first shop opened its doors',
+  cafe: 'The first café poured its first cup',
+  school: 'The town opened its first school',
+  clinic: 'A clinic opened, the first doctor in town',
+  factory: 'The first factory chimney went up',
+  apartments: 'The first block of flats was built',
+  office: 'The first office building opened',
+  mall: 'A shopping mall opened',
+  tower: 'The first tower rose over downtown',
+  park: 'The town laid out its first park',
+  playground: 'Children got their first playground',
+  field: 'A sports field opened',
+};
+
+class Growth {
+  constructor(city, { eras, economy, milestones, rng = Math.random } = {}) {
+    this.city = city;
+    this.eras = eras;
+    this.economy = economy;
+    this.milestones = milestones;
+    this.rng = rng;
+  }
+
+  get state() {
+    const s = this.city.systems;
+    if (!s.growth) s.growth = { on: false, timer: GROWTH_INTERVAL, boosts: [], built: 0 };
+    return s.growth;
+  }
+
+  get on() {
+    return !!this.state.on;
+  }
+
+  set on(v) {
+    this.state.on = !!v;
+  }
+
+  // How fast the town grows: decisions can speed it up or slow it down for a while.
+  // A happy town draws more newcomers: growth runs from half speed (miserable) to 1.5× (delighted).
+  rate() {
+    const now = this.city.day + this.city.clock;
+    const st = this.state;
+    st.boosts = (st.boosts || []).filter((b) => b.until > now);
+    const happy = this.city.stats?.homes ? (this.city.stats.happiness || 0) / 100 : 0.6;
+    const sprout = this.city.homes().length < 12 ? 2 : 1; // a seed sprouts quickly at first
+    return st.boosts.reduce((r, b) => r * b.mult, 1) * clamp(0.5 + (happy - 0.4) * 2.5, 0.5, 1.5) * sprout;
+  }
+
+  boost(mult, days, label) {
+    const until = this.city.day + this.city.clock + days;
+    this.state.boosts.push({ mult, until, label });
+  }
+
+  // Called with game seconds that passed. Returns what was built, if anything.
+  update(dt) {
+    const st = this.state;
+    if (!st.on || dt <= 0) return null;
+    st.timer -= dt * this.rate();
+    if (st.timer > 0) return null;
+    st.timer += GROWTH_INTERVAL * (0.7 + this.rng() * 0.6);
+    return this.grow();
+  }
+
+  allowed(type) {
+    const era = this.eras ? this.eras.index : 4;
+    return buildsFor(era).includes(type) && (!this.milestones || this.milestones.isUnlocked(type)) && this.underCap(type);
+  }
+
+  // A town only needs so many of each kind of building for its size.
+  underCap(type) {
+    const per = CAPS[type];
+    if (!per) return true;
+    const pop = this.city.stats?.population || 0;
+    return this.count([type]) < 1 + Math.floor(pop / per);
+  }
+
+  canPay(type) {
+    if (!PUBLIC.has(type) || !this.economy) return true;
+    return this.economy.canAfford(this.economy.costOf(type));
+  }
+
+  // ---- Demand ------------------------------------------------------------------------------
+
+  demand() {
+    const city = this.city;
+    const s = city.stats || {};
+    const homes = city.homes();
+    const lived = homes.filter((h) => h.structure.residents > 0);
+    const labor = city.derived.labor || { employed: 0, unemployed: 0, jobs: 0 };
+    const workers = labor.employed + labor.unemployed;
+    const unmet = city.derived.townsfolkUnmet || {};
+    const lots = this.lots().filter((t) => !t.structure).length;
+    const d = {};
+    // Homes fill as far as their appeal allows; once they're about that full, newcomers need new homes.
+    let target = 0;
+    for (const h of homes) target += h.housingTarget ?? 0;
+    const settled = target ? (s.population || 0) / target : 1;
+    d.home = (homes.length < 4 ? 3 : 0) + clamp((settled - 0.75) * 8, 0, 2.5) + (labor.jobs > workers * 1.1 ? 1 : 0);
+    d.work = workers >= 4 ? clamp((labor.unemployed / workers - 0.06) * 12, 0, 2.5) : homes.length >= 3 && !labor.jobs ? 2 : 0;
+    d.food = clamp((unmet.eat?.length || 0) * 0.5, 0, 2);
+    d.play = clamp(((unmet.play?.length || 0) + (unmet.social?.length || 0)) * 0.35, 0, 2) + (lived.length >= 6 && !this.count(['park', 'playground', 'field']) ? 1 : 0);
+    const noSchool = lived.filter((h) => (h.coverage?.school || 0) < 0.1).length;
+    const noClinic = lived.filter((h) => (h.coverage?.health || 0) < 0.1).length;
+    d.school = noSchool >= 5 && this.allowed('school') ? 1.2 : 0;
+    d.clinic = noClinic >= 6 && this.allowed('clinic') ? 0.9 : 0;
+    let roads = 0;
+    let buildings = 0;
+    for (const t of city.tiles) {
+      if (t.structure?.type === 'road') roads++;
+      else if (t.structure && t.structure.type !== 'tree') buildings++;
+    }
+    d.road = roads > buildings * 1.6 + 20 ? 0 : lots < 4 ? 3 : lots < 8 ? 0.6 : 0;
+    d.tree = lived.some((h) => (h.factors?.greenery || 0) < 0.03) ? 0.35 : 0.1;
+    return d;
+  }
+
+  count(types) {
+    const set = new Set(types);
+    let n = 0;
+    for (const t of this.city.tiles) if (t.structure && set.has(t.structure.type)) n++;
+    return n;
+  }
+
+  grow() {
+    const d = this.demand();
+    const order = Object.entries(d).filter(([, v]) => v > 0);
+    for (let attempt = 0; attempt < 3 && order.length; attempt++) {
+      const pickd = pickWeighted(order, ([, v]) => v, this.rng);
+      const done = this.act(pickd[0]);
+      if (done) {
+        this.state.built = (this.state.built || 0) + 1;
+        return done;
+      }
+      order.splice(order.indexOf(pickd), 1);
+    }
+    return null;
+  }
+
+  act(kind) {
+    switch (kind) {
+      case 'home':
+        return this.buildHome() || this.densify();
+      case 'work':
+        return this.buildWork();
+      case 'food':
+        return this.buildNear(this.unmetHomes('eat'), ['cafe', 'shop']);
+      case 'play':
+        return this.buildNear(this.unmetHomes('play', 'social'), ['park', 'playground', 'cafe', 'field']);
+      case 'school':
+        return this.buildNear(this.uncovered('school'), ['school']);
+      case 'clinic':
+        return this.buildNear(this.uncovered('health'), ['clinic']);
+      case 'road':
+        return this.buildRoad();
+      case 'tree':
+        return this.plantTree();
+    }
+    return null;
+  }
+
+  // ---- Where things go ---------------------------------------------------------------------
+
+  // The middle of town: the average position of its buildings (or the map centre).
+  center() {
+    let sx = 0;
+    let sy = 0;
+    let n = 0;
+    for (const t of this.city.tiles) {
+      const ty = t.structure?.type;
+      if (!ty || ty === 'road' || ty === 'tree') continue;
+      sx += t.x;
+      sy += t.y;
+      n++;
+    }
+    return n ? { x: sx / n, y: sy / n } : { x: this.city.width / 2, y: this.city.height / 2 };
+  }
+
+  // Empty grass (or a tree that can be cleared) beside a road: places a building can go. Spots kept
+  // for future streets are left free.
+  lots() {
+    const city = this.city;
+    return city.tiles.filter((t) => t.terrain === 'grass' && (!t.structure || t.structure.type === 'tree') && city.accessRoad(t.x, t.y) && !this.reserved(t));
+  }
+
+  // Keep room to grow: the tile past a dead end, and a gap every few tiles along a straight street
+  // where a side street can branch off. Towns grow in tidy blocks this way.
+  reserved(t) {
+    const city = this.city;
+    for (const d of DIRS) {
+      const r = city.getTile(t.x - d.dx, t.y - d.dy); // the road this tile would face
+      if (r?.structure?.type !== 'road') continue;
+      const nbrs = city.roadNeighbors(r.x, r.y);
+      if (nbrs.length === 1 && nbrs[0].x === r.x - d.dx && nbrs[0].y === r.y - d.dy) return true; // the way on from a dead end
+      if (nbrs.length === 2 && nbrs[0].x !== nbrs[1].x && nbrs[0].y !== nbrs[1].y) continue; // a corner
+      const along = nbrs.length === 2 ? (nbrs[0].y === nbrs[1].y ? 'h' : 'v') : null;
+      if (along === 'h' && d.dx === 0 && r.x % BLOCK === 0) return true;
+      if (along === 'v' && d.dy === 0 && r.y % BLOCK === 0) return true;
+    }
+    return false;
+  }
+
+  place(type, t) {
+    if (!t || !this.allowed(type) || !this.canPay(type)) return null;
+    if (t.structure?.type === 'tree') this.city.apply('bulldoze', t.x, t.y, { delay: 0.6 });
+    if (!this.city.apply(type, t.x, t.y, { delay: 0.6 })) return null;
+    if (PUBLIC.has(type) && this.economy) this.economy.spend(this.economy.costOf(type));
+    this.city.dirty = true;
+    if (FIRSTS[type] && this.count([type]) === 1) addChronicle(this.city, `${FIRSTS[type]}.`, t, 'first');
+    this.city.emit('grew', { type, x: t.x, y: t.y });
+    return { type, x: t.x, y: t.y };
+  }
+
+  buildHome() {
+    const lots = this.lots();
+    if (!lots.length) return null;
+    const c = this.center();
+    const era = this.eras ? this.eras.index : 4;
+    const spread = Math.max(4, Math.sqrt(this.city.homes().length) * 1.6);
+    const lot = pickWeighted(
+      lots,
+      (t) => {
+        const dist = Math.hypot(t.x - c.x, t.y - c.y);
+        return (0.2 + (t.desirability || 0.3)) ** 2 * (1 / (1 + (dist / spread) ** 2)) * (t.factors?.pollution ? 0.3 : 1) * (t.structure ? 0.4 : 1);
+      },
+      this.rng,
+    );
+    if (!lot) return null;
+    const dist = Math.hypot(lot.x - c.x, lot.y - c.y);
+    const core = dist < spread * 0.6;
+    let type = era === 0 ? (this.rng() < 0.5 ? 'cottage' : 'house') : 'house';
+    if (core && this.allowed('tower') && this.rng() < 0.35) type = 'tower';
+    else if (core && this.allowed('apartments') && this.rng() < 0.45) type = 'apartments';
+    else if (era >= 1 && this.rng() < 0.15) type = 'cottage';
+    return this.place(type, lot) || this.place('house', lot);
+  }
+
+  // No room left: an older home near the middle is rebuilt bigger. Cottages become houses, houses
+  // become flats, flats become towers, as the era allows. The people living there stay.
+  densify() {
+    const c = this.center();
+    const UP = { cottage: 'house', house: 'apartments', apartments: 'tower' };
+    const options = this.city.homes().filter((h) => UP[h.structure.type] && this.allowed(UP[h.structure.type]));
+    const h = pickWeighted(options, (t) => 1 / (1 + Math.hypot(t.x - c.x, t.y - c.y)) ** 2 * (t.structure.type === 'cottage' ? 3 : 1), this.rng);
+    if (!h) return null;
+    const residents = h.structure.residents;
+    const variant = h.structure.variant;
+    const type = UP[h.structure.type];
+    if (!this.city.apply(type, h.x, h.y, { delay: 0.6 })) return null;
+    h.structure.residents = Math.min(residents, STRUCTURES[type].capacity);
+    if (variant) h.structure.variant = variant;
+    this.city.dirty = true;
+    if (FIRSTS[type] && this.count([type]) === 1) addChronicle(this.city, `${FIRSTS[type]}.`, h, 'first');
+    this.city.emit('grew', { type, x: h.x, y: h.y, rebuilt: true });
+    return { type, x: h.x, y: h.y, rebuilt: true };
+  }
+
+  buildWork() {
+    const lots = this.lots();
+    if (!lots.length) return null;
+    const c = this.center();
+    const pop = this.city.stats?.population || 0;
+    const options = [
+      ['shop', 3],
+      ['cafe', 1.2],
+      ['factory', this.count(['factory']) < 1 + pop / 250 ? 1.5 : 0.3],
+      ['office', 2],
+      ['mall', pop > 250 && this.count(['mall']) < pop / 400 ? 1 : 0],
+    ].filter(([ty, w]) => w > 0 && this.allowed(ty));
+    const pickd = pickWeighted(options, ([, w]) => w, this.rng);
+    if (!pickd) return null;
+    const type = pickd[0];
+    const lot = pickWeighted(
+      lots,
+      (t) => {
+        const dist = Math.hypot(t.x - c.x, t.y - c.y);
+        // Factories go to the edge of town; everything else near the middle.
+        return type === 'factory' ? dist ** 2 + 0.1 : 1 / (1 + dist * dist * 0.15);
+      },
+      this.rng,
+    );
+    return this.place(type, lot);
+  }
+
+  unmetHomes(...kinds) {
+    const folk = this.city.systems.townsfolk?.people || [];
+    const ids = new Set(kinds.flatMap((k) => this.city.derived.townsfolkUnmet?.[k] || []));
+    return folk.filter((p) => ids.has(p.id)).map((p) => this.city.getTile(p.home.x, p.home.y)).filter(Boolean);
+  }
+
+  uncovered(service) {
+    return this.city.homes().filter((h) => h.structure.residents > 0 && (h.coverage?.[service] || 0) < 0.1);
+  }
+
+  // A building close to the homes that need it.
+  buildNear(homes, types) {
+    if (!homes.length) return null;
+    const type = types.find((ty) => this.allowed(ty) && this.canPay(ty));
+    if (!type) return null;
+    const cx = homes.reduce((s, h) => s + h.x, 0) / homes.length;
+    const cy = homes.reduce((s, h) => s + h.y, 0) / homes.length;
+    const walkable = !!STRUCTURES[type].walkable;
+    const lots = this.lots();
+    // Parks and playgrounds don't need a road, so any open grass near the homes will do.
+    if (walkable) {
+      for (const t of this.city.tiles) if (t.terrain === 'grass' && (!t.structure || t.structure.type === 'tree') && !this.city.accessRoad(t.x, t.y) && Math.hypot(t.x - cx, t.y - cy) < 6) lots.push(t);
+    }
+    let best = null;
+    let bestD = Infinity;
+    for (const t of lots) {
+      const dd = Math.hypot(t.x - cx, t.y - cy) + this.rng() * 0.8;
+      if (dd < bestD) {
+        bestD = dd;
+        best = t;
+      }
+    }
+    return this.place(type, best);
+  }
+
+  plantTree() {
+    const city = this.city;
+    const homes = city.homes().filter((h) => (h.factors?.greenery || 0) < 0.05);
+    if (!homes.length || !this.canPay('tree')) return null;
+    const h = homes[Math.floor(this.rng() * homes.length)];
+    for (const dir of [...DIRS].sort(() => this.rng() - 0.5)) {
+      const t = city.getTile(h.x + dir.dx, h.y + dir.dy);
+      if (t && t.terrain === 'grass' && !t.structure) return this.place('tree', t);
+    }
+    return null;
+  }
+
+  // A building a decision asked for: near the middle, at the edge, or close to homes that lack it.
+  // Gifts are free; era and caps don't apply.
+  buildType(type, { where = 'center', free = false } = {}) {
+    const lots = this.lots().filter((t) => !t.structure || STRUCTURES[type].walkable);
+    if (!lots.length) return null;
+    const c = this.center();
+    const lot = pickWeighted(lots, (t) => {
+      const dist = Math.hypot(t.x - c.x, t.y - c.y);
+      return where === 'edge' ? dist ** 2 + 0.1 : 1 / (1 + dist * dist * 0.2);
+    }, this.rng);
+    if (!lot) return null;
+    if (lot.structure?.type === 'tree') this.city.apply('bulldoze', lot.x, lot.y, { delay: 0.3 });
+    if (!this.city.apply(type, lot.x, lot.y, { delay: 0.3 })) return null;
+    if (!free && PUBLIC.has(type) && this.economy) this.economy.spend(this.economy.costOf(type));
+    this.city.dirty = true;
+    if (FIRSTS[type] && this.count([type]) === 1) addChronicle(this.city, `${FIRSTS[type]}.`, lot, 'first');
+    this.city.emit('grew', { type, x: lot.x, y: lot.y });
+    return { type, x: lot.x, y: lot.y };
+  }
+
+  // Clear some woodland around town (for a decision to make room for farms and homes).
+  clearTrees(n) {
+    const c = this.center();
+    const trees = this.city.tiles
+      .filter((t) => t.structure?.type === 'tree')
+      .sort((a, b) => Math.hypot(a.x - c.x, a.y - c.y) - Math.hypot(b.x - c.x, b.y - c.y))
+      .slice(0, n);
+    trees.forEach((t, i) => this.city.apply('bulldoze', t.x, t.y, { delay: 0.3 + i * 0.05 }));
+    if (trees.length) this.city.dirty = true;
+    return trees.length;
+  }
+
+  // Plant trees on open ground near town (for decisions about gardens and greenery).
+  plantTrees(n) {
+    const c = this.center();
+    const open = this.city.tiles
+      .filter((t) => t.terrain === 'grass' && !t.structure && !this.city.accessRoad(t.x, t.y))
+      .sort((a, b) => Math.hypot(a.x - c.x, a.y - c.y) - Math.hypot(b.x - c.x, b.y - c.y))
+      .slice(0, n);
+    open.forEach((t, i) => this.city.apply('tree', t.x, t.y, { delay: 0.3 + i * 0.06 }));
+    if (open.length) this.city.dirty = true;
+    return open.length;
+  }
+
+  // ---- Streets -----------------------------------------------------------------------------
+
+  // A new street: extend a dead end, or branch off a straight stretch, through open land.
+  buildRoad() {
+    const city = this.city;
+    const roads = city.tiles.filter((t) => t.structure?.type === 'road');
+    if (!roads.length) return null;
+    const c = this.center();
+    const candidates = [];
+    for (const r of roads) {
+      const nbrs = city.roadNeighbors(r.x, r.y);
+      const near = 1 / (1 + Math.hypot(r.x - c.x, r.y - c.y) * 0.12);
+      if (nbrs.length === 1) {
+        // Dead end: keep going the same way.
+        const n = nbrs[0];
+        candidates.push({ from: r, dx: r.x - n.x, dy: r.y - n.y, w: 3 * near });
+      } else if (nbrs.length === 2 && nbrs[0].x !== nbrs[1].x && nbrs[0].y !== nbrs[1].y) {
+        continue; // a corner
+      } else if (nbrs.length === 2) {
+        // Straight stretch: branch off either side at the kept gaps.
+        const along = nbrs[0].x === nbrs[1].x ? 'v' : 'h';
+        const gap = (along === 'h' ? r.x : r.y) % BLOCK === 0;
+        for (const s of [-1, 1]) candidates.push({ from: r, dx: along === 'v' ? s : 0, dy: along === 'h' ? s : 0, w: near * (gap ? 2 : 0.15) });
+      }
+    }
+    for (let tries = 0; tries < 12 && candidates.length; tries++) {
+      const cand = pickWeighted(candidates, (k) => k.w, this.rng);
+      candidates.splice(candidates.indexOf(cand), 1);
+      const path = this.trace(cand.from, cand.dx, cand.dy, 3 + Math.floor(this.rng() * 4));
+      if (!path) continue;
+      if (this.economy && !this.economy.canAfford(this.economy.costOf('road') * path.length)) return null;
+      let built = 0;
+      for (const t of path) {
+        if (t.structure?.type === 'tree') city.apply('bulldoze', t.x, t.y, { delay: 0.6 });
+        if (city.apply('road', t.x, t.y, { delay: 0.6 + built * 0.08 })) {
+          built++;
+          if (this.economy) this.economy.spend(this.economy.costOf('road'));
+        }
+      }
+      if (!built) continue;
+      city.dirty = true;
+      city.emit('grew', { type: 'road', x: path[0].x, y: path[0].y, n: built });
+      return { type: 'road', x: path[0].x, y: path[0].y, n: built };
+    }
+    return null;
+  }
+
+  // Tiles for a straight new street, stopping before water, buildings, the map edge, or running
+  // alongside another road (which would make a double street).
+  trace(from, dx, dy, len) {
+    const city = this.city;
+    const out = [];
+    let x = from.x;
+    let y = from.y;
+    for (let i = 0; i < len; i++) {
+      x += dx;
+      y += dy;
+      const t = city.getTile(x, y);
+      if (!t || x <= 0 || y <= 0 || x >= city.width - 1 || y >= city.height - 1) break;
+      if (t.terrain !== 'grass' || (t.structure && t.structure.type !== 'tree')) break;
+      const side = [city.getTile(x + dy, y + dx), city.getTile(x - dy, y - dx)];
+      if (i > 0 && side.some((s) => s?.structure?.type === 'road')) break;
+      const ahead = city.getTile(x + dx, y + dy);
+      out.push(t);
+      if (ahead?.structure?.type === 'road') break; // joined another street
+    }
+    return out.length >= 2 ? out : null;
+  }
+}
+
+return { GROWTH_INTERVAL, Growth };
+})();
+
+// ---- decisions.js ----
+const __mod_decisions = (() => {
+// Town decisions: every couple of in-game days the town asks you to choose. Each choice has its own
+// effects, good and bad, on how the town grows:
+//   cost / gain     money from the town budget
+//   growth          the town grows faster or slower for a few days (×1.4 for 5 days…)
+//   spirit          homes everywhere feel nicer or worse for a while (Town spirit in the inspector)
+//   hurry           the next era comes this many years sooner
+//   tax             resident taxes go up or down from now on
+//   build           something is built (a gift: free)
+//   trees           woods cleared (negative) or planted (positive)
+//   fun             townsfolk get a lift
+// An unanswered question goes with its last choice after a day. Decisions are plain data: add one to
+// DECISIONS with `when(ctx)` (is it a fitting moment?) and two or three `choices`.
+//
+// Saved in city.systems.decisions = { pending, next, seen, effects, taxRate, made }.
+
+const { addChronicle } = __mod_chronicle;
+const { clamp, pickWeighted } = __mod_utils;
+const day = (city) => city.day + city.clock;
+const has = (ctx, type) => ctx.city.tiles.some((t) => t.structure?.type === type);
+const nearWater = (ctx) => ctx.city.tiles.some((t) => t.terrain === 'water');
+
+const DECISIONS = [
+  // ---- Pioneer days ----
+  {
+    id: 'well',
+    era: [0, 0],
+    once: true,
+    title: 'A proper town well?',
+    text: 'The settlers are tired of hauling water from the river. They ask for a stone well in the square.',
+    choices: [
+      { label: 'Dig the well', cost: 400, spirit: [0.06, 6], growth: [1.2, 4], result: 'The town dug a stone well in the square.' },
+      { label: 'Make do', spirit: [-0.03, 4], result: 'The settlers kept hauling water from the river.' },
+    ],
+  },
+  {
+    id: 'woods',
+    era: [0, 1],
+    title: 'Clear the old woods?',
+    text: 'Families want the woods near town cleared for farms and new homes. Others love their walks under the trees.',
+    when: (ctx) => ctx.city.tiles.filter((t) => t.structure?.type === 'tree').length > 20,
+    choices: [
+      { label: 'Clear them', trees: -8, growth: [1.4, 5], spirit: [-0.04, 8], result: 'The old woods were cleared for farms and homes.' },
+      { label: 'Protect the woods', growth: [0.85, 4], spirit: [0.04, 8], result: 'The town protected its old woods.' },
+    ],
+  },
+  {
+    id: 'festival',
+    era: [0, 4],
+    title: 'Harvest festival',
+    text: 'The harvest is in. Should the town throw a festival in the square?',
+    when: (ctx) => ctx.season === 'autumn' || ctx.season === 'summer',
+    choices: [
+      { label: 'Throw a festival', cost: 300, fun: 0.4, spirit: [0.05, 3], result: 'The whole town danced at the harvest festival.' },
+      { label: 'Save the money', result: 'The town skipped the festival this year.' },
+    ],
+  },
+  {
+    id: 'newcomers',
+    era: [0, 2],
+    title: 'Newcomers at the gate',
+    text: 'A wagon train of families asks to settle here. There may not be work for everyone at first.',
+    choices: [
+      { label: 'Welcome them', growth: [1.6, 3], spirit: [-0.02, 3], result: 'The town welcomed a wagon train of new families.' },
+      { label: 'Turn them away', growth: [0.7, 3], result: 'The town turned the newcomers away.' },
+    ],
+  },
+  // ---- Railway age ----
+  {
+    id: 'railway',
+    era: [1, 1],
+    once: true,
+    title: 'The railway is coming',
+    text: 'A railway company will run a line to town if we help pay for the station.',
+    choices: [
+      { label: 'Pay for the station', cost: 1500, hurry: 6, growth: [1.3, 6], result: 'The first train steamed into the new station.' },
+      { label: 'Let it pass us by', growth: [0.9, 4], result: 'The railway went to the next town instead.' },
+    ],
+  },
+  {
+    id: 'mill',
+    era: [1, 2],
+    title: 'A mill on the edge of town',
+    text: 'An industrialist wants to build a mill. It means jobs and money for the land, and smoke.',
+    choices: [
+      { label: 'Accept the offer', gain: 500, build: ['factory', 'edge'], spirit: [-0.02, 6], result: 'A mill went up on the edge of town.' },
+      { label: 'Refuse', spirit: [0.02, 4], result: 'The town said no to the mill.' },
+    ],
+  },
+  {
+    id: 'gaslights',
+    era: [1, 1],
+    once: true,
+    title: 'Gas lamps for the high street?',
+    text: 'Gas lamps would make the evenings safer and brighter.',
+    choices: [
+      { label: 'Light the streets', cost: 800, spirit: [0.05, 8], result: 'Gas lamps lit the high street for the first time.' },
+      { label: 'Lanterns will do', result: 'The streets stayed lantern-lit.' },
+    ],
+  },
+  {
+    id: 'schoolhouse',
+    era: [0, 3],
+    title: 'A bigger schoolhouse',
+    text: 'Parents say the children have too far to walk to school.',
+    when: (ctx) => ctx.city.homes().filter((h) => h.structure.residents > 0 && (h.coverage?.school || 0) < 0.1).length >= 4,
+    choices: [
+      { label: 'Build a school', cost: 1200, build: ['school', 'center'], spirit: [0.03, 5], result: 'A new schoolhouse opened its doors.' },
+      { label: 'Not this year', spirit: [-0.03, 4], result: 'The school would have to wait.' },
+    ],
+  },
+  // ---- Motor age ----
+  {
+    id: 'paving',
+    era: [2, 2],
+    once: true,
+    title: 'Pave the roads?',
+    text: 'Motor cars are rattling over the cobbles. Paving the streets would bring more business.',
+    choices: [
+      { label: 'Pave them', cost: 1200, hurry: 5, growth: [1.2, 6], result: 'The town paved its streets for motor cars.' },
+      { label: 'Keep the cobbles', growth: [0.9, 4], spirit: [0.02, 6], result: 'The town kept its charming cobbles.' },
+    ],
+  },
+  {
+    id: 'taxes',
+    era: [1, 4],
+    title: 'The council debates taxes',
+    text: 'Raise taxes to fill the treasury, or cut them to draw more families?',
+    choices: [
+      { label: 'Raise taxes', tax: 1.2, growth: [0.8, 6], spirit: [-0.04, 6], result: 'The council raised taxes.' },
+      { label: 'Cut taxes', tax: 0.85, growth: [1.3, 6], spirit: [0.03, 6], result: 'The council cut taxes.' },
+      { label: 'Leave them', result: 'Taxes stayed as they were.' },
+    ],
+  },
+  {
+    id: 'grandpark',
+    era: [2, 4],
+    title: 'A gift of land',
+    text: 'A wealthy family offers land in town for a park, or the town could sell it for houses.',
+    choices: [
+      { label: 'Make it a park', build: ['park', 'center'], spirit: [0.04, 6], result: 'A grand new park opened in town.' },
+      { label: 'Sell it', gain: 1000, growth: [1.2, 4], result: 'The land was sold for new houses.' },
+    ],
+  },
+  {
+    id: 'flood',
+    era: [0, 4],
+    title: 'Spring floods',
+    text: 'The river burst its banks and damaged homes along the water.',
+    when: (ctx) => nearWater(ctx) && ctx.season === 'spring',
+    choices: [
+      { label: 'Repair everything', cost: 900, result: 'The town repaired the flood damage quickly.' },
+      { label: 'Let families fix it', spirit: [-0.06, 5], growth: [0.85, 3], result: 'Families patched up the flood damage themselves.' },
+    ],
+  },
+  // ---- Modern times ----
+  {
+    id: 'highway',
+    era: [3, 3],
+    once: true,
+    title: 'A highway through downtown?',
+    text: 'The state offers a highway. Business would boom, but downtown would be noisier.',
+    choices: [
+      { label: 'Build it', hurry: 5, growth: [1.4, 8], spirit: [-0.05, 10], result: 'The new highway opened through downtown.' },
+      { label: 'Keep downtown quiet', spirit: [0.03, 8], result: 'The town said no to the highway.' },
+    ],
+  },
+  {
+    id: 'towers',
+    era: [3, 4],
+    title: 'Developers want to build high',
+    text: 'Developers want to put up tall towers. Some residents worry about the skyline.',
+    choices: [
+      { label: 'Let them build', growth: [1.5, 5], spirit: [-0.02, 5], result: 'Towers began to rise over downtown.' },
+      { label: 'Height limit', growth: [0.85, 5], spirit: [0.03, 8], result: 'The town set a height limit.' },
+    ],
+  },
+  {
+    id: 'concert',
+    era: [2, 4],
+    title: 'Summer music festival',
+    text: 'Bands from all over want to play a weekend festival in the park.',
+    when: (ctx) => has(ctx, 'park') && ctx.season === 'summer',
+    choices: [
+      { label: 'Host it', cost: 1500, fun: 0.5, spirit: [0.06, 4], growth: [1.15, 4], result: 'Thousands came for the summer music festival.' },
+      { label: 'Not this year', result: 'The park stayed quiet this summer.' },
+    ],
+  },
+  // ---- Bright future ----
+  {
+    id: 'solar',
+    era: [4, 4],
+    once: true,
+    title: 'Solar roofs for everyone?',
+    text: 'The town could help every home put solar panels on its roof.',
+    choices: [
+      { label: 'Fund solar roofs', cost: 3000, spirit: [0.06, 12], result: 'Solar panels went up on roofs all over town.' },
+      { label: 'Maybe later', result: 'The town put off the solar plan.' },
+    ],
+  },
+  {
+    id: 'gardens',
+    era: [3, 4],
+    title: 'Community gardens',
+    text: 'Residents want to plant gardens and trees on empty lots.',
+    choices: [
+      { label: 'Plant them', cost: 600, trees: 6, spirit: [0.05, 8], result: 'Neighbours planted community gardens.' },
+      { label: 'Keep the lots for building', growth: [1.15, 4], result: 'The empty lots were kept for building.' },
+    ],
+  },
+  // ---- Any time ----
+  {
+    id: 'storm',
+    era: [0, 4],
+    title: 'A big storm',
+    text: 'A storm blew in overnight. Roofs are damaged and trees are down.',
+    choices: [
+      { label: 'Repair now', cost: 600, result: 'Crews repaired the storm damage within days.' },
+      { label: 'Let residents fix it', spirit: [-0.04, 4], result: 'Residents cleaned up after the storm themselves.' },
+    ],
+  },
+];
+const decisionById = (id) => DECISIONS.find((d) => d.id === id);
+
+// Short tags describing what a choice does, for the card.
+function effectTags(c) {
+  const tags = [];
+  if (c.cost) tags.push({ text: `−$${c.cost.toLocaleString()}`, tone: 'bad' });
+  if (c.gain) tags.push({ text: `+$${c.gain.toLocaleString()}`, tone: 'good' });
+  if (c.growth) tags.push({ text: c.growth[0] >= 1 ? 'Faster growth' : 'Slower growth', tone: c.growth[0] >= 1 ? 'good' : 'bad' });
+  if (c.spirit) tags.push({ text: c.spirit[0] >= 0 ? 'Happier homes' : 'Unhappier homes', tone: c.spirit[0] >= 0 ? 'good' : 'bad' });
+  if (c.hurry) tags.push({ text: 'Next era sooner', tone: 'good' });
+  if (c.tax) tags.push({ text: c.tax > 1 ? 'More tax money' : 'Less tax money', tone: c.tax > 1 ? 'good' : 'bad' });
+  if (c.build) tags.push({ text: `New ${c.build[0] === 'factory' ? 'mill' : c.build[0]}`, tone: 'good' });
+  if (c.trees) tags.push({ text: c.trees > 0 ? 'More trees' : 'Fewer trees', tone: c.trees > 0 ? 'good' : 'bad' });
+  if (c.fun) tags.push({ text: 'Townsfolk cheer up', tone: 'good' });
+  return tags;
+}
+
+class Decisions {
+  constructor(city, { economy, growth, eras, townsfolk, rng = Math.random } = {}) {
+    this.city = city;
+    this.economy = economy;
+    this.growth = growth;
+    this.eras = eras;
+    this.townsfolk = townsfolk;
+    this.rng = rng;
+  }
+
+  get state() {
+    const s = this.city.systems;
+    if (!s.decisions) s.decisions = { pending: null, next: day(this.city) + 1, seen: {}, effects: [], taxRate: 1, made: 0 };
+    return s.decisions;
+  }
+
+  get pending() {
+    const p = this.state.pending;
+    return p ? { ...p, decision: decisionById(p.id) } : null;
+  }
+
+  // Called each simulation tick: keeps effects current, asks new questions, and lets old ones lapse.
+  update() {
+    const st = this.state;
+    const now = day(this.city);
+    st.effects = st.effects.filter((e) => e.until > now);
+    this.city.derived.spirit = clamp(st.effects.reduce((s, e) => s + e.amount, 0), -0.15, 0.15);
+    if (this.economy) this.economy.modifiers.residentTax = st.taxRate;
+    if (st.pending) {
+      if (now - st.pending.day >= 1) this.choose(decisionById(st.pending.id).choices.length - 1, { lapsed: true });
+      return null;
+    }
+    if (now < st.next || (this.city.stats?.population || 0) < 8) return null;
+    return this.ask();
+  }
+
+  ctx() {
+    const w = this.city.derived.weather;
+    return { city: this.city, era: this.eras ? this.eras.index : 0, season: w?.season || 'spring' };
+  }
+
+  // Pick a fitting question that hasn't come up lately.
+  ask(forceId = null) {
+    const st = this.state;
+    const ctx = this.ctx();
+    const now = day(this.city);
+    const fits = DECISIONS.filter((d) => {
+      if (forceId) return d.id === forceId;
+      if (ctx.era < d.era[0] || ctx.era > d.era[1]) return false;
+      const seen = st.seen[d.id];
+      if (seen != null && (d.once || now - seen < 10)) return false;
+      return !d.when || d.when(ctx);
+    });
+    const d = pickWeighted(fits, (x) => (x.once ? 2 : 1), this.rng);
+    if (!d) {
+      st.next = now + 0.5;
+      return null;
+    }
+    st.pending = { id: d.id, day: now };
+    st.seen[d.id] = now;
+    this.city.emit('decision', { decision: d });
+    return d;
+  }
+
+  canAfford(choice) {
+    return !choice.cost || !this.economy || this.economy.sandbox || this.economy.money >= choice.cost;
+  }
+
+  // Apply a choice's effects. Returns a short summary for the toast.
+  choose(index, { lapsed = false } = {}) {
+    const st = this.state;
+    const d = st.pending && decisionById(st.pending.id);
+    if (!d) return null;
+    let c = d.choices[index];
+    if (!c) return null;
+    if (!this.canAfford(c)) c = d.choices[d.choices.length - 1]; // can't pay: the cheapest path
+    const now = day(this.city);
+    const eco = this.economy;
+    if (c.cost && eco && !eco.sandbox) eco.spend(c.cost);
+    if (c.gain && eco) eco.refund(c.gain);
+    if (c.growth && this.growth) this.growth.boost(c.growth[0], c.growth[1], d.title);
+    if (c.spirit) st.effects.push({ amount: c.spirit[0], until: now + c.spirit[1], id: d.id });
+    if (c.hurry && this.eras) this.eras.hurry(c.hurry);
+    if (c.tax) st.taxRate = clamp(st.taxRate * c.tax, 0.6, 1.6);
+    if (c.build && this.growth) this.growth.buildType(c.build[0], { where: c.build[1], free: true });
+    if (c.trees && this.growth) {
+      if (c.trees < 0) this.growth.clearTrees(-c.trees);
+      else this.growth.plantTrees(c.trees);
+    }
+    if (c.fun && this.townsfolk) {
+      for (const p of this.townsfolk.people) {
+        p.needs.fun = clamp(p.needs.fun + c.fun, 0, 1);
+        p.needs.social = clamp(p.needs.social + c.fun / 2, 0, 1);
+      }
+    }
+    st.pending = null;
+    st.made = (st.made || 0) + 1;
+    st.next = now + 1.5 + this.rng() * 1.2;
+    this.city.dirty = true;
+    addChronicle(this.city, lapsed ? `${c.result} (No decision was made in time.)` : c.result, null, 'decision');
+    this.city.emit('decided', { decision: d, choice: c, lapsed });
+    return { decision: d, choice: c, lapsed };
+  }
+}
+
+return { DECISIONS, decisionById, effectTags, Decisions };
+})();
+
 // ---- roadPlanner.js ----
 const __mod_roadPlanner = (() => {
 // Road planner: when a street is jammed, find a new stretch of road that would actually ease it.
@@ -8019,6 +9368,9 @@ const { Milestones } = __mod_milestones;
 const { Economy } = __mod_economy;
 const { Notables } = __mod_notables;
 const { Townsfolk } = __mod_townsfolk;
+const { Eras } = __mod_eras;
+const { Growth } = __mod_growth;
+const { Decisions } = __mod_decisions;
 const { computeThoughts } = __mod_advisor;
 const { daylightAt } = __mod_time;
 const { clamp, pickWeighted } = __mod_utils;
@@ -8035,6 +9387,9 @@ class Simulation {
     this.economy = new Economy(city);
     this.notables = new Notables(city);
     this.townsfolk = new Townsfolk(city);
+    this.eras = new Eras(city);
+    this.growth = new Growth(city, { eras: this.eras, economy: this.economy, milestones: this.milestones });
+    this.decisions = new Decisions(city, { economy: this.economy, growth: this.growth, eras: this.eras, townsfolk: this.townsfolk });
     this._notableRates = null;
     this._thoughtTimer = 0;
     this._streetsRev = -1;
@@ -8058,6 +9413,7 @@ class Simulation {
       this.tick();
     }
     this.economy.update(step / DAY_LENGTH_SECONDS);
+    this.growth.update(step);
     if (this._notableRates && this.notables.update(step / DAY_LENGTH_SECONDS, this._notableRates)) city.dirty = true; // their bonuses apply now
     this.weather.update(step);
     this.agents.update(step, daylightAt(city.clock));
@@ -8087,6 +9443,8 @@ class Simulation {
     this.updateStats();
     this.updateTrends();
     this.milestones.update();
+    this.eras.update();
+    this.decisions.update();
     this._thoughtTimer -= SIM_STEP;
     if (this._thoughtTimer <= 0) {
       city.derived.thoughts = computeThoughts(city, this.milestones);
@@ -8107,6 +9465,7 @@ class Simulation {
     this._notableRates = this.notables.rates();
     this.updateStats();
     void this.milestones.state; // settle the starting title without a celebration
+    void this.eras.state; // and the era and calendar
     this.city.derived.thoughts = computeThoughts(this.city, this.milestones);
   }
 
@@ -8777,6 +10136,7 @@ class Renderer {
     const w = city.derived.weather || { rain: 0, snow: 0, fog: 0, cloud: 0, snowCover: 0, season: 'spring' };
     this.weather = w;
     this.season = w.season || 'spring';
+    this.era = city.systems.era?.index ?? 3; // older towns without eras keep today's look
     this.snowCover = Math.round((w.snowCover || 0) * 10) / 10;
     const L = this.weatherLight(lightingAt(city.clock), w);
     this.L = L;
@@ -9165,7 +10525,7 @@ class Renderer {
     const want = this.camera.zoom * this.dpr;
     if (want > cap * 1.05) return false;
     const scale = Math.min(cap, GROUND_SCALES.find((s) => s >= want * 0.95) || cap);
-    const key = `${city.revision}|${W}x${H}|${scale.toFixed(3)}|${this.season}|${this.snowCover}`;
+    const key = `${city.revision}|${W}x${H}|${scale.toFixed(3)}|${this.season}|${this.snowCover}|${this.era}`;
     if (this.ground.key === key) return true;
     const g = this.ground;
     if (!g.canvas) g.canvas = document.createElement('canvas');
@@ -9418,6 +10778,7 @@ class Renderer {
   }
 
   drawRoad(ctx, t, L) {
+    if ((this.era ?? 3) < 2) return this.drawOldRoad(ctx, t, L);
     const { x, y, roadMask: m } = t;
     ctx.fillStyle = lit(PALETTE.road, 0.98 + hash2(x, y, 2) * 0.03, L);
     tilePoly(ctx, x, y);
@@ -9472,6 +10833,53 @@ class Renderer {
           [x + off - 0.05, y + 0.16],
         ]);
         ctx.fill();
+      }
+    }
+  }
+
+  // Pioneer dirt lanes with grassy verges and wheel ruts; railway-age cobbles with kerbs.
+  drawOldRoad(ctx, t, L) {
+    const { x, y, roadMask: m } = t;
+    const dirt = this.era === 0;
+    const base = dirt ? '#dcc59e' : '#cfc5b6';
+    ctx.fillStyle = lit(base, 0.97 + hash2(x, y, 2) * 0.05, L);
+    tilePoly(ctx, x, y);
+    ctx.fill();
+    EDGES.forEach((e, i) => {
+      if (m & (1 << i)) return;
+      ctx.fillStyle = lit(dirt ? this.grassColor() : PALETTE.sidewalk, dirt ? 0.96 : 1.0, L);
+      poly(ctx, edgeStrip(x, y, e, 0, dirt ? 0.13 : 0.12));
+      ctx.fill();
+    });
+    if (dirt) {
+      // Two wheel ruts along each connection.
+      ctx.strokeStyle = lit('#c3a87c', 1, L);
+      ctx.lineWidth = 0.9;
+      const c = gridToWorld(x + 0.5, y + 0.5);
+      const mids = [
+        [x + 0.5, y],
+        [x + 1, y + 0.5],
+        [x + 0.5, y + 1],
+        [x, y + 0.5],
+      ];
+      ctx.beginPath();
+      for (let i = 0; i < 4; i++) {
+        if (!(m & (1 << i))) continue;
+        const p = gridToWorld(...mids[i]);
+        for (const off of [-2.2, 2.2]) {
+          ctx.moveTo(c.x + off, c.y);
+          ctx.lineTo(p.x + off, p.y);
+        }
+      }
+      ctx.stroke();
+    } else {
+      // Cobblestones: a sprinkle of darker setts.
+      ctx.fillStyle = lit('#b9ae9f', 1, L);
+      for (let k = 0; k < 14; k++) {
+        const gx = x + 0.12 + hash2(x, y, 50 + k) * 0.76;
+        const gy = y + 0.12 + hash2(x, y, 80 + k) * 0.76;
+        const p = gridToWorld(gx, gy);
+        ctx.fillRect(p.x - 1.2, p.y - 0.5, 2.4, 1);
       }
     }
   }
@@ -9889,6 +11297,25 @@ class Renderer {
     }
   }
 
+  // Building colours follow the era: weathered timber and thatch in pioneer days, brick and clay
+  // tiles in the railway age, then today's pastels. Cached per variant and era.
+  variantOf(s, fallback) {
+    const base = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS[fallback];
+    const era = this.era ?? 3;
+    if (era >= 2) return base;
+    const key = `${s.variant || fallback}|${era}`;
+    this._variants ||= new Map();
+    let v = this._variants.get(key);
+    if (!v) {
+      v =
+        era === 0
+          ? { wall: mixHex(base.wall, '#e7d6b8', 0.55), roof: mixHex(base.roof, '#cfa45f', 0.7), trim: mixHex(base.trim, '#f4ead6', 0.5) }
+          : { wall: mixHex(base.wall, '#e3a98f', 0.35), roof: mixHex(base.roof, '#b5695a', 0.55), trim: base.trim };
+      this._variants.set(key, v);
+    }
+    return v;
+  }
+
   // A box with soft ambient occlusion toward the ground on both visible faces.
   drawBox(ctx, L, x0, y0, x1, y1, z, h, color, top = true) {
     const ao = Math.min(h, 16);
@@ -9988,7 +11415,7 @@ class Renderer {
   }
 
   drawHouse(ctx, x, y, s, L, ghost) {
-    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.peach;
+    const v = this.variantOf(s, 'peach');
     const t = this.city.getTile(x, y);
     const stage = ghost || !t ? 1 : growthOf(t).stage;
     // An empty lot shows a small cottage; it becomes a full house, then gains a garage.
@@ -10032,6 +11459,21 @@ class Renderer {
         this.drawBox(ctx, L, cx0, y0 + 0.06, cx1, y0 + 0.14, base - 1, 6 + rh * 0.2, v.trim);
       }
       this.roofLines(ctx, L, v, [[xm, y0 - o, top], [xm, y1 + o, top]], [[x0 - o, y1 + o, h], [xm, y1 + o, top], [x1 + o, y1 + o, h]]);
+      // Bright future: solar panels on the sunny slope.
+      if ((this.era ?? 3) >= 4 && !ghost && hash2(x, y, 43) > 0.3) {
+        const at = (u, yy) => [x0 - o + (xm - x0 + o) * u, yy, h + rh * u];
+        ctx.fillStyle = lit('#4f6fa8', 1, L);
+        poly(ctx, [at(0.25, y0 + 0.06), at(0.25, y1 - 0.06), at(0.8, y1 - 0.06), at(0.8, y0 + 0.06)]);
+        ctx.fill();
+        ctx.strokeStyle = litA('#cfe0ff', 1, L, 0.7);
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        const a = gridToWorld(...at(0.52, y0 + 0.06));
+        const b = gridToWorld(...at(0.52, y1 - 0.06));
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      }
     } else if (roof === 'gableX') {
       // Ridge runs left to right; the gable faces the viewer's right.
       fillPoly([[x0 - o, y0 - o, h], [x1 + o, y0 - o, h], [x1 + o, ym, top], [x0 - o, ym, top]], 0.95);
@@ -10084,7 +11526,7 @@ class Renderer {
   }
 
   drawTower(ctx, x, y, s, L, ghost) {
-    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.lavender;
+    const v = this.variantOf(s, 'lavender');
     const tile = this.city.getTile(x, y);
     const floors = ghost || !tile ? s.floors || 5 : growthOf(tile).floors;
     const x0 = x + 0.16;
@@ -10207,7 +11649,7 @@ class Renderer {
   }
 
   drawShop(ctx, x, y, s, L, ghost) {
-    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.mint;
+    const v = this.variantOf(s, 'mint');
     const x0 = x + 0.16;
     const x1 = x + 0.84;
     const y0 = y + 0.2;
@@ -10245,7 +11687,7 @@ class Renderer {
 
   // A little cottage: low walls, a steep roof, a chimney and a round window.
   drawCottage(ctx, x, y, s, L, ghost) {
-    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.blush;
+    const v = this.variantOf(s, 'blush');
     const x0 = x + 0.27;
     const x1 = x + 0.73;
     const y0 = y + 0.29;
@@ -10283,7 +11725,7 @@ class Renderer {
 
   // Apartments: a mid-rise block with balconies on every floor and a railing round the roof.
   drawApartments(ctx, x, y, s, L, ghost) {
-    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.mint;
+    const v = this.variantOf(s, 'mint');
     const tile = this.city.getTile(x, y);
     const floors = ghost || !tile ? s.floors || 3 : growthOf(tile).floors;
     const x0 = x + 0.15;
@@ -10335,7 +11777,7 @@ class Renderer {
 
   // A café: a small shopfront with an awning and tables with parasols on the pavement.
   drawCafe(ctx, x, y, s, L, ghost) {
-    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.peach;
+    const v = this.variantOf(s, 'peach');
     const x0 = x + 0.24;
     const x1 = x + 0.78;
     const y0 = y + 0.18;
@@ -10391,7 +11833,7 @@ class Renderer {
 
   // A mall: a wide, low block with a glass entrance, a coloured sign band and rooftop units.
   drawMall(ctx, x, y, s, L, ghost) {
-    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.lavender;
+    const v = this.variantOf(s, 'lavender');
     const x0 = x + 0.06;
     const x1 = x + 0.94;
     const y0 = y + 0.08;
@@ -10475,7 +11917,7 @@ class Renderer {
   }
 
   drawOffice(ctx, x, y, s, L, ghost) {
-    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.lavender;
+    const v = this.variantOf(s, 'lavender');
     const otile = this.city.getTile(x, y);
     const floors = ghost || !otile ? s.floors || 4 : growthOf(otile).floors;
     const x0 = x + 0.14;
@@ -10852,6 +12294,8 @@ class Renderer {
   }
 
   drawLamp(ctx, lamp, L) {
+    const era = this.era ?? 3;
+    if (era < 2) return this.drawOldLamp(ctx, lamp, L, era);
     const base = gridToWorld(lamp.gx, lamp.gy);
     const top = base.y - 20;
     ctx.strokeStyle = lit(PALETTE.pole, 1, L);
@@ -10872,7 +12316,65 @@ class Renderer {
     }
   }
 
+  // A wooden post with a lantern (pioneer days) or a cast-iron gas lamp (railway age).
+  drawOldLamp(ctx, lamp, L, era) {
+    const base = gridToWorld(lamp.gx, lamp.gy);
+    const top = base.y - (era === 0 ? 12 : 17);
+    ctx.strokeStyle = lit(era === 0 ? '#8b6b4a' : '#5f5a72', 1, L);
+    ctx.lineWidth = era === 0 ? 1.6 : 1.2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(base.x, base.y);
+    ctx.lineTo(base.x, top);
+    ctx.stroke();
+    const on = L.lamps > 0.05;
+    ctx.fillStyle = on ? '#ffd27a' : lit('#e9dfcf', 1, L);
+    ctx.fillRect(base.x - 1.6, top - 3.4, 3.2, 3.4);
+    ctx.fillStyle = lit(era === 0 ? '#6e5038' : '#4d4860', 1, L);
+    ctx.fillRect(base.x - 2, top - 4.2, 4, 1);
+    if (on) {
+      this.glows.push({ x: base.x, y: top - 1.7, r: 11, a: 0.5 * L.lamps, rgb: '255,196,110' });
+      this.glows.push({ x: base.x, y: base.y, r: era === 0 ? 14 : 20, a: 0.2 * L.lamps, rgb: '255,190,110', flat: true });
+    }
+  }
+
+  // A horse and cart, for the years before motor cars.
+  drawCart(ctx, c, pose, L) {
+    if (c.alpha <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = c.alpha;
+    const { gx, gy, dx, dy } = pose;
+    const g = gridToWorld(gx, gy);
+    ctx.fillStyle = 'rgba(52,44,96,0.18)';
+    ctx.beginPath();
+    ctx.ellipse(g.x, g.y + 1, 7, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const alongX = Math.abs(dx) >= Math.abs(dy);
+    const ex = alongX ? 0.1 : 0.07;
+    const ey = alongX ? 0.07 : 0.1;
+    // Cart behind, horse in front.
+    const bx = gx - dx * 0.08;
+    const by = gy - dy * 0.08;
+    this.drawBox(ctx, L, bx - ex, by - ey, bx + ex, by + ey, 2, 3.5, c.cartColor || '#b88a5a');
+    const hx = gx + dx * 0.13;
+    const hy = gy + dy * 0.13;
+    const hex = alongX ? 0.07 : 0.03;
+    const hey = alongX ? 0.03 : 0.07;
+    this.drawBox(ctx, L, hx - hex, hy - hey, hx + hex, hy + hey, 3, 3, c.horse || '#8a5d3b');
+    const head = gridToWorld(hx + dx * 0.08, hy + dy * 0.08, 7.5);
+    ctx.fillStyle = lit(c.horse || '#8a5d3b', 0.9, L);
+    ctx.beginPath();
+    ctx.arc(head.x, head.y, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    if (L.lamps > 0.1) {
+      const f = gridToWorld(bx, by, 7);
+      this.glows.push({ x: f.x, y: f.y, r: 7, a: 0.4 * L.lamps * c.alpha, rgb: '255,200,120' });
+    }
+  }
+
   drawCar(ctx, c, pose, L) {
+    if (c.kind === 'cart') return this.drawCart(ctx, c, pose, L);
     if (c.alpha <= 0) return;
     ctx.save();
     ctx.globalAlpha = c.alpha;
@@ -11517,7 +13019,72 @@ const __mod_persistence = (() => {
 
 const { SAVE_VERSION } = __mod_config;
 const { CityState } = __mod_state;
+const { ERAS, yearOf } = __mod_eras;
 const KEY = 'pocket-metropolis:save';
+const ACTIVE_KEY = 'pocket-metropolis:slot';
+const SLOT_COUNT = 3;
+
+// Three save slots. Slot 1 uses the original key, so towns saved before slots existed stay in it.
+const slotKey = (n) => (n === 1 ? KEY : `${KEY}:${n}`);
+
+function activeSlot() {
+  try {
+    const n = Number(localStorage.getItem(ACTIVE_KEY));
+    return n >= 1 && n <= SLOT_COUNT ? n : 1;
+  } catch {
+    return 1;
+  }
+}
+
+function setActiveSlot(n) {
+  try {
+    localStorage.setItem(ACTIVE_KEY, String(n));
+  } catch {
+    // Private mode: stay on the current slot for this visit.
+  }
+}
+
+// A short description of a town for the save slots sheet.
+function metaOf(city) {
+  const life = city.systems.life?.char;
+  const era = ERAS[city.systems.era?.index ?? 0];
+  let pop = 0;
+  for (const t of city.tiles) pop += t.structure?.residents || 0;
+  return {
+    pop,
+    year: yearOf(city),
+    era: era?.label || '',
+    day: city.day,
+    person: life ? `${life.first} ${life.last}` : null,
+    alive: life ? life.alive !== false : null,
+    generation: life?.generation || null,
+    width: city.width,
+    mode: city.systems.mode || 'milestones',
+  };
+}
+
+// What's in a slot, without loading it: null when empty.
+function slotInfo(n) {
+  try {
+    const raw = localStorage.getItem(slotKey(n));
+    if (!raw) return null;
+    const save = JSON.parse(raw);
+    if (save.meta) return { ...save.meta, savedAt: save.savedAt };
+    const city = CityState.fromJSON(migrate(save).city);
+    return { ...metaOf(city), savedAt: save.savedAt };
+  } catch {
+    return { broken: true };
+  }
+}
+
+function deleteSlot(n) {
+  try {
+    localStorage.removeItem(slotKey(n));
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // MIGRATIONS[n] upgrades a save from version n to n + 1.
 const MIGRATIONS = {
@@ -11549,19 +13116,19 @@ function migrate(save) {
   return save;
 }
 
-function saveCity(city) {
+function saveCity(city, slot = activeSlot()) {
   try {
-    const save = { version: SAVE_VERSION, savedAt: Date.now(), city: city.toJSON() };
-    localStorage.setItem(KEY, JSON.stringify(save));
+    const save = { version: SAVE_VERSION, savedAt: Date.now(), meta: metaOf(city), city: city.toJSON() };
+    localStorage.setItem(slotKey(slot), JSON.stringify(save));
     return true;
   } catch {
     return false;
   }
 }
 
-function loadCity() {
+function loadCity(slot = activeSlot()) {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(slotKey(slot));
     if (!raw) return null;
     return CityState.fromJSON(migrate(JSON.parse(raw)).city);
   } catch {
@@ -11634,7 +13201,203 @@ class AutoSaver {
   }
 }
 
-return { MIGRATIONS, saveCity, loadCity, saveBackup, loadBackup, clearBackup, AutoSaver };
+return { SLOT_COUNT, activeSlot, setActiveSlot, metaOf, slotInfo, deleteSlot, MIGRATIONS, saveCity, loadCity, saveBackup, loadBackup, clearBackup, AutoSaver };
+})();
+
+// ---- slotsUI.js ----
+const __mod_slotsUI = (() => {
+// Save slots sheet: three towns side by side. Play one, start a new town (with a new main person) in
+// an empty slot, save a copy of the current town into another slot, or delete one you're done with.
+// Deleting asks twice. The slot you're playing is saved automatically.
+
+const { SLOT_COUNT, activeSlot, slotInfo } = __mod_persistence;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const CLOSE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+
+function ago(ms) {
+  if (!ms) return '';
+  const m = Math.round((Date.now() - ms) / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m} min ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h} h ago`;
+  return `${Math.round(h / 24)} days ago`;
+}
+
+class SlotsSheet {
+  constructor({ onPlay, onNew, onCopy, onDelete, onOpen, beforeOpen }) {
+    this.h = { onPlay, onNew, onCopy, onDelete, onOpen, beforeOpen };
+    this.el = document.getElementById('slots-sheet');
+    this.confirm = null; // slot waiting for a second tap to delete
+    this.el.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      const n = Number(b.dataset.slot);
+      const act = b.dataset.act;
+      if (b.dataset.close != null) return this.toggle(false);
+      if (act === 'play') {
+        this.toggle(false);
+        return this.h.onPlay(n);
+      }
+      if (act === 'new') {
+        this.toggle(false);
+        return this.h.onNew(n);
+      }
+      if (act === 'copy') {
+        this.h.onCopy(n);
+        return this.render();
+      }
+      if (act === 'delete') {
+        if (this.confirm !== n) {
+          this.confirm = n;
+          return this.render();
+        }
+        this.confirm = null;
+        this.h.onDelete(n);
+        return this.render();
+      }
+    });
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !this.el.hidden) this.toggle(false);
+    });
+  }
+
+  get open() {
+    return !this.el.hidden;
+  }
+
+  toggle(force) {
+    const open = force ?? this.el.hidden;
+    if (open) {
+      this.h.onOpen?.();
+      this.h.beforeOpen?.(); // save the current town first so its card is up to date
+    }
+    this.confirm = null;
+    this.el.hidden = !open;
+    if (open) this.render();
+  }
+
+  render() {
+    const active = activeSlot();
+    const cards = [];
+    for (let n = 1; n <= SLOT_COUNT; n++) {
+      const info = slotInfo(n);
+      const playing = n === active;
+      let body;
+      if (!info) body = '<p class="slot-empty">Empty</p>';
+      else if (info.broken) body = '<p class="slot-empty">This save could not be read.</p>';
+      else
+        body =
+          `<p class="slot-title"><b>${esc(info.era || 'Town')}</b> · ${info.year}</p>` +
+          `<p>${info.pop.toLocaleString()} residents · ${info.width}×${info.width}${info.mode === 'sandbox' ? ' · Sandbox' : ''}</p>` +
+          (info.person ? `<p>${info.alive === false ? 'Was following' : 'Following'} <b>${esc(info.person)}</b>${info.generation > 1 ? ` · generation ${info.generation}` : ''}</p>` : '<p>No main person yet</p>') +
+          `<p class="slot-when">Saved ${ago(info.savedAt)}</p>`;
+      const actions = playing
+        ? '<span class="slot-badge">Playing now</span>'
+        : (info && !info.broken ? `<button type="button" class="primary-btn small" data-act="play" data-slot="${n}">Play</button>` : '') +
+          `<button type="button" class="ghost-btn small" data-act="new" data-slot="${n}">${info ? 'New town here' : 'Start a new town'}</button>` +
+          `<button type="button" class="ghost-btn small" data-act="copy" data-slot="${n}">${info ? 'Overwrite with this town' : 'Save a copy here'}</button>` +
+          (info ? `<button type="button" class="ghost-btn small danger" data-act="delete" data-slot="${n}">${this.confirm === n ? 'Tap again to delete' : 'Delete'}</button>` : '');
+      cards.push(`<li class="slot${playing ? ' playing' : ''}"><span class="slot-num">${n}</span><div class="slot-body">${body}<div class="slot-actions">${actions}</div></div></li>`);
+    }
+    this.el.innerHTML =
+      `<header><h2>Save slots</h2><button type="button" class="insp-close" data-close aria-label="Close">${CLOSE}</button></header>` +
+      '<p class="sheet-hint">Keep up to three towns. The one you are playing saves itself as you go.</p>' +
+      `<ul class="slots">${cards.join('')}</ul>`;
+  }
+}
+
+return { SlotsSheet };
+})();
+
+// ---- decisionUI.js ----
+const __mod_decisionUI = (() => {
+// The town decision card: a question, two or three choices with what each one does, and a Later
+// button that tucks it into a small "Decision waiting" pill. Unanswered questions lapse after a day.
+
+const { effectTags } = __mod_decisions;
+const { ERAS } = __mod_eras;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+class DecisionCard {
+  constructor({ decisions, onChoose, onOpen }) {
+    this.decisions = decisions; // () → Decisions
+    this.onChoose = onChoose; // (index) → apply the choice
+    this.onOpen = onOpen;
+    this.el = document.getElementById('decision-card');
+    this.pill = document.createElement('button');
+    this.pill.type = 'button';
+    this.pill.className = 'pill glass decision-pill';
+    this.pill.hidden = true;
+    this.pill.innerHTML = '<span aria-hidden="true">⚖</span><span>Town decision waiting</span>';
+    document.getElementById('app').appendChild(this.pill);
+    this.pill.addEventListener('click', () => this.show());
+    this.el.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      if (b.dataset.later != null) return this.minimize();
+      if (b.dataset.choice != null) this.onChoose(Number(b.dataset.choice));
+    });
+    this._id = null;
+  }
+
+  // `auto` is a question that just arrived: if a Life Story event is on screen, it waits in the pill
+  // instead of covering it.
+  show({ auto = false } = {}) {
+    const p = this.decisions().pending;
+    if (!p) return this.hide();
+    if (auto && !document.getElementById('life-card')?.hidden) return this.minimize();
+    this.onOpen?.();
+    this.render(p);
+    this.el.hidden = false;
+    this.pill.hidden = true;
+  }
+
+  minimize() {
+    this.el.hidden = true;
+    this.pill.hidden = !this.decisions().pending;
+  }
+
+  hide() {
+    this.el.hidden = true;
+    this.pill.hidden = true;
+    this._id = null;
+  }
+
+  // Keep the card in step with the simulation (a question can lapse while it's tucked away).
+  tick() {
+    const p = this.decisions().pending;
+    if (!p) {
+      if (!this.el.hidden || !this.pill.hidden) this.hide();
+      return;
+    }
+    if (!this.el.hidden) this.render(p);
+  }
+
+  render(p) {
+    const d = p.decision;
+    const dec = this.decisions();
+    const era = ERAS[dec.eras?.index ?? 0];
+    const key = `${d.id}|${d.choices.map((c) => dec.canAfford(c)).join()}`;
+    if (key === this._id) return;
+    this._id = key;
+    this.el.innerHTML =
+      `<span class="insp-kicker">Town decision · ${esc(era?.label || '')}</span>` +
+      `<h2>${esc(d.title)}</h2><p>${esc(d.text)}</p>` +
+      `<div class="decision-choices">${d.choices
+        .map((c, i) => {
+          const ok = dec.canAfford(c);
+          const tags = effectTags(c)
+            .map((t) => `<span class="dtag ${t.tone}">${esc(t.text)}</span>`)
+            .join('');
+          return `<button type="button" class="decision-choice" data-choice="${i}" ${ok ? '' : 'disabled'}><b>${esc(c.label)}</b><span class="dtags">${tags || '<span class="dtag">No change</span>'}</span>${ok ? '' : '<small>Not enough money</small>'}</button>`;
+        })
+        .join('')}</div>` +
+      '<div class="decision-foot"><small>If nobody decides within a day, the last choice happens.</small><button type="button" class="ghost-btn small" data-later>Later</button></div>';
+  }
+}
+
+return { DecisionCard };
 })();
 
 // ---- share.js ----
@@ -12062,13 +13825,61 @@ function generateTown(city, seed = (Math.random() * 2 ** 32) >>> 0, { town = tru
   city.emit('reset', { seed, focus: { x: cx, y: cy, radius: half } });
 }
 
-return { generateLand, generateTown };
+// A seed to grow from: open land with a little crossroads and a few cottages near the middle, so a
+// town can grow by itself from almost nothing.
+function generateSeed(city, seed = (Math.random() * 2 ** 32) >>> 0) {
+  generateLand(city, seed);
+  const rand = mulberry32(seed ^ 0x5eed);
+  const W = city.width;
+  const H = city.height;
+  const dry = (cx, cy, r) => {
+    for (let y = cy - r; y <= cy + r; y++) for (let x = cx - r; x <= cx + r; x++) if (city.getTile(x, y)?.terrain !== 'grass') return false;
+    return true;
+  };
+  // The closest dry spot to the middle of the map.
+  let cx = Math.floor(W / 2);
+  let cy = Math.floor(H / 2);
+  search: for (let r = 0; r < Math.min(W, H) / 2 - 5; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        if (dry(cx + dx, cy + dy, 4)) {
+          cx += dx;
+          cy += dy;
+          break search;
+        }
+      }
+    }
+  }
+  const place = (x, y, type) => {
+    const t = city.getTile(x, y);
+    if (!t || t.terrain !== 'grass') return;
+    t.structure = city.createStructure(type, rand);
+  };
+  for (let y = cy - 4; y <= cy + 4; y++) for (let x = cx - 4; x <= cx + 4; x++) if (city.getTile(x, y)?.structure) city.getTile(x, y).structure = null;
+  for (let d = -3; d <= 3; d++) {
+    place(cx + d, cy, 'road');
+    place(cx, cy + d, 'road');
+  }
+  place(cx - 1, cy - 1, 'cottage');
+  place(cx + 1, cy - 1, 'cottage');
+  place(cx - 1, cy + 1, 'house');
+  place(cx + 2, cy + 1, 'cottage');
+  place(cx + 1, cy + 2, 'tree');
+  place(cx - 2, cy - 2, 'tree');
+  city.refreshAllRoadMasks();
+  city.dirty = true;
+  return { x: cx, y: cy };
+}
+
+return { generateLand, generateTown, generateSeed };
 })();
 
 // ---- newTownUI.js ----
 const __mod_newTownUI = (() => {
-// New town sheet: choose Sandbox or Milestones, a map size, and whether to start on empty land or
-// with a ready-made starter town. Starting replaces the current town (your Life Story carries on).
+// New town sheet: choose Sandbox or Milestones, a map size, how to start (a seed that grows, empty
+// land, or a ready-made starter town), whether it grows by itself, and who your main person is.
+// Opened from a save slot, the new town goes into that slot.
 
 const MAP_SIZES = [
   { id: 'small', label: 'Small', size: 16, hint: '16 × 16' },
@@ -12080,19 +13891,27 @@ const MODES = [
   { id: 'milestones', label: 'Milestones', hint: 'Unlock buildings as your town grows.' },
 ];
 const STARTS = [
+  { id: 'seed', label: 'A seed', hint: 'A crossroads and a few cottages in 1850. Watch it grow into a city.' },
   { id: 'land', label: 'Empty land', hint: 'Grass, a river and woods. Start from scratch.' },
   { id: 'town', label: 'Starter town', hint: 'A little town that is already up and running.' },
+];
+
+const GROWTH = [
+  { id: 'on', label: 'Grows by itself', hint: 'Homes, shops, streets and parks appear where people need them. You can still build.' },
+  { id: 'off', label: 'I build it', hint: 'Nothing is built unless you build it.' },
 ];
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const CLOSE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
 
 class NewTownSheet {
-  constructor({ onStart, onOpen }) {
-    this.onStart = onStart; // ({ mode, size, start }) → build the new town
+  constructor({ onStart, onOpen, family }) {
+    this.onStart = onStart; // ({ mode, size, start, grow, person, slot }) → build the new town
     this.onOpen = onOpen;
+    this.family = family; // () → the main person's name, if there is one
     this.el = document.getElementById('newtown-sheet');
-    this.choice = { mode: 'sandbox', size: 'small', start: 'land' };
+    this.choice = { mode: 'milestones', size: 'medium', start: 'seed', grow: 'on', person: 'new' };
+    this.slot = null; // the save slot the town goes into (null: replace the current one)
     this.el.addEventListener('click', (e) => {
       const b = e.target.closest('button');
       if (!b) return;
@@ -12105,7 +13924,7 @@ class NewTownSheet {
       if (b.dataset.go != null) {
         const size = MAP_SIZES.find((m) => m.id === this.choice.size).size;
         this.toggle(false);
-        this.onStart({ mode: this.choice.mode, size, start: this.choice.start });
+        this.onStart({ mode: this.choice.mode, size, start: this.choice.start, grow: this.choice.grow === 'on', person: this.choice.person, slot: this.slot });
       }
     });
     window.addEventListener('keydown', (e) => {
@@ -12117,14 +13936,17 @@ class NewTownSheet {
     return !this.el.hidden;
   }
 
-  toggle(force) {
+  toggle(force, { slot = null } = {}) {
     const open = force ?? this.el.hidden;
+    if (open) this.slot = slot;
     if (open) this.onOpen?.();
     this.el.hidden = !open;
     if (open) this.render();
   }
 
   render() {
+    const name = this.family?.() || null;
+    if (!name) this.choice.person = 'new';
     const group = (key, label, items) => {
       const current = items.find((i) => i.id === this.choice[key]);
       return (
@@ -12140,8 +13962,15 @@ class NewTownSheet {
       group('mode', 'Mode', MODES) +
       group('size', 'Map size', MAP_SIZES) +
       group('start', 'Start with', STARTS) +
-      '<button type="button" class="primary-btn" data-go>Start building</button>' +
-      '<p class="sheet-hint center">This replaces your current town. Your Life Story and achievements carry on.</p>';
+      group('grow', 'Growth', GROWTH) +
+      (name
+        ? group('person', 'Main person', [
+            { id: 'new', label: 'Someone new', hint: 'Create a new main person to follow, then their children and grandchildren.' },
+            { id: 'keep', label: `Keep ${name}`, hint: `${name} and the family move to the new town.` },
+          ])
+        : '') +
+      '<button type="button" class="primary-btn" data-go>Start</button>' +
+      `<p class="sheet-hint center">${this.slot ? `Starts in save slot ${this.slot}.` : 'This replaces the town in your current save slot. Use Save slots to keep it.'}</p>`;
   }
 }
 
@@ -12156,6 +13985,7 @@ const __mod_ui = (() => {
 const { TOOL_GROUPS, TOOLS, VIEWS, STRUCTURES, SERVICES } = __mod_config;
 const { money } = __mod_economy;
 const { activityOf } = __mod_townsfolk;
+const { ERAS, yearOf } = __mod_eras;
 const { notableType } = __mod_notables;
 const { FACTORS } = __mod_desirability;
 const { formatClock } = __mod_time;
@@ -12209,8 +14039,13 @@ const LEGENDS = {
 
 const pct = (v) => `${Math.round(v * 100)}%`;
 
+// Game speeds; the speed pill cycles through them, then pauses.
+const SPEEDS = [1, 3, 10];
+
 class Interface {
-  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect, sound, locks, onShare, onBackHome, hasBackup, display, costOf, budget }) {
+  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect, sound, locks, onShare, onBackHome, hasBackup, display, costOf, budget, growth, onSlots }) {
+    this.growth = growth; // { get(), set(on) }: the town building itself
+    this.onSlots = onSlots; // () → open the save slots sheet
     this.sound = sound;
     this.costOf = costOf || (() => 0); // tool → price in the current mode (0 in Sandbox)
     this.budget = budget; // () → { money, net, sandbox } for the stats bubble
@@ -12259,7 +14094,8 @@ class Interface {
     }
     document.getElementById('btn-random').addEventListener('click', onRandom);
     document.getElementById('btn-fit').addEventListener('click', onFit);
-    this.speedBtn.addEventListener('click', () => this.setSpeed(this.speed === 0 ? this._resume || 1 : this.speed >= 3 ? 0 : this.speed + 1));
+    // Cycles 1× → 3× → 10× → pause.
+    this.speedBtn.addEventListener('click', () => this.setSpeed(this.speed === 0 ? this._resume || 1 : SPEEDS[SPEEDS.indexOf(this.speed) + 1] ?? 0));
     this.viewBtn.addEventListener('click', () => {
       const i = VIEWS.findIndex((v) => v.id === this.view);
       this.setView(VIEWS[(i + 1) % VIEWS.length].id);
@@ -12418,17 +14254,16 @@ class Interface {
 
   renderMore() {
     if (this.moreSheet.hidden) return;
-    const speeds = [
-      [0, 'Pause'],
-      [1, '1×'],
-      [2, '2×'],
-      [3, '3×'],
-    ];
+    const speeds = [[0, 'Pause'], ...SPEEDS.map((v) => [v, `${v}×`])];
     this.moreSheet.innerHTML =
       `<header><h2>Settings &amp; more</h2><button type="button" class="insp-close" data-more="close" aria-label="Close">${ICONS.close}</button></header>` +
       `<span class="sheet-label">Speed</span><div class="seg big">${speeds
         .map(([v, l]) => `<button type="button" data-speed="${v}" aria-pressed="${this.speed === v}">${l}</button>`)
         .join('')}</div>` +
+      (this.growth
+        ? `<span class="sheet-label">Town grows by itself</span><div class="seg big"><button type="button" data-growth="1" aria-pressed="${this.growth.get()}">On</button><button type="button" data-growth="0" aria-pressed="${!this.growth.get()}">Off</button></div>` +
+          '<p class="sheet-hint">Homes, shops, streets and parks appear where your people need them. You can keep building too.</p>'
+        : '') +
       `<span class="sheet-label">Map view</span><div class="seg big views">${VIEWS.map(
         (v) => `<button type="button" data-view="${v.id}" aria-pressed="${this.view === v.id}">${v.label}</button>`
       ).join('')}</div>` +
@@ -12449,7 +14284,8 @@ class Interface {
       (this.hasBackup() ? '<button type="button" class="ghost-btn" data-more="home">Back to my town</button>' : '<span></span>') +
       '</div>' +
       `<div class="sheet-actions"><button type="button" class="ghost-btn" data-more="fit">Recenter</button>` +
-      `<button type="button" class="ghost-btn" data-more="random">New town…</button></div>`;
+      `<button type="button" class="ghost-btn" data-more="random">New town…</button></div>` +
+      `<div class="sheet-actions"><button type="button" class="primary-btn" data-more="slots">Save slots…</button></div>`;
   }
 
   onMoreClick(e) {
@@ -12462,6 +14298,11 @@ class Interface {
       return this.renderSound();
     }
     else if (t.dataset.display) this.display.set(t.dataset.display, t.dataset.value === '1');
+    else if (t.dataset.growth) this.growth.set(t.dataset.growth === '1');
+    else if (t.dataset.more === 'slots') {
+      this.toggleMore(false);
+      return this.onSlots?.();
+    }
     else if (t.dataset.more === 'share') {
       this.onShare?.();
       return this.toggleMore(false);
@@ -12540,7 +14381,7 @@ class Interface {
       set('net', netEl, `${net >= 0 ? '▲' : '▼'} ${money(Math.abs(net))}/day`);
       netEl.classList.toggle('down', net < 0);
     }
-    set('clock', this.clockEl, `${seasonFor(city.day).label} · Day ${city.day} · ${formatClock(city.clock)}${sky}${work}`);
+    set('clock', this.clockEl, `${seasonFor(city.day).label} ${yearOf(city)} · ${ERAS[city.systems.era?.index ?? 0]?.label || ''} · ${formatClock(city.clock)}${sky}${work}`);
   }
 
   // Inspector: what is on a tile and why people do or don't want to live there.
@@ -12608,7 +14449,7 @@ class Interface {
   }
 }
 
-return { Interface };
+return { SPEEDS, Interface };
 })();
 
 // ---- lifeUI.js ----
@@ -12795,6 +14636,7 @@ class LifeInterface {
       <div class="life-actions">
         ${waiting ? '<button type="button" class="primary-btn" data-act="showcard">Open the waiting event</button>' : '<button type="button" class="primary-btn" data-act="ageup">Age up · +1 year</button>'}
         <button type="button" class="ghost-btn" data-act="focus" ${c.home ? '' : 'disabled'}>Show home</button>
+        <button type="button" class="ghost-btn" data-act="follow" aria-pressed="${!!this.h.isFollowing?.()}">${this.h.isFollowing?.() ? 'Stop following' : 'Follow on map'}</button>
       </div>
       <p class="life-hint">Life moves one year per city day. Age up skips ahead; time stops while an event waits.</p>
       <ul class="stat-bars">${bars}<li><span>Money</span><span></span><b>${money(c.money)}</b></li></ul>
@@ -12848,7 +14690,7 @@ class LifeInterface {
   }
 
   deathHTML(c) {
-    const kid = c.children.find((k) => k.alive !== false);
+    const kid = c.children.find((k) => k.alive !== false) || { name: 'a niece or nephew', relative: true };
     const career = c.job && CAREERS[c.job.type];
     return `<header class="life-head">
         <div class="avatar gone">${avatarSVG(c.look, 64)}</div>
@@ -12862,9 +14704,10 @@ class LifeInterface {
         <div><dt>Friends</dt><dd>${c.friends.length}</dd></div>
       </dl>
       <div class="life-actions">
-        ${kid ? `<button type="button" class="primary-btn" data-act="continue">Continue as ${esc(kid.name.split(' ')[0])}</button>` : ''}
-        <button type="button" class="${kid ? 'ghost-btn' : 'primary-btn'}" data-act="newlife">Start a new life</button>
+        <button type="button" class="primary-btn" data-act="continue">${kid.relative ? 'Continue with a niece or nephew' : `Continue as ${esc(kid.name.split(' ')[0])}`}</button>
+        <button type="button" class="ghost-btn" data-act="newlife">Start a new life</button>
       </div>
+      <p class="life-hint">The family story carries on by itself in a few moments.</p>
       ${this.historyHTML()}
       <h3>Life story</h3>
       <ol class="life-log">${c.log
@@ -12905,6 +14748,10 @@ class LifeInterface {
       this.cardMinimized = false;
     } else if (t.dataset.act === 'showcard') this.cardMinimized = false;
     else if (t.dataset.act === 'focus') return this.h.onFocus();
+    else if (t.dataset.act === 'follow') {
+      this.h.onFollow?.();
+      if (window.innerWidth < 760) return this.toggle(false); // phones: close the panel so the map shows
+    }
     else if (t.dataset.activity) {
       const result = this.h.onActivity(t.dataset.activity);
       if (result?.text) this.outcome = { ...result, age: this.life.char?.age };
@@ -13351,6 +15198,52 @@ function townsfolkHTML(city, tf, { open = false } = {}) {
 return { townsfolkKey, townsfolkHTML };
 })();
 
+// ---- eraUI.js ----
+const __mod_eraUI = (() => {
+// Era and Town history sections of the City panel: the current era, what the next one needs (people
+// and years), how fast the town is growing, and the chronicle of firsts, eras, decisions and family.
+
+const { ERAS } = __mod_eras;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const ICON = { first: '★', era: '◆', decision: '⚖', family: '♥', note: '•' };
+
+function eraKey(eras, growth, city) {
+  const p = eras.progress();
+  return JSON.stringify([eras.index, eras.year, p && Math.round(p.fraction * 40), growth?.on, growth && Math.round(growth.rate() * 10), (city.systems.chronicle || []).length]);
+}
+
+function eraHTML(eras, growth) {
+  const cur = eras.current;
+  const p = eras.progress();
+  const rate = growth?.on ? growth.rate() : 0;
+  const boosts = (growth?.state.boosts || []).map((b) => `<span class="dtag ${b.mult >= 1 ? 'good' : 'bad'}">${esc(b.label)}: ${b.mult >= 1 ? 'faster' : 'slower'}</span>`).join('');
+  return (
+    `<div class="era-now"><span class="era-dot" aria-hidden="true">${ERAS.map((_, i) => `<i class="${i <= eras.index ? 'on' : ''}"></i>`).join('')}</span>` +
+    `<div><b>${esc(cur.label)}</b> · ${eras.year}<small>${esc(cur.blurb)}</small></div></div>` +
+    (p
+      ? `<div class="tier-progress"><span style="width:${Math.round(p.fraction * 100)}%"></span></div>` +
+        `<p class="era-need">Next: <b>${esc(p.next.label)}</b> needs ${p.needPop.toLocaleString()} people (now ${p.pop.toLocaleString()}) and ${p.needYears} years since founding (now ${p.years}).</p>`
+      : '<p class="era-need">The town has reached its brightest era.</p>') +
+    (growth
+      ? `<p class="era-need">${growth.on ? `Growing by itself at ${Math.round(rate * 100)}% pace. Happier towns grow faster; decisions can speed it up or slow it down.` : 'Growth is off: the town only changes when you build. Turn it on in ☰ Settings.'}</p>` +
+        (boosts ? `<p class="dtags">${boosts}</p>` : '')
+      : '')
+  );
+}
+
+function chronicleHTML(city) {
+  const list = (city.systems.chronicle || []).slice().reverse();
+  if (!list.length) return '<p class="insp-note">The town\'s story will be written here: firsts, new eras, decisions and family milestones.</p>';
+  const row = (c) =>
+    `<li class="chron-${c.kind}"><span class="chron-year">${c.year}</span><span class="chron-icon" aria-hidden="true">${ICON[c.kind] || '•'}</span><span>${esc(c.text)}</span>` +
+    (c.x != null ? `<button type="button" class="ghost-btn small" data-showtile="${c.x},${c.y}">Show</button>` : '') +
+    '</li>';
+  return `<ol class="chronicle-list">${list.slice(0, 8).map(row).join('')}</ol>` + (list.length > 8 ? `<details class="trend-table"><summary>Earlier history</summary><ol class="chronicle-list">${list.slice(8).map(row).join('')}</ol></details>` : '');
+}
+
+return { eraKey, eraHTML, chronicleHTML };
+})();
+
 // ---- cityUI.js ----
 const __mod_cityUI = (() => {
 // City panel: the town's title, progress to the next milestone, what it unlocks, and what residents
@@ -13361,6 +15254,7 @@ const { trendsHTML, bindTrendHover } = __mod_trendsUI;
 const { budgetHTML, budgetKey } = __mod_budgetUI;
 const { notablesHTML, notablesKey } = __mod_notablesUI;
 const { townsfolkHTML, townsfolkKey } = __mod_townsfolkUI;
+const { eraHTML, eraKey, chronicleHTML } = __mod_eraUI;
 const SEVERITY_LABEL = { bad: 'Needs fixing', caution: 'Worth a look', good: 'Going well' };
 
 const labelOf = (id) => STRUCTURES[id]?.label || TOOLS.find((t) => t.id === id)?.label || id;
@@ -13368,7 +15262,9 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const CLOSE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
 
 class CityPanel {
-  constructor({ milestones, onShow, onOpen, onBuild, economy, onShowTile, notables, townsfolk }) {
+  constructor({ milestones, onShow, onOpen, onBuild, economy, onShowTile, notables, townsfolk, eras, growth }) {
+    this.eras = eras; // () → Eras
+    this.growth = growth; // () → Growth
     this.townsfolk = townsfolk; // () → Townsfolk
     this._tfOpen = false;
     this.notables = notables; // () → Notables
@@ -13494,6 +15390,19 @@ class CityPanel {
         npBox.innerHTML = notablesHTML(city, n);
       }
     }
+    const eraBox = this.panel.querySelector('.era-box');
+    if (eraBox && this.eras) {
+      const ekey = eraKey(this.eras(), this.growth?.(), city);
+      if (ekey !== this._eraKey || this._eraBox !== eraBox) {
+        this._eraKey = ekey;
+        this._eraBox = eraBox;
+        eraBox.innerHTML = eraHTML(this.eras(), this.growth?.());
+        const hist = this.panel.querySelector('.chronicle');
+        const open = !!hist?.querySelector('details')?.open;
+        if (hist) hist.innerHTML = chronicleHTML(city);
+        if (open) hist.querySelector('details')?.setAttribute('open', '');
+      }
+    }
     const tfBox = this.panel.querySelector('.townsfolk');
     if (tfBox && this.townsfolk) {
       const tf = this.townsfolk();
@@ -13555,6 +15464,8 @@ class CityPanel {
     return (
       `<header><div><span class="insp-kicker">Your town</span><h2>${p.current.label}</h2></div>` +
       `<button type="button" class="insp-close" data-close aria-label="Close city panel">${CLOSE}</button></header>` +
+      `<h3>Era</h3><div class="era-box"></div>` +
+      `<h3>Town history</h3><div class="chronicle"></div>` +
       `<h3>Budget</h3><div class="budget"></div>` +
       `<h3>Notable people</h3><div class="notable-people"></div>` +
       `<h3>Townsfolk</h3><div class="townsfolk"></div>` +
@@ -13954,11 +15865,15 @@ const { Simulation } = __mod_simulation;
 const { Renderer } = __mod_renderer;
 const { Camera } = __mod_camera;
 const { InputController } = __mod_input;
-const { AutoSaver, loadCity, saveCity, saveBackup, loadBackup, clearBackup } = __mod_persistence;
+const { AutoSaver, loadCity, saveCity, saveBackup, loadBackup, clearBackup, activeSlot, setActiveSlot, deleteSlot } = __mod_persistence;
+const { SlotsSheet } = __mod_slotsUI;
+const { DecisionCard } = __mod_decisionUI;
+const { addChronicle } = __mod_chronicle;
+const { yearOf } = __mod_eras;
 const { encodeCity, decodeCity, shareUrl, codeFromHash } = __mod_share;
 const { Minimap } = __mod_minimap;
 const { settings, loadSettings, setSetting, onSettings } = __mod_settings;
-const { generateTown, generateLand } = __mod_generator;
+const { generateTown, generateLand, generateSeed } = __mod_generator;
 const { NewTownSheet } = __mod_newTownUI;
 const { Interface } = __mod_ui;
 const { LifeInterface } = __mod_lifeUI;
@@ -14029,6 +15944,8 @@ function start(hotData = {}) {
   let fitted = false;
   let framing = 'town'; // what the recenter button framed last
   let stroke = null; // drag-to-build in progress: { start, last, tiles }
+  let following = false; // the camera follows the main person
+  let carryTimer = null; // the family story moves on to the next generation shortly after a death
 
   const tileAt = (sx, sy) => {
     const w = camera.screenToWorld(sx, sy);
@@ -14063,6 +15980,14 @@ function start(hotData = {}) {
     budget: () => ({ money: sim.economy.money, net: city.derived.economy?.net || 0, sandbox: sim.economy.sandbox }),
     onShare: () => shareTown(),
     onBackHome: () => backHome(),
+    onSlots: () => slotsSheet.toggle(true),
+    growth: {
+      get: () => sim.growth.on,
+      set: (on) => {
+        sim.growth.on = on;
+        ui.toast(on ? 'Your town will grow by itself. Keep building too, if you like' : 'Growth is off: only you build now', 3200);
+      },
+    },
     hasBackup: () => hasBackup,
     display: {
       get: (k) => (k === 'minimap' ? minimapOn() : settings[k]),
@@ -14161,6 +16086,8 @@ function start(hotData = {}) {
     economy: () => sim.economy,
     notables: () => sim.notables,
     townsfolk: () => sim.townsfolk,
+    eras: () => sim.eras,
+    growth: () => sim.growth,
     onShowTile: (x, y) => {
       focusTile(x, y);
       if (window.innerWidth < 560) cityPanel.toggle(false);
@@ -14338,33 +16265,93 @@ function start(hotData = {}) {
   // ---- New town ----------------------------------------------------------------
   const newTownSheet = new NewTownSheet({
     onOpen: () => {
+      document.getElementById('milestone-card')?.setAttribute('hidden', '');
       ui.toggleMore(false);
       cityPanel.toggle(false);
       lifeUI.toggle(false);
       ui.closeTray();
     },
     onStart: (opts) => newTown(opts),
+    family: () => {
+      const c = sim.life.char;
+      return c ? `${c.first}` : null;
+    },
+  });
+
+  // ---- Save slots ----------------------------------------------------------------
+  const hideCard = () => {
+    const card = document.getElementById('milestone-card');
+    if (card) card.hidden = true;
+  };
+  const slotsSheet = new SlotsSheet({
+    onOpen: () => {
+      hideCard();
+      ui.toggleMore(false);
+      cityPanel.toggle(false);
+      lifeUI.toggle(false);
+      ui.closeTray();
+    },
+    beforeOpen: () => saver.flush(),
+    onPlay: (n) => {
+      saver.flush();
+      const other = loadCity(n);
+      if (!other) return ui.toast('That save slot could not be opened', 3000);
+      setActiveSlot(n);
+      swapCity(other);
+      ui.refreshLocks();
+      lifeUI.render();
+      stopFollow();
+      ui.toast(`Save slot ${n}: welcome back`, 2400);
+    },
+    onNew: (n) => newTownSheet.toggle(true, { slot: n }),
+    onCopy: (n) => {
+      if (saveCity(city, n)) ui.toast(`This town was saved to slot ${n}. You're still playing slot ${activeSlot()}`, 3600);
+      else ui.toast('There was no room to save. Delete a slot and try again', 3600);
+    },
+    onDelete: (n) => {
+      deleteSlot(n);
+      ui.toast(`Save slot ${n} is empty now`, 2400);
+    },
   });
 
   // Build a fresh town of the chosen size and mode. The Life Story and achievements carry over;
   // a character whose home is gone moves into whatever the new town offers (or waits for one).
-  function newTown({ mode, size, start }) {
+  // A town can start in another save slot (the current one is saved first) with a new main person.
+  function newTown({ mode, size, start, grow = start === 'seed', person = 'new', slot = null }) {
+    saver.flush();
+    if (slot && slot !== activeSlot()) setActiveSlot(slot);
     const fresh = new CityState(size, size);
     if (start === 'town') generateTown(fresh);
+    else if (start === 'seed') generateSeed(fresh);
     else generateLand(fresh);
     fresh.systems.mode = mode;
-    if (city.systems.life) fresh.systems.life = city.systems.life;
+    const keep = person === 'keep' && city.systems.life;
+    if (keep) fresh.systems.life = city.systems.life;
+    else if (city.systems.life?.achievements) fresh.systems.life = { char: null, history: [], achievements: city.systems.life.achievements };
     swapCity(fresh);
-    sim.economy.reset(start);
+    sim.economy.reset(start === 'town' ? 'town' : 'land');
     sim.economy.assess();
     if (start === 'town') sim.milestones.settleForCapacity();
+    else sim.eras.found(); // a seed or open land starts in 1850
+    sim.growth.on = grow;
     ui.refreshLocks();
     if (sim.life.char?.alive) sim.life.syncWithCity();
+    stopFollow();
     lifeUI.render();
     saveCity(city);
     audio.play('fanfare');
-    const where = start === 'town' ? 'A fresh town' : 'Open land';
-    ui.toast(mode === 'sandbox' ? `${where}, sandbox mode: everything is unlocked` : `${where}. Grow it to unlock new buildings`, 4200);
+    const where = start === 'town' ? 'A fresh town' : start === 'seed' ? `A little crossroads, ${yearOf(city)}` : 'Open land';
+    ui.toast(`${where}${slot ? ` in save slot ${slot}` : ''}${grow ? '. It will grow by itself' : ''}`, 4200);
+    if (!keep) askForMainPerson();
+  }
+
+  // A new town starts by choosing whose family to follow.
+  function askForMainPerson() {
+    setTimeout(() => {
+      if (sim.life.char) return;
+      lifeUI.toggle(true);
+      ui.toast('Create your main person. You will follow them, then their children and grandchildren', 5200);
+    }, 900);
   }
 
   // ---- Sharing -----------------------------------------------------------------
@@ -14465,8 +16452,10 @@ function start(hotData = {}) {
   const lifeUI = new LifeInterface({
     life: sim.life,
     onCreate: (draft) => {
-      sim.life.create(draft);
-      ui.toast(`${draft.first} was born. Watch for life events as the years go by.`, 3600);
+      const c = sim.life.create(draft);
+      const home = c.home && city.getTile(c.home.x, c.home.y);
+      addChronicle(city, `${draft.first} ${draft.last} was born${home ? ` at ${addressOf(home)}` : ''}. The family story begins.`, c.home, 'family');
+      ui.toast(`${draft.first} was born. Tap Follow to watch their life on the map.`, 3600);
     },
     onAgeUp: () => sim.life.ageUp(),
     onChoose: (i) => {
@@ -14488,7 +16477,9 @@ function start(hotData = {}) {
       else audio.play('nope');
       return result;
     },
-    onContinue: () => sim.life.continueAsChild(),
+    onContinue: () => carryOn(),
+    onFollow: () => (following ? stopFollow() : startFollow()),
+    isFollowing: () => following,
     onNewLife: () => {
       const s = city.systems.life;
       if (s?.char) s.history = [...(s.history || []), summaryOf(s.char)];
@@ -14509,6 +16500,101 @@ function start(hotData = {}) {
       renderer.ring(home.x, home.y, '#ffffff');
     },
   });
+  // ---- Following the main person ---------------------------------------------------
+  // The camera stays with them: on the street when they're out, at home or work otherwise.
+  // Moving the map by hand stops following.
+  const followBtn = document.getElementById('btn-follow');
+  const followChip = document.createElement('button');
+  followChip.type = 'button';
+  followChip.className = 'pill glass follow-chip';
+  followChip.hidden = true;
+  document.getElementById('app').appendChild(followChip);
+  followChip.addEventListener('click', () => stopFollow());
+  followBtn.addEventListener('click', () => (following ? stopFollow() : startFollow()));
+  function startFollow() {
+    const c = sim.life.char;
+    if (!c?.alive) return ui.toast('Create your main person in Life first', 2600);
+    following = true;
+    camera.tzoom = Math.max(camera.tzoom, 1.6);
+    syncFollowUI();
+    lifeUI.render();
+  }
+  function stopFollow() {
+    if (!following) return;
+    following = false;
+    syncFollowUI();
+    lifeUI.render();
+  }
+  function syncFollowUI() {
+    const c = sim.life.char;
+    followBtn.hidden = !c?.alive;
+    followBtn.setAttribute('aria-pressed', String(following));
+    followBtn.classList.toggle('is-on', following);
+    followChip.hidden = !following;
+    if (following && c) followChip.innerHTML = `<span aria-hidden="true">●</span> Following ${c.first} · Stop`;
+  }
+  const panBy = camera.panBy.bind(camera);
+  camera.panBy = (dx, dy) => {
+    if (following && (dx || dy)) stopFollow();
+    panBy(dx, dy);
+  };
+  function followTarget() {
+    const c = sim.life.char;
+    if (!c?.alive) return null;
+    const h = sim.agents.hero;
+    if (h && !h.dead && h.alpha > 0.3) return { gx: h.gx, gy: h.gy };
+    const at = c.home;
+    return at ? { gx: at.x + 0.5, gy: at.y + 0.5 } : null;
+  }
+
+  // ---- Generations -------------------------------------------------------------------
+  // When the main person dies, the story moves on to their child (or a niece or nephew) by itself.
+  function carryOn() {
+    clearTimeout(carryTimer);
+    carryTimer = null;
+    const parent = sim.life.char;
+    if (!parent || parent.alive) return null;
+    const heir = sim.life.heir();
+    const wasFollowing = following;
+    const next = sim.life.continueAsChild();
+    if (!next) return null;
+    const rel = heir?.relation || 'child';
+    addChronicle(city, `${parent.first} ${parent.last} passed away at ${parent.death?.age}. ${next.first}, their ${rel}, carries on the family story.`, next.home, 'family');
+    ui.toast(`${next.first}, ${parent.first}'s ${rel}, carries on the family story`, 4600);
+    audio.play('chime');
+    if (wasFollowing) startFollow();
+    lifeUI.render();
+    return next;
+  }
+  function scheduleCarryOn() {
+    if (carryTimer || !sim.life.char || sim.life.char.alive) return;
+    carryTimer = setTimeout(carryOn, 9000);
+  }
+
+  // ---- Eras ----------------------------------------------------------------------------
+  function newEra({ era, year }) {
+    audio.play('fanfare');
+    renderer.confetti();
+    const card = cardEl();
+    card.innerHTML = `<span class="insp-kicker">A new era · ${year}</span><h2>${era.label}</h2><p>${era.blurb}</p>`;
+    showCard(card, 6500);
+    addChronicle(city, `The town entered the ${era.label.toLowerCase()}. ${era.blurb}`, null, 'era');
+  }
+
+  // ---- Town decisions ------------------------------------------------------------------
+  const decisionCard = new DecisionCard({
+    decisions: () => sim.decisions,
+    onChoose: (i) => {
+      const r = sim.decisions.choose(i);
+      decisionCard.hide();
+      if (!r) return;
+      const good = (r.choice.spirit?.[0] ?? 0) >= 0 && (r.choice.growth?.[0] ?? 1) >= 1;
+      audio.play(good ? 'good' : 'bad');
+      ui.toast(r.choice.result, 3600);
+    },
+    onOpen: () => ui.closeTray(),
+  });
+
   // After a move, fly to the new home and say its address.
   const homeKey = () => {
     const h = sim.life.char?.home;
@@ -14531,6 +16617,23 @@ function start(hotData = {}) {
     else if (ev.type === 'restored') audio.play('undo');
     else if (ev.type === 'lifeEvent') audio.play('chime');
     if (ev.type === 'milestone') celebrate(ev.milestone);
+    if (ev.type === 'era') newEra(ev);
+    if (ev.type === 'decision') {
+      audio.play('chime');
+      decisionCard.show({ auto: true });
+    }
+    if (ev.type === 'decided' && ev.lapsed) {
+      decisionCard.hide();
+      ui.toast(`${ev.choice.result} (No decision was made in time.)`, 3600);
+    }
+    if (ev.type === 'lifeChanged') {
+      syncFollowUI();
+      if (sim.life.char && !sim.life.char.alive) scheduleCarryOn();
+    }
+    if (ev.type === 'loaded' || ev.type === 'reset') {
+      clearTimeout(carryTimer);
+      carryTimer = null;
+    }
     if (ev.type === 'notable') welcomeNotable(ev);
     if (ev.type === 'townNews') {
       // Big moments in townsfolk lives get a toast and a little heart over the spot.
@@ -14623,11 +16726,16 @@ function start(hotData = {}) {
   });
 
   if (fresh) {
-    generateTown(city);
+    // A first visit starts from a seed that grows by itself, with a main person to follow.
+    generateSeed(city);
+    city.systems.mode = 'milestones';
+    sim.economy.reset('land');
     sim.refresh();
-    sim.milestones.settleForCapacity();
+    sim.eras.found();
+    sim.growth.on = true;
     ui.refreshLocks();
     fitView(true);
+    askForMainPerson();
     const touch = window.matchMedia?.('(pointer: coarse)').matches;
     ui.toast(
       touch ? 'Tap or drag to build · two fingers to move · long-press to bulldoze' : 'Click or drag to build · right-drag to move · right-click to bulldoze',
@@ -14662,6 +16770,15 @@ function start(hotData = {}) {
     last = now;
     sim.update(dt);
     input.edgeScroll(dt);
+    if (following) {
+      const f = followTarget();
+      if (f) {
+        const w = gridToWorld(f.gx, f.gy);
+        camera.tx = w.x;
+        camera.ty = w.y - 10;
+        camera.clampTarget();
+      }
+    }
     camera.update(dt);
     audio.ambient(dt, { daylight: daylightAt(city.clock), rain: city.derived.weather?.rain || 0 });
     renderer.render(dt, viewState());
@@ -14673,6 +16790,8 @@ function start(hotData = {}) {
       ui.inspect(city, selected);
       lifeUI.tick();
       cityPanel.update(city);
+      decisionCard.tick();
+      syncFollowUI();
       uiTimer = 0.2;
     }
     requestAnimationFrame(frame);
@@ -14680,7 +16799,7 @@ function start(hotData = {}) {
   requestAnimationFrame(frame);
 
   // Handy for poking at the simulation from the console.
-  window.pocketMetropolis = { city, sim, camera, renderer, history, audio, ui, cityPanel };
+  window.pocketMetropolis = { city, sim, camera, renderer, history, audio, ui, cityPanel, decisionCard, slotsSheet, newTownSheet, lifeUI, startFollow, stopFollow, carryOn };
 }
 
 const hot = window.claude?.hot;

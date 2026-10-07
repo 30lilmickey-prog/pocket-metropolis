@@ -317,6 +317,7 @@ export class Renderer {
     const w = city.derived.weather || { rain: 0, snow: 0, fog: 0, cloud: 0, snowCover: 0, season: 'spring' };
     this.weather = w;
     this.season = w.season || 'spring';
+    this.era = city.systems.era?.index ?? 3; // older towns without eras keep today's look
     this.snowCover = Math.round((w.snowCover || 0) * 10) / 10;
     const L = this.weatherLight(lightingAt(city.clock), w);
     this.L = L;
@@ -705,7 +706,7 @@ export class Renderer {
     const want = this.camera.zoom * this.dpr;
     if (want > cap * 1.05) return false;
     const scale = Math.min(cap, GROUND_SCALES.find((s) => s >= want * 0.95) || cap);
-    const key = `${city.revision}|${W}x${H}|${scale.toFixed(3)}|${this.season}|${this.snowCover}`;
+    const key = `${city.revision}|${W}x${H}|${scale.toFixed(3)}|${this.season}|${this.snowCover}|${this.era}`;
     if (this.ground.key === key) return true;
     const g = this.ground;
     if (!g.canvas) g.canvas = document.createElement('canvas');
@@ -958,6 +959,7 @@ export class Renderer {
   }
 
   drawRoad(ctx, t, L) {
+    if ((this.era ?? 3) < 2) return this.drawOldRoad(ctx, t, L);
     const { x, y, roadMask: m } = t;
     ctx.fillStyle = lit(PALETTE.road, 0.98 + hash2(x, y, 2) * 0.03, L);
     tilePoly(ctx, x, y);
@@ -1012,6 +1014,53 @@ export class Renderer {
           [x + off - 0.05, y + 0.16],
         ]);
         ctx.fill();
+      }
+    }
+  }
+
+  // Pioneer dirt lanes with grassy verges and wheel ruts; railway-age cobbles with kerbs.
+  drawOldRoad(ctx, t, L) {
+    const { x, y, roadMask: m } = t;
+    const dirt = this.era === 0;
+    const base = dirt ? '#dcc59e' : '#cfc5b6';
+    ctx.fillStyle = lit(base, 0.97 + hash2(x, y, 2) * 0.05, L);
+    tilePoly(ctx, x, y);
+    ctx.fill();
+    EDGES.forEach((e, i) => {
+      if (m & (1 << i)) return;
+      ctx.fillStyle = lit(dirt ? this.grassColor() : PALETTE.sidewalk, dirt ? 0.96 : 1.0, L);
+      poly(ctx, edgeStrip(x, y, e, 0, dirt ? 0.13 : 0.12));
+      ctx.fill();
+    });
+    if (dirt) {
+      // Two wheel ruts along each connection.
+      ctx.strokeStyle = lit('#c3a87c', 1, L);
+      ctx.lineWidth = 0.9;
+      const c = gridToWorld(x + 0.5, y + 0.5);
+      const mids = [
+        [x + 0.5, y],
+        [x + 1, y + 0.5],
+        [x + 0.5, y + 1],
+        [x, y + 0.5],
+      ];
+      ctx.beginPath();
+      for (let i = 0; i < 4; i++) {
+        if (!(m & (1 << i))) continue;
+        const p = gridToWorld(...mids[i]);
+        for (const off of [-2.2, 2.2]) {
+          ctx.moveTo(c.x + off, c.y);
+          ctx.lineTo(p.x + off, p.y);
+        }
+      }
+      ctx.stroke();
+    } else {
+      // Cobblestones: a sprinkle of darker setts.
+      ctx.fillStyle = lit('#b9ae9f', 1, L);
+      for (let k = 0; k < 14; k++) {
+        const gx = x + 0.12 + hash2(x, y, 50 + k) * 0.76;
+        const gy = y + 0.12 + hash2(x, y, 80 + k) * 0.76;
+        const p = gridToWorld(gx, gy);
+        ctx.fillRect(p.x - 1.2, p.y - 0.5, 2.4, 1);
       }
     }
   }
@@ -1429,6 +1478,25 @@ export class Renderer {
     }
   }
 
+  // Building colours follow the era: weathered timber and thatch in pioneer days, brick and clay
+  // tiles in the railway age, then today's pastels. Cached per variant and era.
+  variantOf(s, fallback) {
+    const base = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS[fallback];
+    const era = this.era ?? 3;
+    if (era >= 2) return base;
+    const key = `${s.variant || fallback}|${era}`;
+    this._variants ||= new Map();
+    let v = this._variants.get(key);
+    if (!v) {
+      v =
+        era === 0
+          ? { wall: mixHex(base.wall, '#e7d6b8', 0.55), roof: mixHex(base.roof, '#cfa45f', 0.7), trim: mixHex(base.trim, '#f4ead6', 0.5) }
+          : { wall: mixHex(base.wall, '#e3a98f', 0.35), roof: mixHex(base.roof, '#b5695a', 0.55), trim: base.trim };
+      this._variants.set(key, v);
+    }
+    return v;
+  }
+
   // A box with soft ambient occlusion toward the ground on both visible faces.
   drawBox(ctx, L, x0, y0, x1, y1, z, h, color, top = true) {
     const ao = Math.min(h, 16);
@@ -1528,7 +1596,7 @@ export class Renderer {
   }
 
   drawHouse(ctx, x, y, s, L, ghost) {
-    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.peach;
+    const v = this.variantOf(s, 'peach');
     const t = this.city.getTile(x, y);
     const stage = ghost || !t ? 1 : growthOf(t).stage;
     // An empty lot shows a small cottage; it becomes a full house, then gains a garage.
@@ -1572,6 +1640,21 @@ export class Renderer {
         this.drawBox(ctx, L, cx0, y0 + 0.06, cx1, y0 + 0.14, base - 1, 6 + rh * 0.2, v.trim);
       }
       this.roofLines(ctx, L, v, [[xm, y0 - o, top], [xm, y1 + o, top]], [[x0 - o, y1 + o, h], [xm, y1 + o, top], [x1 + o, y1 + o, h]]);
+      // Bright future: solar panels on the sunny slope.
+      if ((this.era ?? 3) >= 4 && !ghost && hash2(x, y, 43) > 0.3) {
+        const at = (u, yy) => [x0 - o + (xm - x0 + o) * u, yy, h + rh * u];
+        ctx.fillStyle = lit('#4f6fa8', 1, L);
+        poly(ctx, [at(0.25, y0 + 0.06), at(0.25, y1 - 0.06), at(0.8, y1 - 0.06), at(0.8, y0 + 0.06)]);
+        ctx.fill();
+        ctx.strokeStyle = litA('#cfe0ff', 1, L, 0.7);
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        const a = gridToWorld(...at(0.52, y0 + 0.06));
+        const b = gridToWorld(...at(0.52, y1 - 0.06));
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      }
     } else if (roof === 'gableX') {
       // Ridge runs left to right; the gable faces the viewer's right.
       fillPoly([[x0 - o, y0 - o, h], [x1 + o, y0 - o, h], [x1 + o, ym, top], [x0 - o, ym, top]], 0.95);
@@ -1624,7 +1707,7 @@ export class Renderer {
   }
 
   drawTower(ctx, x, y, s, L, ghost) {
-    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.lavender;
+    const v = this.variantOf(s, 'lavender');
     const tile = this.city.getTile(x, y);
     const floors = ghost || !tile ? s.floors || 5 : growthOf(tile).floors;
     const x0 = x + 0.16;
@@ -1747,7 +1830,7 @@ export class Renderer {
   }
 
   drawShop(ctx, x, y, s, L, ghost) {
-    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.mint;
+    const v = this.variantOf(s, 'mint');
     const x0 = x + 0.16;
     const x1 = x + 0.84;
     const y0 = y + 0.2;
@@ -1785,7 +1868,7 @@ export class Renderer {
 
   // A little cottage: low walls, a steep roof, a chimney and a round window.
   drawCottage(ctx, x, y, s, L, ghost) {
-    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.blush;
+    const v = this.variantOf(s, 'blush');
     const x0 = x + 0.27;
     const x1 = x + 0.73;
     const y0 = y + 0.29;
@@ -1823,7 +1906,7 @@ export class Renderer {
 
   // Apartments: a mid-rise block with balconies on every floor and a railing round the roof.
   drawApartments(ctx, x, y, s, L, ghost) {
-    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.mint;
+    const v = this.variantOf(s, 'mint');
     const tile = this.city.getTile(x, y);
     const floors = ghost || !tile ? s.floors || 3 : growthOf(tile).floors;
     const x0 = x + 0.15;
@@ -1875,7 +1958,7 @@ export class Renderer {
 
   // A café: a small shopfront with an awning and tables with parasols on the pavement.
   drawCafe(ctx, x, y, s, L, ghost) {
-    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.peach;
+    const v = this.variantOf(s, 'peach');
     const x0 = x + 0.24;
     const x1 = x + 0.78;
     const y0 = y + 0.18;
@@ -1931,7 +2014,7 @@ export class Renderer {
 
   // A mall: a wide, low block with a glass entrance, a coloured sign band and rooftop units.
   drawMall(ctx, x, y, s, L, ghost) {
-    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.lavender;
+    const v = this.variantOf(s, 'lavender');
     const x0 = x + 0.06;
     const x1 = x + 0.94;
     const y0 = y + 0.08;
@@ -2015,7 +2098,7 @@ export class Renderer {
   }
 
   drawOffice(ctx, x, y, s, L, ghost) {
-    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.lavender;
+    const v = this.variantOf(s, 'lavender');
     const otile = this.city.getTile(x, y);
     const floors = ghost || !otile ? s.floors || 4 : growthOf(otile).floors;
     const x0 = x + 0.14;
@@ -2392,6 +2475,8 @@ export class Renderer {
   }
 
   drawLamp(ctx, lamp, L) {
+    const era = this.era ?? 3;
+    if (era < 2) return this.drawOldLamp(ctx, lamp, L, era);
     const base = gridToWorld(lamp.gx, lamp.gy);
     const top = base.y - 20;
     ctx.strokeStyle = lit(PALETTE.pole, 1, L);
@@ -2412,7 +2497,65 @@ export class Renderer {
     }
   }
 
+  // A wooden post with a lantern (pioneer days) or a cast-iron gas lamp (railway age).
+  drawOldLamp(ctx, lamp, L, era) {
+    const base = gridToWorld(lamp.gx, lamp.gy);
+    const top = base.y - (era === 0 ? 12 : 17);
+    ctx.strokeStyle = lit(era === 0 ? '#8b6b4a' : '#5f5a72', 1, L);
+    ctx.lineWidth = era === 0 ? 1.6 : 1.2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(base.x, base.y);
+    ctx.lineTo(base.x, top);
+    ctx.stroke();
+    const on = L.lamps > 0.05;
+    ctx.fillStyle = on ? '#ffd27a' : lit('#e9dfcf', 1, L);
+    ctx.fillRect(base.x - 1.6, top - 3.4, 3.2, 3.4);
+    ctx.fillStyle = lit(era === 0 ? '#6e5038' : '#4d4860', 1, L);
+    ctx.fillRect(base.x - 2, top - 4.2, 4, 1);
+    if (on) {
+      this.glows.push({ x: base.x, y: top - 1.7, r: 11, a: 0.5 * L.lamps, rgb: '255,196,110' });
+      this.glows.push({ x: base.x, y: base.y, r: era === 0 ? 14 : 20, a: 0.2 * L.lamps, rgb: '255,190,110', flat: true });
+    }
+  }
+
+  // A horse and cart, for the years before motor cars.
+  drawCart(ctx, c, pose, L) {
+    if (c.alpha <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = c.alpha;
+    const { gx, gy, dx, dy } = pose;
+    const g = gridToWorld(gx, gy);
+    ctx.fillStyle = 'rgba(52,44,96,0.18)';
+    ctx.beginPath();
+    ctx.ellipse(g.x, g.y + 1, 7, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const alongX = Math.abs(dx) >= Math.abs(dy);
+    const ex = alongX ? 0.1 : 0.07;
+    const ey = alongX ? 0.07 : 0.1;
+    // Cart behind, horse in front.
+    const bx = gx - dx * 0.08;
+    const by = gy - dy * 0.08;
+    this.drawBox(ctx, L, bx - ex, by - ey, bx + ex, by + ey, 2, 3.5, c.cartColor || '#b88a5a');
+    const hx = gx + dx * 0.13;
+    const hy = gy + dy * 0.13;
+    const hex = alongX ? 0.07 : 0.03;
+    const hey = alongX ? 0.03 : 0.07;
+    this.drawBox(ctx, L, hx - hex, hy - hey, hx + hex, hy + hey, 3, 3, c.horse || '#8a5d3b');
+    const head = gridToWorld(hx + dx * 0.08, hy + dy * 0.08, 7.5);
+    ctx.fillStyle = lit(c.horse || '#8a5d3b', 0.9, L);
+    ctx.beginPath();
+    ctx.arc(head.x, head.y, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    if (L.lamps > 0.1) {
+      const f = gridToWorld(bx, by, 7);
+      this.glows.push({ x: f.x, y: f.y, r: 7, a: 0.4 * L.lamps * c.alpha, rgb: '255,200,120' });
+    }
+  }
+
   drawCar(ctx, c, pose, L) {
+    if (c.kind === 'cart') return this.drawCart(ctx, c, pose, L);
     if (c.alpha <= 0) return;
     ctx.save();
     ctx.globalAlpha = c.alpha;

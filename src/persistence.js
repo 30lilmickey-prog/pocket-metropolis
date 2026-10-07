@@ -2,8 +2,73 @@
 
 import { SAVE_VERSION } from './config.js';
 import { CityState } from './state.js';
+import { ERAS, yearOf } from './eras.js';
 
 const KEY = 'pocket-metropolis:save';
+const ACTIVE_KEY = 'pocket-metropolis:slot';
+export const SLOT_COUNT = 3;
+
+// Three save slots. Slot 1 uses the original key, so towns saved before slots existed stay in it.
+const slotKey = (n) => (n === 1 ? KEY : `${KEY}:${n}`);
+
+export function activeSlot() {
+  try {
+    const n = Number(localStorage.getItem(ACTIVE_KEY));
+    return n >= 1 && n <= SLOT_COUNT ? n : 1;
+  } catch {
+    return 1;
+  }
+}
+
+export function setActiveSlot(n) {
+  try {
+    localStorage.setItem(ACTIVE_KEY, String(n));
+  } catch {
+    // Private mode: stay on the current slot for this visit.
+  }
+}
+
+// A short description of a town for the save slots sheet.
+export function metaOf(city) {
+  const life = city.systems.life?.char;
+  const era = ERAS[city.systems.era?.index ?? 0];
+  let pop = 0;
+  for (const t of city.tiles) pop += t.structure?.residents || 0;
+  return {
+    pop,
+    year: yearOf(city),
+    era: era?.label || '',
+    day: city.day,
+    person: life ? `${life.first} ${life.last}` : null,
+    alive: life ? life.alive !== false : null,
+    generation: life?.generation || null,
+    width: city.width,
+    mode: city.systems.mode || 'milestones',
+  };
+}
+
+// What's in a slot, without loading it: null when empty.
+export function slotInfo(n) {
+  try {
+    const raw = localStorage.getItem(slotKey(n));
+    if (!raw) return null;
+    const save = JSON.parse(raw);
+    if (save.meta) return { ...save.meta, savedAt: save.savedAt };
+    const city = CityState.fromJSON(migrate(save).city);
+    return { ...metaOf(city), savedAt: save.savedAt };
+  } catch {
+    return { broken: true };
+  }
+}
+
+export function deleteSlot(n) {
+  try {
+    localStorage.removeItem(slotKey(n));
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // MIGRATIONS[n] upgrades a save from version n to n + 1.
 export const MIGRATIONS = {
@@ -35,19 +100,19 @@ function migrate(save) {
   return save;
 }
 
-export function saveCity(city) {
+export function saveCity(city, slot = activeSlot()) {
   try {
-    const save = { version: SAVE_VERSION, savedAt: Date.now(), city: city.toJSON() };
-    localStorage.setItem(KEY, JSON.stringify(save));
+    const save = { version: SAVE_VERSION, savedAt: Date.now(), meta: metaOf(city), city: city.toJSON() };
+    localStorage.setItem(slotKey(slot), JSON.stringify(save));
     return true;
   } catch {
     return false;
   }
 }
 
-export function loadCity() {
+export function loadCity(slot = activeSlot()) {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(slotKey(slot));
     if (!raw) return null;
     return CityState.fromJSON(migrate(JSON.parse(raw)).city);
   } catch {

@@ -35,7 +35,7 @@ export const CATEGORY_LABELS = {
 export class Economy {
   constructor(city) {
     this.city = city;
-    this.modifiers = { businessTax: 1, buildCost: 1, upkeep: 1 }; // notable people can change these
+    this.modifiers = { businessTax: 1, buildCost: 1, upkeep: 1, residentTax: 1 }; // notable people and town decisions change these
   }
 
   get sandbox() {
@@ -103,7 +103,7 @@ export class Economy {
       let e = 0;
       if (def.capacity) {
         const workers = Math.round(s.residents * WORKER_SHARE) * (t.employment || 0);
-        e = s.residents * TAX.resident + workers * TAX.worker;
+        e = (s.residents * TAX.resident + workers * TAX.worker) * (this.modifiers.residentTax ?? 1);
       } else if (BUSINESS_TAX[s.type]) {
         e = (t.workersFilled || 0) * BUSINESS_TAX[s.type] * this.modifiers.businessTax;
       } else if (UPKEEP[s.type]) {

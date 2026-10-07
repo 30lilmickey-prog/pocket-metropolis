@@ -175,3 +175,50 @@ export function generateTown(city, seed = (Math.random() * 2 ** 32) >>> 0, { tow
   city.dirty = true;
   city.emit('reset', { seed, focus: { x: cx, y: cy, radius: half } });
 }
+
+// A seed to grow from: open land with a little crossroads and a few cottages near the middle, so a
+// town can grow by itself from almost nothing.
+export function generateSeed(city, seed = (Math.random() * 2 ** 32) >>> 0) {
+  generateLand(city, seed);
+  const rand = mulberry32(seed ^ 0x5eed);
+  const W = city.width;
+  const H = city.height;
+  const dry = (cx, cy, r) => {
+    for (let y = cy - r; y <= cy + r; y++) for (let x = cx - r; x <= cx + r; x++) if (city.getTile(x, y)?.terrain !== 'grass') return false;
+    return true;
+  };
+  // The closest dry spot to the middle of the map.
+  let cx = Math.floor(W / 2);
+  let cy = Math.floor(H / 2);
+  search: for (let r = 0; r < Math.min(W, H) / 2 - 5; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        if (dry(cx + dx, cy + dy, 4)) {
+          cx += dx;
+          cy += dy;
+          break search;
+        }
+      }
+    }
+  }
+  const place = (x, y, type) => {
+    const t = city.getTile(x, y);
+    if (!t || t.terrain !== 'grass') return;
+    t.structure = city.createStructure(type, rand);
+  };
+  for (let y = cy - 4; y <= cy + 4; y++) for (let x = cx - 4; x <= cx + 4; x++) if (city.getTile(x, y)?.structure) city.getTile(x, y).structure = null;
+  for (let d = -3; d <= 3; d++) {
+    place(cx + d, cy, 'road');
+    place(cx, cy + d, 'road');
+  }
+  place(cx - 1, cy - 1, 'cottage');
+  place(cx + 1, cy - 1, 'cottage');
+  place(cx - 1, cy + 1, 'house');
+  place(cx + 2, cy + 1, 'cottage');
+  place(cx + 1, cy + 2, 'tree');
+  place(cx - 2, cy - 2, 'tree');
+  city.refreshAllRoadMasks();
+  city.dirty = true;
+  return { x: cx, y: cy };
+}

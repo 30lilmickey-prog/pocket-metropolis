@@ -99,11 +99,30 @@ export class LifeSystem {
     return char;
   }
 
-  // Keep playing as your oldest child after a life ends.
+  // Who carries the family story on: the oldest living child, or else a niece or nephew.
+  heir() {
+    const parent = this.char;
+    if (!parent) return null;
+    const kid = parent.children?.find((c) => c.alive !== false);
+    if (kid) return { ...kid, relation: { she: 'daughter', he: 'son' }[kid.pronouns] || 'child' };
+    const pronouns = pick(['she', 'he', 'they'], this.rng);
+    return {
+      name: `${pick(FIRST_NAMES, this.rng)} ${parent.last}`,
+      age: 18 + Math.floor(this.rng() * 8),
+      pronouns,
+      look: parent.look,
+      relation: { she: 'niece', he: 'nephew' }[pronouns] || 'young relative',
+      relative: true,
+    };
+  }
+
+  // Keep playing as your oldest child after a life ends, or a niece or nephew if there are no children,
+  // so the family's story goes on generation after generation.
   continueAsChild() {
     const s = this.state;
     const parent = s?.char;
-    const kid = parent?.children?.find((c) => c.alive !== false);
+    if (!parent || parent.alive) return null;
+    const kid = this.heir();
     if (!kid) return null;
     s.history.push(summaryOf(parent));
     const otherParent = parent.partner ? { name: parent.partner.name, closeness: 70, age: parent.age, alive: true } : null;
@@ -119,7 +138,9 @@ export class LifeSystem {
     char.energy = energyFor(char.age);
     if (parent.flags.ownsHome) char.flags.ownsHome = true; // the family home is inherited
     char.log = [];
-    this.log(`${char.first} carries on the ${parent.last} family story, inheriting $${char.money.toLocaleString()}.`);
+    if (kid.relative) char.livesWithParents = false;
+    char.heirOf = { name: `${parent.first} ${parent.last}`, relation: kid.relation };
+    this.log(`${char.first}, ${parent.first}'s ${kid.relation}, carries on the ${parent.last} family story, inheriting $${char.money.toLocaleString()}.`);
     this.planYear();
     this.city.emit('lifeChanged');
     return char;
@@ -211,6 +232,20 @@ export class LifeSystem {
       c.job.years += 1;
     } else if (c.flags.partTime && c.age < 18) c.money += 1500;
     if (!c.livesWithParents && !c.job) c.money = Math.max(0, c.money - 3000);
+
+    // Family: grown-ups tend to meet someone and have children, so the story can pass down the line.
+    if (!c.partner && c.age >= 20 && c.age <= 45 && this.rng() < (c.traits.includes('outgoing') ? 0.24 : 0.16)) {
+      c.partner = { name: `${pick(FIRST_NAMES, this.rng)} ${pick(LAST_NAMES, this.rng)}`, closeness: 70, married: false };
+      this.log(`${c.first} fell in love with ${c.partner.name}.`);
+    } else if (c.partner && !c.partner.married && c.age >= 22 && this.rng() < 0.3) {
+      c.partner.married = true;
+      this.log(`${c.first} married ${c.partner.name}.`);
+    } else if (c.partner && c.age >= 22 && c.age <= 44 && c.children.length < 3 && this.rng() < (c.children.length ? 0.14 : 0.28)) {
+      const pronouns = pick(['she', 'he', 'they'], this.rng);
+      const kid = { name: `${pick(FIRST_NAMES, this.rng)} ${c.last}`, age: 0, pronouns, alive: true, look: c.look };
+      c.children.push(kid);
+      this.log(`${c.first} and ${c.partner.name.split(' ')[0]} welcomed a baby, ${kid.name.split(' ')[0]}.`);
+    }
 
     this.syncWithCity();
 

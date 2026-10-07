@@ -8,6 +8,9 @@ import { pick, pickWeighted } from './utils.js';
 const MAX_CARS = 70;
 const MAX_WALKERS = 60;
 const MAX_TOWN_WALKERS = 14;
+const CART_COLORS = ['#b88a5a', '#a87a52', '#c99b6a', '#9b7a5f'];
+const HORSE_COLORS = ['#8a5d3b', '#6f4a33', '#c9a27a', '#4e3a2e', '#e8dccb'];
+const VINTAGE_COLORS = ['#3d3a4f', '#5b4a6e', '#7a3f3f', '#2f4a4a', '#6b5a3a'];
 
 // How busy commuting is at this time of day: morning and evening rush hours, quiet nights.
 export function commuteActivity(clock) {
@@ -83,6 +86,15 @@ export class AgentSystem {
     this.cars = this.cars.filter((c) => !c.dead);
   }
 
+  // What drives on the roads depends on the era: horse carts first, then early motor cars.
+  vehicle() {
+    const era = this.city.systems.era?.index ?? 3;
+    const cartOdds = [1, 0.55, 0.12, 0, 0][era] ?? 0;
+    if (Math.random() < cartOdds) return { kind: 'cart', cartColor: pick(CART_COLORS), horse: pick(HORSE_COLORS) };
+    if (era <= 2 && Math.random() < 0.6) return { color: pick(VINTAGE_COLORS) };
+    return {};
+  }
+
   // Pick a commute weighted by how many people make it. Mornings head to work, evenings home.
   spawnCommuter() {
     const flows = this.city.derived.labor?.flows;
@@ -108,6 +120,7 @@ export class AgentSystem {
       alpha: 0,
       leaving: false,
       dead: false,
+      ...this.vehicle(),
     });
     return true;
   }
@@ -130,6 +143,7 @@ export class AgentSystem {
       alpha: 0,
       leaving: false,
       dead: false,
+      ...this.vehicle(),
     });
   }
 
@@ -144,7 +158,7 @@ export class AgentSystem {
     if (!city.isRoad(c.nx, c.ny)) return;
     // Busy roads slow everyone down.
     const jam = city.getTile(c.x, c.y)?.congestion || 0;
-    c.t += c.speed * (1 - 0.55 * jam) * dt;
+    c.t += c.speed * (c.kind === 'cart' ? 0.55 : 1) * (1 - 0.55 * jam) * dt;
     while (c.t >= 1) {
       c.t -= 1;
       c.px = c.x;
