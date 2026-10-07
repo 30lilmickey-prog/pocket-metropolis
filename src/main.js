@@ -213,6 +213,7 @@ function start(hotData = {}) {
     milestones: () => sim.milestones,
     economy: () => sim.economy,
     notables: () => sim.notables,
+    townsfolk: () => sim.townsfolk,
     onShowTile: (x, y) => {
       focusTile(x, y);
       if (window.innerWidth < 560) cityPanel.toggle(false);
@@ -584,6 +585,13 @@ function start(hotData = {}) {
     else if (ev.type === 'lifeEvent') audio.play('chime');
     if (ev.type === 'milestone') celebrate(ev.milestone);
     if (ev.type === 'notable') welcomeNotable(ev);
+    if (ev.type === 'townNews') {
+      // Big moments in townsfolk lives get a toast and a little heart over the spot.
+      const n = ev.item;
+      if (n.kind === 'wedding' || n.kind === 'love' || n.kind === 'left') ui.toast(n.text, 4200);
+      if (n.kind === 'wedding') audio.play('chime', { gap: 2 });
+      if (n.x != null && (n.kind === 'friends' || n.kind === 'love' || n.kind === 'wedding')) renderer.floatText(n.x, n.y, '♥', '#e8708a', 0, 40);
+    }
     if (ev.type === 'achievement') {
       audio.play('fanfare', { gap: 1 });
       ui.toast(`★ Achievement: ${ev.achievement.label}. ${ev.achievement.desc}`, 3600);

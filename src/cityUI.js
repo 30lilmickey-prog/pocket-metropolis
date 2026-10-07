@@ -5,6 +5,7 @@ import { MILESTONES, STRUCTURES, TOOLS } from './config.js';
 import { trendsHTML, bindTrendHover } from './trendsUI.js';
 import { budgetHTML, budgetKey } from './budgetUI.js';
 import { notablesHTML, notablesKey } from './notablesUI.js';
+import { townsfolkHTML, townsfolkKey } from './townsfolkUI.js';
 
 const SEVERITY_LABEL = { bad: 'Needs fixing', caution: 'Worth a look', good: 'Going well' };
 
@@ -13,7 +14,9 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const CLOSE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
 
 export class CityPanel {
-  constructor({ milestones, onShow, onOpen, onBuild, economy, onShowTile, notables }) {
+  constructor({ milestones, onShow, onOpen, onBuild, economy, onShowTile, notables, townsfolk }) {
+    this.townsfolk = townsfolk; // () → Townsfolk
+    this._tfOpen = false;
     this.notables = notables; // () → Notables
     this.economy = economy; // () → Economy
     this.onShowTile = onShowTile; // (x, y) → fly there
@@ -40,6 +43,16 @@ export class CityPanel {
         this.toggle();
       }
     });
+    // Opening the townsfolk list fills it in; it is only built while open.
+    this.panel.addEventListener(
+      'toggle',
+      (e) => {
+        if (!e.target.classList?.contains('tf-people') || e.target.open === this._tfOpen) return;
+        this._tfOpen = e.target.open;
+        this._tfKey = '';
+      },
+      true,
+    );
     this.panel.addEventListener('click', (e) => {
       const b = e.target.closest('button');
       if (!b) return;
@@ -127,6 +140,20 @@ export class CityPanel {
         npBox.innerHTML = notablesHTML(city, n);
       }
     }
+    const tfBox = this.panel.querySelector('.townsfolk');
+    if (tfBox && this.townsfolk) {
+      const tf = this.townsfolk();
+      const tkey = townsfolkKey(tf, this._tfOpen);
+      if (tkey !== this._tfKey || this._tfBox !== tfBox) {
+        this._tfKey = tkey;
+        this._tfBox = tfBox;
+        const list = tfBox.querySelector('.tf-people ul');
+        const scroll = list ? list.scrollTop : 0;
+        tfBox.innerHTML = townsfolkHTML(city, tf, { open: this._tfOpen });
+        const again = tfBox.querySelector('.tf-people ul');
+        if (again) again.scrollTop = scroll;
+      }
+    }
     // Charts redraw only when a new sample arrives, so a hover isn't interrupted.
     const tr = city.systems.trends;
     const box = this.panel.querySelector('.trends');
@@ -176,6 +203,7 @@ export class CityPanel {
       `<button type="button" class="insp-close" data-close aria-label="Close city panel">${CLOSE}</button></header>` +
       `<h3>Budget</h3><div class="budget"></div>` +
       `<h3>Notable people</h3><div class="notable-people"></div>` +
+      `<h3>Townsfolk</h3><div class="townsfolk"></div>` +
       next +
       ladder +
       `<h3>Trends</h3><div class="trends"></div>` +

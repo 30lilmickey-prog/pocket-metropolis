@@ -2489,6 +2489,16 @@ export class Renderer {
       ctx.closePath();
       ctx.fill();
     }
+    // Townsfolk wear their mood: a small dot over their head, green when cheerful, red when low.
+    if (w.townId && w.mood != null) {
+      ctx.fillStyle = SEVERITY_COLORS[w.mood >= 0.55 ? 'good' : w.mood >= 0.35 ? 'caution' : 'bad'];
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y - 12 - bob, 1.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
     // Umbrellas come out in the rain and snow.
     const wet = Math.max(this.weather?.rain || 0, this.weather?.snow || 0);
     if (wet > 0.3) {

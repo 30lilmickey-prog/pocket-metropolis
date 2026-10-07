@@ -11,6 +11,7 @@ import { WeatherSystem } from './weather.js';
 import { Milestones } from './milestones.js';
 import { Economy } from './economy.js';
 import { Notables } from './notables.js';
+import { Townsfolk } from './townsfolk.js';
 import { computeThoughts } from './advisor.js';
 import { daylightAt } from './time.js';
 import { clamp, pickWeighted } from './utils.js';
@@ -27,6 +28,7 @@ export class Simulation {
     this.milestones = new Milestones(city);
     this.economy = new Economy(city);
     this.notables = new Notables(city);
+    this.townsfolk = new Townsfolk(city);
     this._notableRates = null;
     this._thoughtTimer = 0;
     this._streetsRev = -1;
@@ -54,6 +56,8 @@ export class Simulation {
     this.weather.update(step);
     this.agents.update(step, daylightAt(city.clock));
     this.life.update(step);
+    // Townsfolk live hour by hour; the trips they make show up as walkers.
+    if (city.stats) for (const trip of this.townsfolk.update()) this.agents.townTrip(trip, this.townsfolk.byId(trip.id));
   }
 
   tick() {
