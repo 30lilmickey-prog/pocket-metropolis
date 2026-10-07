@@ -79,6 +79,19 @@ Events are plain data in `src/lifeEvents.js` and `src/lifeEventsMore.js` (78 in 
 | New town (sandbox, map size, empty land) | New town button | ☰ → New town… |
 | Milestones and resident wishes | Click the stats bubble, or a thought bubble | Tap the stats bubble, or a thought bubble |
 
+## Townsfolk
+
+About one resident in eight is a named townsperson who lives a day of their own. The ideas come from [emergent-city](https://github.com/leatag/emergent-city) (MIT), adapted to a cozy town: no crime or factions, just friendships, favourite cafés and weddings.
+
+- **Personality and quirks:** each person has five traits (curious, hard-working, outgoing, kind, worrier, or their opposites) and a quirk such as Early bird, Night owl, Foodie, Homebody, Sporty or Shopper.
+- **Needs** for rest, food, company and fun run down every hour. A small utility AI scores what to do next from those needs, their personality, the time of day, weekends and the weather: sleep, work (weekdays 8 to 5), eat at a café, shop or mall, meet friends, play at a park, playground or field, shop, or stay in.
+- **Places come from your city.** People only go somewhere within about 12 tiles of home. When there's nowhere to eat, play or meet nearby, they say so in the City panel, and the homes are tinted on the map.
+- **Relationships:** people at the same place at the same time meet. Similar, kind people click and become friends; close friends may fall in love and later marry; the odd pair falls out. Regulars pick a favourite café or park.
+- **Notable people are townsfolk too.** Meeting one makes someone's day.
+- **Hard weeks:** someone unhappy for a long stretch gets a visit from a friend, or after two days moves away.
+- **On the map,** townsfolk walk between places with a mood dot over their head (green, yellow or red). Inspect a home to see who lives there and what they're doing; inspect a café or park to see who's there now.
+- **City panel → Townsfolk:** town mood, what everyone is doing right now, the latest town news with Show me, and Meet the townsfolk (traits, needs, friends, partner, favourite place, latest memory). Weddings, new couples and people moving away also pop up as messages.
+
 ## Architecture
 
 Each system lives in its own module under `src/` and talks to the others only through the city state and its events.
@@ -97,6 +110,7 @@ Each system lives in its own module under `src/` and talks to the others only th
 | Streets | `streets.js` | Names straight runs of road and numbers the buildings along them; names are saved in `city.systems.streets` by tile. Writes `street` and `address` on tiles. |
 | History | `history.js` | Undo and redo of tile edits, plus the L-shaped road and brush stroke paths. |
 | Budget and notable people | `economy.js`, `budgetUI.js`, `notables.js`, `notablesUI.js` | Costs, taxes, upkeep and the daily ledger (`city.systems.economy`); per-building earnings in `tile.earning`. Notable people's inspiration, arrivals and bonuses (`city.systems.notables`). |
+| Townsfolk | `townsfolk.js`, `townsfolkUI.js` | Named residents with traits, needs and an hourly utility-AI schedule; meetings, relationships, memories and the town news (`city.systems.townsfolk`). Unmet needs go to `city.derived.townsfolkUnmet` for the advisor; trips become walkers in `agents.js`. |
 | Milestones | `milestones.js`, `advisor.js`, `cityUI.js` | Town titles and permanent unlocks (saved in `city.systems.milestones`); resident thoughts computed from the city every few seconds into `city.derived.thoughts`; the City panel. |
 | Glue | `main.js`, `ui.js`, `generator.js`, `newTownUI.js` | Wires systems together, the toolbar (with lock badges) and stats bubble, placement feedback, and new towns (starter town or empty land, sandbox or milestones, three map sizes; the mode is saved in `city.systems.mode`). |
 
@@ -108,7 +122,7 @@ Derived data (labor market, commute routes, congestion, coverage, resident thoug
 npm test   # node --test, no dependencies
 ```
 
-The tests cover the budget (costs, taxes, upkeep, undo refunds, no debt), notable people, the new buildings, share links, trends, colour-blind colours, street names and addresses, the labor market, road reachability, service and play coverage, milestones and unlocks, resident thoughts, save migration, town generation, pausing, and Life Story (aging, events, jobs and homes from the city, bulldozed homes, activities, buying a home, neighbours, achievements and ribbons, the character's walker, whole lives start to finish, saving).
+The tests cover townsfolk (the cast following the population, the daily schedule, friendships and news, unmet needs as resident wishes, notables and bulldozed homes, saving), the budget (costs, taxes, upkeep, undo refunds, no debt), notable people, the new buildings, share links, trends, colour-blind colours, street names and addresses, the labor market, road reachability, service and play coverage, milestones and unlocks, resident thoughts, save migration, town generation, pausing, and Life Story (aging, events, jobs and homes from the city, bulldozed homes, activities, buying a home, neighbours, achievements and ribbons, the character's walker, whole lives start to finish, saving).
 
 ### Extending it
 

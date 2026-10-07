@@ -13,6 +13,8 @@
 - [x] Phase 1 polish: sound effects and ambience, drag to build, undo and redo, buildings that grow and vary, seasons and weather
 - [x] Town budget (costs, taxes, upkeep, top earners) and five new buildings: cottage, apartments, café, mall, factory
 - [x] Notable people (Civ-style great people) with town-wide bonuses
+- [x] Townsfolk (ideas from emergent-city): named residents with personalities, needs and daily routines; friendships, love and weddings; favourite places; town news; mood dots on walkers; unmet needs as resident wishes
+- [ ] Townsfolk next: tap a walker to follow them, birthdays and babies for married couples, pets, neighbourhood character (leafy uptown or busy quarter) from who lives where, a weekly town festival
 - [ ] Special buildings and bonuses for notable people (a lab for scientists, a gallery for artists, a stadium for athletes)
 - [x] New town: sandbox or milestones, small/medium/large maps, empty land or a starter town
 - [x] Traffic: congestion-aware routes, through traffic only, and road suggestions you can build in one tap

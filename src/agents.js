@@ -1,12 +1,13 @@
 // Agents: cars and pedestrians that make the simulation visible. They read the city and are never
 // directly controlled. Positions are in grid units; the renderer decides how they look.
 
-import { CAR_COLORS, SHIRT_COLORS, SKIN_TONES } from './config.js';
+import { CAR_COLORS, SHIRT_COLORS, SKIN_TONES, STRUCTURES } from './config.js';
 import { DIRS } from './state.js';
 import { pick, pickWeighted } from './utils.js';
 
 const MAX_CARS = 70;
 const MAX_WALKERS = 60;
+const MAX_TOWN_WALKERS = 14;
 
 // How busy commuting is at this time of day: morning and evening rush hours, quiet nights.
 export function commuteActivity(clock) {
@@ -239,6 +240,46 @@ export class AgentSystem {
     });
   }
 
+  // ---- Townsfolk -------------------------------------------------------------------
+
+  // A named resident heads somewhere new this hour: show the walk if it's a short one on foot.
+  townTrip(trip, person) {
+    if (!person || this.walkers.length >= MAX_WALKERS) return;
+    if (this.walkers.filter((w) => w.townId && !w.leaving).length >= MAX_TOWN_WALKERS) return;
+    for (const w of this.walkers) if (w.townId === person.id) w.leaving = true; // they've moved on
+    if (Math.abs(trip.from.x - trip.to.x) + Math.abs(trip.from.y - trip.to.y) > 16) return; // they drove
+    const path = this.pathTo(trip.from, trip.to);
+    if (!path || path.length < 2 || path.length > 24) return;
+    const end = this.city.getTile(trip.to.x, trip.to.y);
+    this.walkers.push({
+      home: { ...trip.from },
+      dest: { ...trip.to },
+      path,
+      i: 0,
+      t: 0,
+      state: 'out',
+      wait: 0,
+      speed: 0.6 + Math.random() * 0.25,
+      ox: (Math.random() - 0.5) * 0.3,
+      oy: (Math.random() - 0.5) * 0.3,
+      shirt: person.look?.shirt || pick(SHIRT_COLORS),
+      skin: person.look?.skin || pick(SKIN_TONES),
+      hair: person.look?.hair,
+      phase: Math.random() * Math.PI * 2,
+      alpha: 0,
+      gx: trip.from.x + 0.5,
+      gy: trip.from.y + 0.5,
+      moving: true,
+      leaving: false,
+      dead: false,
+      townId: person.id,
+      mood: person.mood,
+      child: person.age < 13,
+      oneWay: true,
+      stay: !!end?.structure && !!STRUCTURES[end.structure.type].walkable, // parks: they hang around
+    });
+  }
+
   // ---- The Life Story character ----------------------------------------------------
 
   // The character walks their real routes: to work by day if they have a job, otherwise out to a
@@ -384,6 +425,10 @@ export class AgentSystem {
         w.gy = end.y + 0.5 + w.oy + Math.cos(drift * 0.8) * 0.12;
         w.moving = Math.abs(Math.cos(drift)) > 0.4;
       }
+      if (w.wait <= 0 && w.oneWay) {
+        w.leaving = true;
+        return;
+      }
       if (w.wait <= 0) {
         w.state = 'back';
         w.path = w.path.slice().reverse();
@@ -399,7 +444,11 @@ export class AgentSystem {
         const type = city.getTile(a.x, a.y)?.structure?.type;
         w.state = 'linger';
         w.wait = type === 'park' || type === 'playground' || type === 'field' ? 5 + Math.random() * 8 : 2 + Math.random() * 3;
-        if (w.dest && a.x === w.dest.x && a.y === w.dest.y) {
+        if (w.oneWay) {
+          // Townsfolk stay out in parks a while and step inside cafés and homes.
+          if (w.stay) w.wait = 8 + Math.random() * 6;
+          else w.leaving = true;
+        } else if (w.dest && a.x === w.dest.x && a.y === w.dest.y) {
           w.indoors = true; // a shift at work
           w.wait = 10 + Math.random() * 6;
         }

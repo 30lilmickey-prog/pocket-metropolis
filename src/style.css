@@ -2447,3 +2447,92 @@ button:focus-visible {
   margin-top: 6px;
   min-height: 48px;
 }
+
+/* Townsfolk: mood, what people are doing, town news and the people list */
+.tf-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.tf-head strong {
+  display: block;
+  font-size: 18px;
+}
+.tf-mood.good { color: var(--sev-good-ink); }
+.tf-mood.caution { color: var(--sev-caution-ink); }
+.tf-mood.bad { color: var(--sev-bad-ink); }
+.tf-stats {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+.tf-stats b {
+  color: var(--ink);
+}
+.tf-doing .unlock-chip {
+  margin: 2px 4px 2px 0;
+}
+.tf-feed li {
+  border-left: 4px solid var(--sev-good);
+  padding: 6px 10px;
+}
+.tf-feed li.caution { border-left-color: var(--sev-caution); }
+.tf-feed li.bad { border-left-color: var(--sev-bad); }
+.tf-news-icon,
+.tf-face {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 13px;
+  background: var(--panel-edge);
+  color: var(--ink);
+}
+.tf-face.good { background: color-mix(in srgb, var(--sev-good) 35%, transparent); }
+.tf-face.caution { background: color-mix(in srgb, var(--sev-caution) 35%, transparent); }
+.tf-face.bad { background: color-mix(in srgb, var(--sev-bad) 35%, transparent); }
+.tf-people ul {
+  max-height: 360px;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+.tf-star {
+  color: var(--sev-caution-ink);
+}
+.tf-needs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: 3px;
+}
+.tf-need {
+  position: relative;
+  display: grid;
+  gap: 1px;
+}
+.tf-need::before {
+  content: '';
+  height: 5px;
+  border-radius: 3px;
+  background: var(--panel-edge);
+  grid-area: 1 / 1;
+}
+.tf-need-bar {
+  grid-area: 1 / 1;
+  height: 5px;
+  border-radius: 3px;
+}
+.tf-need-bar.good { background: var(--sev-good); }
+.tf-need-bar.caution { background: var(--sev-caution); }
+.tf-need-bar.bad { background: var(--sev-bad); }
+.tf-need small {
+  font-size: 10px;
+}
+.tf-mem {
+  font-style: italic;
+}

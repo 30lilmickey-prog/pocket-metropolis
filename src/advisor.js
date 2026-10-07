@@ -120,6 +120,34 @@ export function computeThoughts(city, milestones) {
   );
   if (quiet.length && homes.length) add('workers', 'caution', 2, 'Some workplaces are short of staff.', 'Build homes nearby, linked by road', quiet[0], quiet);
 
+  // Townsfolk who went hungry, bored or lonely for want of somewhere nearby to go.
+  const unmet = city.derived.townsfolkUnmet;
+  const folk = city.systems.townsfolk?.people;
+  if (unmet && folk?.length) {
+    const homesOf = (ids) => {
+      const seen = new Set();
+      const out = [];
+      for (const id of ids) {
+        const p = folk.find((q) => q.id === id);
+        const t = p && city.getTile(p.home.x, p.home.y);
+        if (t?.structure && !seen.has(t)) {
+          seen.add(t);
+          out.push(t);
+        }
+      }
+      return out;
+    };
+    const wants = [
+      ['eat', 'Nowhere to grab a bite around here.', unlocked('cafe') ? 'Build a café, shop or mall nearby' : 'Build a shop nearby'],
+      ['play', 'There’s nothing to do on the weekend!', 'Build a park, playground or sports field nearby'],
+      ['social', 'We never see our friends. Somewhere to meet up?', 'A café or a park gives neighbours a place to meet'],
+    ];
+    for (const [kind, text, hint] of wants) {
+      const tiles = homesOf(unmet[kind] || []);
+      if (tiles.length >= 2) add(`folk-${kind}`, tiles.length >= 6 ? 'bad' : 'caution', 2.2, text, hint, worstOf(tiles), tiles);
+    }
+  }
+
   if (unlocked('playground')) {
     const far = lived.filter((h) => (h.coverage.fun || 0) < 0.1);
     if (far.length) add('fun', 'caution', 1.5, 'Nowhere to play around here!', 'Build a playground', worstOf(far), far);

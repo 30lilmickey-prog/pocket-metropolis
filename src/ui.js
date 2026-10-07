@@ -3,6 +3,7 @@
 
 import { TOOL_GROUPS, TOOLS, VIEWS, STRUCTURES, SERVICES } from './config.js';
 import { money } from './economy.js';
+import { activityOf } from './townsfolk.js';
 import { notableType } from './notables.js';
 import { FACTORS } from './desirability.js';
 import { formatClock } from './time.js';
@@ -414,6 +415,13 @@ export class Interface {
     for (const p of city.systems.notables?.people || []) {
       if (p.home && p.home.x === t.x && p.home.y === t.y) facts.push(['Home of', `${p.first} ${p.last}, ${notableType(p.type)?.title || ''}`]);
     }
+    const folk = (city.systems.townsfolk?.people || []).filter((p) => p.home.x === t.x && p.home.y === t.y);
+    if (folk.length) {
+      const names = folk.slice(0, 3).map((p) => `${p.first} ${p.last} (${activityOf(p.doing).label.toLowerCase()})`);
+      facts.push(['Townsfolk', names.join(', ') + (folk.length > 3 ? ` +${folk.length - 3}` : '')]);
+    }
+    const visitors = (city.systems.townsfolk?.people || []).filter((p) => p.at.x === t.x && p.at.y === t.y && !(p.home.x === t.x && p.home.y === t.y));
+    if (visitors.length) facts.push(['Here now', visitors.slice(0, 3).map((p) => p.first).join(', ') + (visitors.length > 3 ? ` +${visitors.length - 3}` : '')]);
     if (t.earning) facts.push([t.earning > 0 ? 'Pays in taxes' : 'Upkeep', `${money(Math.abs(t.earning))}/day`]);
     if (s?.type === 'road') facts.push(['Traffic', t.congestion < 0.02 ? 'Clear' : `${pct(t.congestion)} busy`]);
     if (!city.accessRoad(t.x, t.y) && def && !def.walkable) facts.push(['Road access', 'None nearby']);
