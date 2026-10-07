@@ -348,6 +348,7 @@ export class AgentSystem {
       if (type === 'park') return 8;
       if (type === 'playground') return 7;
       if (type === 'field') return 6;
+      if (type === 'cafe') return 5;
       if (type === 'tree') return 2;
       if (type === 'road') return 0.15;
       return 0.4;

@@ -11,7 +11,7 @@ export function computeCoverage(city) {
   for (const src of city.tiles) {
     const def = src.structure && STRUCTURES[src.structure.type];
     if (!def?.service) continue;
-    const r = def.radius;
+    const r = def.radius + (city.derived.notableEffects?.radius?.[def.service] || 0); // notable people widen it
     for (let dy = -r; dy <= r; dy++) {
       for (let dx = -r; dx <= r; dx++) {
         const t = city.getTile(src.x + dx, src.y + dy);

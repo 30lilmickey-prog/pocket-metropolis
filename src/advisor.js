@@ -95,6 +95,18 @@ export function computeThoughts(city, milestones) {
     );
   }
 
+  // Money: only a worry outside Sandbox.
+  const econ = city.derived.economy;
+  const purse = city.systems.economy;
+  if (econ && purse && city.systems.mode !== 'sandbox') {
+    const costly = econ.costly?.[0];
+    if (econ.net < 0) {
+      add('budget', purse.money < -econ.net * 2 ? 'bad' : 'caution', 4.5, `The town spends ${Math.round(-econ.net)} dollars a day more than it earns.`, 'More homes and workplaces bring in taxes; services and parks cost upkeep', costly || null, costly ? [costly] : []);
+    } else if (purse.money < 200 && econ.net < 100) {
+      add('budget', 'caution', 2.5, 'The town is nearly out of money.', 'Taxes come in every day; homes and businesses pay the most', econ.top?.[0] || null, econ.top?.[0] ? [econ.top[0]] : []);
+    }
+  }
+
   if (unlocked('clinic')) {
     const far = lived.filter((h) => (h.coverage.health || 0) < 0.1);
     if (far.length) add('health', 'caution', 2.5, "There's no clinic if someone gets sick.", 'Build a clinic', worstOf(far), far);

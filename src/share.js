@@ -3,12 +3,11 @@
 // visitor's simulation grows the town again from its buildings.
 
 import { STRUCTURES, VARIANT_KEYS } from './config.js';
-import { CityState } from './state.js';
+import { CityState, VARIANT_TYPES } from './state.js';
 
 const FORMAT = 1;
 const TYPES = Object.keys(STRUCTURES); // a type's code is its index + 1; 0 means empty
 const HASH_KEY = 'town=';
-const VARIANT_TYPES = new Set(['house', 'tower', 'shop', 'office']); // as CityState.createStructure
 
 // Two bytes per tile: [water flag | type code] and [variant | shape | floors].
 export function packCity(city) {

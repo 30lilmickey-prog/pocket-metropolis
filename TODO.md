@@ -11,6 +11,9 @@
 - [x] Life Story, first version (see section 1)
 - [x] Phone layout: Life and a controls sheet up top instead of a column of side buttons; compact landscape layout
 - [x] Phase 1 polish: sound effects and ambience, drag to build, undo and redo, buildings that grow and vary, seasons and weather
+- [x] Town budget (costs, taxes, upkeep, top earners) and five new buildings: cottage, apartments, café, mall, factory
+- [x] Notable people (Civ-style great people) with town-wide bonuses
+- [ ] Special buildings and bonuses for notable people (a lab for scientists, a gallery for artists, a stadium for athletes)
 - [x] New town: sandbox or milestones, small/medium/large maps, empty land or a starter town
 - [x] Traffic: congestion-aware routes, through traffic only, and road suggestions you can build in one tap
 - [x] Phase 4: share links, minimap, trends, colour-blind friendly colours, larger text

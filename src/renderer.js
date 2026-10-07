@@ -7,6 +7,7 @@ import { lit, litA, rgba, mixHex } from './color.js';
 import { clamp, hash2 } from './utils.js';
 import { shortName, addressOf } from './streets.js';
 import { rampStops, settings } from './settings.js';
+import { notableType } from './notables.js';
 
 const SLAB_DEPTH = 18;
 // Unlit lighting for the cached ground layer; the frame's real light is multiplied on afterwards.
@@ -99,6 +100,12 @@ export function growthOf(t, ghost = false) {
     if (ghost) return { floors: total };
     const occ = s.residents / STRUCTURES.tower.capacity;
     return { floors: Math.max(2, Math.min(total, Math.ceil(total * (0.3 + 0.7 * occ)))) };
+  }
+  if (s.type === 'apartments') {
+    const total = s.floors || 3;
+    if (ghost) return { floors: total };
+    const occ = s.residents / STRUCTURES.apartments.capacity;
+    return { floors: Math.max(2, Math.min(total, Math.ceil(total * (0.4 + 0.6 * occ)))) };
   }
   if (s.type === 'office') {
     const total = s.floors || 4;
@@ -1304,6 +1311,11 @@ export class Renderer {
     if (s.type === 'office') return { inset: 0.14, h: 8 + growthOf(t).floors * 12 };
     if (s.type === 'school') return { inset: 0.12, h: 26 };
     if (s.type === 'clinic') return { inset: 0.15, h: 24 };
+    if (s.type === 'cottage') return { inset: 0.27, h: 18 };
+    if (s.type === 'apartments') return { inset: 0.15, h: 8 + growthOf(t).floors * 10 };
+    if (s.type === 'cafe') return { inset: 0.24, h: 14 };
+    if (s.type === 'mall') return { inset: 0.06, h: 20 };
+    if (s.type === 'factory') return { inset: 0.1, h: 22 };
     return null;
   }
 
@@ -1381,6 +1393,16 @@ export class Renderer {
         return this.drawTower(ctx, x, y, s, L, ghost);
       case 'shop':
         return this.drawShop(ctx, x, y, s, L, ghost);
+      case 'cottage':
+        return this.drawCottage(ctx, x, y, s, L, ghost);
+      case 'apartments':
+        return this.drawApartments(ctx, x, y, s, L, ghost);
+      case 'cafe':
+        return this.drawCafe(ctx, x, y, s, L, ghost);
+      case 'mall':
+        return this.drawMall(ctx, x, y, s, L, ghost);
+      case 'factory':
+        return this.drawFactory(ctx, x, y, s, L, ghost);
       case 'office':
         return this.drawOffice(ctx, x, y, s, L, ghost);
       case 'school':
@@ -1759,6 +1781,237 @@ export class Renderer {
     ctx.fillStyle = lit(v.roof, 0.85, L);
     poly(ctx, this.faceQuad('L', x0 + 0.12, y1 - 0.1, x1 - 0.12, y1 - 0.04, 0.12, 0.88, h + 1.6, h + 4.4));
     ctx.fill();
+  }
+
+  // A little cottage: low walls, a steep roof, a chimney and a round window.
+  drawCottage(ctx, x, y, s, L, ghost) {
+    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.blush;
+    const x0 = x + 0.27;
+    const x1 = x + 0.73;
+    const y0 = y + 0.29;
+    const y1 = y + 0.71;
+    const h = 9;
+    const top = h + 11;
+    const occ = ghost ? 0 : s.residents / STRUCTURES.cottage.capacity;
+    this.drawBox(ctx, L, x0, y0, x1, y1, 0, h, v.wall, false);
+    const xm = (x0 + x1) / 2;
+    const o = 0.04;
+    const roof = this.roofColor(v.roof);
+    ctx.fillStyle = lit(v.wall, 0.92, L);
+    poly(ctx, [[x0, y1, h], [x1, y1, h], [xm, y1, top]]);
+    ctx.fill();
+    ctx.fillStyle = lit(roof, 1.05, L);
+    poly(ctx, [[x0 - o, y0 - o, h], [x0 - o, y1 + o, h], [xm, y1 + o, top], [xm, y0 - o, top]]);
+    ctx.fill();
+    ctx.fillStyle = lit(roof, 0.82, L);
+    poly(ctx, [[x1 + o, y0 - o, h], [x1 + o, y1 + o, h], [xm, y1 + o, top], [xm, y0 - o, top]]);
+    ctx.fill();
+    // Door and a round attic window on the gable.
+    ctx.fillStyle = lit(v.roof, 0.7, L);
+    poly(ctx, this.faceQuad('L', x0, y0, x1, y1, 0.38, 0.62, 0, 6.5));
+    ctx.fill();
+    const w = gridToWorld(xm, y1, h + 4.5);
+    const isLit = this.isWindowLit(x, y, 0, occ, L);
+    ctx.fillStyle = isLit ? lit(PALETTE.windowLit, 1.1, NEUTRAL_LIGHT) : lit(PALETTE.glass, 0.95, L);
+    ctx.beginPath();
+    ctx.arc(w.x, w.y, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+    if (isLit) this.glows.push({ x: w.x, y: w.y, r: 7, a: 0.35 * L.windowLit, rgb: '255,226,154' });
+    this.drawWindow(ctx, L, this.faceQuad('R', x0, y0, x1, y1, 0.25, 0.75, 3, 7.5), 0.8, this.isWindowLit(x, y, 1, occ, L));
+    this.drawBox(ctx, L, xm + 0.06, y0 + 0.06, xm + 0.13, y0 + 0.13, top - 7, 8, v.trim);
+  }
+
+  // Apartments: a mid-rise block with balconies on every floor and a railing round the roof.
+  drawApartments(ctx, x, y, s, L, ghost) {
+    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.mint;
+    const tile = this.city.getTile(x, y);
+    const floors = ghost || !tile ? s.floors || 3 : growthOf(tile).floors;
+    const x0 = x + 0.15;
+    const x1 = x + 0.85;
+    const y0 = y + 0.15;
+    const y1 = y + 0.85;
+    const fh = 10;
+    const h = 6 + floors * fh;
+    const occ = ghost ? 0 : s.residents / STRUCTURES.apartments.capacity;
+    this.drawBox(ctx, L, x0, y0, x1, y1, 0, h, v.wall);
+    let wi = 0;
+    for (let f = 0; f < floors; f++) {
+      const v0 = 4 + f * fh;
+      for (const face of ['L', 'R']) {
+        for (let k = 0; k < 2; k++) {
+          const u0 = 0.14 + k * 0.44;
+          this.drawWindow(ctx, L, this.faceQuad(face, x0, y0, x1, y1, u0, u0 + 0.28, v0 + 1.5, v0 + 7), face === 'L' ? 0.94 : 0.82, this.isWindowLit(x, y, wi++, occ, L));
+        }
+      }
+      // A balcony slab with a railing on the front face.
+      ctx.fillStyle = lit(v.trim, 0.98, L);
+      poly(ctx, [
+        [x0 + 0.08, y1, v0],
+        [x0 + 0.4, y1, v0],
+        [x0 + 0.4, y1 + 0.07, v0],
+        [x0 + 0.08, y1 + 0.07, v0],
+      ]);
+      ctx.fill();
+      ctx.strokeStyle = lit(v.trim, 0.85, L);
+      ctx.lineWidth = 0.7;
+      poly(ctx, [
+        [x0 + 0.08, y1 + 0.07, v0 + 2.5],
+        [x0 + 0.4, y1 + 0.07, v0 + 2.5],
+      ]);
+      ctx.stroke();
+    }
+    // Roof railing.
+    ctx.strokeStyle = lit(v.trim, 1, L);
+    ctx.lineWidth = 0.8;
+    poly(ctx, [
+      [x0 + 0.02, y0 + 0.02, h + 2.5],
+      [x1 - 0.02, y0 + 0.02, h + 2.5],
+      [x1 - 0.02, y1 - 0.02, h + 2.5],
+      [x0 + 0.02, y1 - 0.02, h + 2.5],
+    ]);
+    ctx.stroke();
+    this.drawBox(ctx, L, x0 + 0.42, y0 + 0.1, x0 + 0.58, y0 + 0.26, h, 5, v.trim);
+  }
+
+  // A café: a small shopfront with an awning and tables with parasols on the pavement.
+  drawCafe(ctx, x, y, s, L, ghost) {
+    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.peach;
+    const x0 = x + 0.24;
+    const x1 = x + 0.78;
+    const y0 = y + 0.18;
+    const y1 = y + 0.6;
+    const h = 13;
+    const fill = this.workFill(x, y, s, ghost);
+    this.drawBox(ctx, L, x0, y0, x1, y1, 0, h, v.wall);
+    const open = !ghost && fill > 0 && this.shopOpen(L) && L.windowLit > 0.05;
+    this.drawWindow(ctx, L, this.faceQuad('L', x0, y0, x1, y1, 0.1, 0.7, 2, 8.5), 0.92, open);
+    for (let i = 0; i < 4; i++) {
+      const a = x0 + ((x1 - x0) * i) / 4;
+      const b = x0 + ((x1 - x0) * (i + 1)) / 4;
+      ctx.fillStyle = lit(i % 2 ? '#ffffff' : v.roof, 1, L);
+      poly(ctx, [[a, y1, 11], [b, y1, 11], [b, y1 + 0.1, 8], [a, y1 + 0.1, 8]]);
+      ctx.fill();
+    }
+    // A coffee cup sign on the roof.
+    const c = gridToWorld((x0 + x1) / 2, (y0 + y1) / 2, h + 5);
+    ctx.fillStyle = lit('#ffffff', 1, L);
+    ctx.beginPath();
+    ctx.roundRect(c.x - 3, c.y - 2.5, 6, 5, 1.5);
+    ctx.fill();
+    ctx.strokeStyle = lit('#ffffff', 1, L);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(c.x + 3.2, c.y, 1.4, -Math.PI / 2, Math.PI / 2);
+    ctx.stroke();
+    ctx.fillStyle = lit(v.roof, 0.8, L);
+    ctx.fillRect(c.x - 2, c.y - 1.2, 4, 1.2);
+    // Two tables with parasols out front.
+    for (const [gx, gy] of [
+      [x + 0.36, y + 0.8],
+      [x + 0.66, y + 0.82],
+    ]) {
+      const p = gridToWorld(gx, gy);
+      ctx.fillStyle = lit('#ffffff', 0.92, L);
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y - 3, 2.6, 1.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = lit('#b0a8c4', 1, L);
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x, p.y - 9);
+      ctx.stroke();
+      ctx.fillStyle = lit(v.roof, 1, L);
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y - 9, 4.4, 2.2, 0, Math.PI, 0);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // A mall: a wide, low block with a glass entrance, a coloured sign band and rooftop units.
+  drawMall(ctx, x, y, s, L, ghost) {
+    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.lavender;
+    const x0 = x + 0.06;
+    const x1 = x + 0.94;
+    const y0 = y + 0.08;
+    const y1 = y + 0.9;
+    const h = 18;
+    const fill = this.workFill(x, y, s, ghost);
+    this.drawBox(ctx, L, x0, y0, x1, y1, 0, h, v.trim);
+    const open = !ghost && fill > 0 && this.shopOpen(L) && L.windowLit > 0.05;
+    // Sign band across the top of both faces.
+    ctx.fillStyle = lit(v.wall, 1, L);
+    poly(ctx, this.faceQuad('L', x0, y0, x1, y1, 0, 1, h - 5, h));
+    ctx.fill();
+    ctx.fillStyle = lit(v.wall, 0.82, L);
+    poly(ctx, this.faceQuad('R', x0, y0, x1, y1, 0, 1, h - 5, h));
+    ctx.fill();
+    // Glass entrance and display windows.
+    this.drawWindow(ctx, L, this.faceQuad('L', x0, y0, x1, y1, 0.36, 0.64, 0, 10), 0.95, open);
+    this.drawWindow(ctx, L, this.faceQuad('L', x0, y0, x1, y1, 0.06, 0.3, 3, 10), 0.92, open);
+    this.drawWindow(ctx, L, this.faceQuad('L', x0, y0, x1, y1, 0.7, 0.94, 3, 10), 0.92, open);
+    this.drawWindow(ctx, L, this.faceQuad('R', x0, y0, x1, y1, 0.1, 0.9, 3, 10), 0.8, open && hash2(x, y, 7) < 0.8);
+    // Rooftop air-conditioning units and a skylight.
+    this.drawBox(ctx, L, x0 + 0.12, y0 + 0.14, x0 + 0.28, y0 + 0.3, h, 4, '#e8e4ee');
+    this.drawBox(ctx, L, x1 - 0.3, y0 + 0.14, x1 - 0.14, y0 + 0.3, h, 4, '#e8e4ee');
+    ctx.fillStyle = lit(PALETTE.glass, 1.05, L);
+    poly(ctx, [
+      [x0 + 0.3, y0 + 0.42, h + 0.2],
+      [x1 - 0.3, y0 + 0.42, h + 0.2],
+      [x1 - 0.3, y1 - 0.18, h + 0.2],
+      [x0 + 0.3, y1 - 0.18, h + 0.2],
+    ]);
+    ctx.fill();
+  }
+
+  // A factory: a sawtooth roof, a tall chimney and smoke while people are at work.
+  drawFactory(ctx, x, y, s, L, ghost) {
+    const x0 = x + 0.1;
+    const x1 = x + 0.9;
+    const y0 = y + 0.14;
+    const y1 = y + 0.86;
+    const h = 14;
+    const wall = '#d9d2e3';
+    const fill = this.workFill(x, y, s, ghost);
+    this.drawBox(ctx, L, x0, y0, x1, y1, 0, h, wall, false);
+    // Sawtooth roof: three ridges running front to back.
+    const teeth = 3;
+    for (let i = 0; i < teeth; i++) {
+      const a = x0 + ((x1 - x0) * i) / teeth;
+      const b = x0 + ((x1 - x0) * (i + 1)) / teeth;
+      ctx.fillStyle = lit('#b8aed0', 0.96, L);
+      poly(ctx, [[a, y0, h], [a, y1, h], [b, y1, h + 7], [b, y0, h + 7]]);
+      ctx.fill();
+      ctx.fillStyle = lit(PALETTE.glass, 0.82, L);
+      poly(ctx, [[b, y0, h], [b, y1, h], [b, y1, h + 7], [b, y0, h + 7]]);
+      ctx.fill();
+      ctx.fillStyle = lit(wall, 0.9, L);
+      poly(ctx, [[a, y1, h], [b, y1, h], [b, y1, h + 7]]);
+      ctx.fill();
+    }
+    // Loading door and windows.
+    ctx.fillStyle = lit('#a99fc2', 0.85, L);
+    poly(ctx, this.faceQuad('L', x0, y0, x1, y1, 0.1, 0.36, 0, 8));
+    ctx.fill();
+    const working = !ghost && fill > 0 && L.clock > 0.27 && L.clock < 0.78;
+    this.drawWindow(ctx, L, this.faceQuad('L', x0, y0, x1, y1, 0.5, 0.9, 5, 10), 0.92, working && L.windowLit > 0.05);
+    this.drawWindow(ctx, L, this.faceQuad('R', x0, y0, x1, y1, 0.15, 0.85, 5, 10), 0.8, working && L.windowLit > 0.05);
+    // Chimney.
+    const cx0 = x1 - 0.2;
+    const cy0 = y0 + 0.06;
+    this.drawBox(ctx, L, cx0, cy0, cx0 + 0.1, cy0 + 0.1, 0, 34, '#e9a89a');
+    this.drawBox(ctx, L, cx0 - 0.01, cy0 - 0.01, cx0 + 0.11, cy0 + 0.11, 30, 3, '#ffffff');
+    if (working && !this.reduceMotion) {
+      const top = gridToWorld(cx0 + 0.05, cy0 + 0.05, 36);
+      for (let i = 0; i < 4; i++) {
+        const t = (this.time * 0.35 + i / 4 + hash2(x, y, 3)) % 1;
+        ctx.fillStyle = litA('#f4f1f7', 1, L, (0.6 * (1 - t)).toFixed(3));
+        ctx.beginPath();
+        ctx.arc(top.x + t * 10 + Math.sin(t * 6) * 2, top.y - t * 22, 2.5 + t * 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
   }
 
   drawOffice(ctx, x, y, s, L, ghost) {
@@ -2256,7 +2509,43 @@ export class Renderer {
   }
 
   // Pins over the Life Story character's home and workplace, drawn above everything else.
+  // Badges over the homes of notable people: their type's colour and symbol, gently bobbing.
+  drawNotables(ctx) {
+    const people = this.city.systems.notables?.people;
+    if (!people?.length) return;
+    const z = Math.max(0.7, 1 / Math.sqrt(this.camera.zoom));
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `800 ${(8 * z).toFixed(1)}px system-ui, -apple-system, sans-serif`;
+    people.forEach((p, i) => {
+      if (!p.home) return;
+      const t = this.city.getTile(p.home.x, p.home.y);
+      const type = notableType(p.type);
+      if (!t || !type) return;
+      const f = t.structure ? this.footprint(t) : null;
+      const bob = this.reduceMotion ? 0 : Math.sin(this.time * 2 + i) * 1.5;
+      const pos = gridToWorld(p.home.x + 0.5, p.home.y + 0.5, (f?.h || 12) + 10 + bob);
+      const r = 6 * z;
+      ctx.fillStyle = 'rgba(52,44,96,0.22)';
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y + 1.5 * z, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = type.color;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.6 * z;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#3d3557';
+      ctx.fillText(type.icon, pos.x, pos.y + 0.5 * z);
+    });
+    ctx.restore();
+  }
+
   drawLifePins(ctx, L) {
+    this.drawNotables(ctx);
     this.homeTag = null;
     const c = this.city.systems.life?.char;
     if (!c?.alive) return;

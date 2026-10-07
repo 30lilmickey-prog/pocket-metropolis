@@ -145,6 +145,41 @@ body {
   outline: 2.5px solid var(--focus);
   outline-offset: 2px;
 }
+.money-row {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.money-coin {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffd98f;
+  color: #7a5a14;
+  font: 800 11px/1 var(--font-body);
+}
+#stat-money {
+  font: 600 15px/1 var(--font-display);
+}
+.net {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--sev-good-ink);
+}
+.net.down {
+  color: var(--sev-bad-ink);
+}
+.tray-item .price {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
 .tier {
   grid-column: 1 / -1;
   position: relative;
@@ -370,6 +405,11 @@ body {
 .tint-school { --tint: #ffc9b9; }
 .tint-clinic { --tint: #c4ead9; }
 .tint-playground { --tint: #ffe0b0; }
+.tint-cottage { --tint: #fcd5ce; }
+.tint-apartments { --tint: #c7e6da; }
+.tint-cafe { --tint: #ffd2b8; }
+.tint-mall { --tint: #dccbef; }
+.tint-factory { --tint: #d7d2e3; }
 .tint-field { --tint: #bfe3b4; }
 .tint-tree { --tint: var(--tint-tree); }
 .tint-park { --tint: var(--tint-park); }
@@ -959,6 +999,208 @@ button:focus-visible {
   font-size: 12px;
   min-height: 36px;
   white-space: nowrap;
+}
+
+/* Budget */
+.budget {
+  display: grid;
+  gap: 8px;
+}
+.budget-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+.budget-head strong {
+  display: block;
+  font: 600 26px/1.1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+.budget-net {
+  text-align: right;
+  font-weight: 800;
+}
+.budget-net span {
+  display: block;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+.budget-net small {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.budget-net.up span {
+  color: var(--sev-good-ink);
+}
+.budget-net.down span {
+  color: var(--sev-bad-ink);
+}
+.budget-warn {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--sev-bad) 16%, transparent);
+  color: var(--sev-bad-ink);
+  font-size: 12.5px !important;
+}
+.budget-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.budget-bars {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+}
+.budget-bars li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 'l v' 'b b';
+  gap: 2px 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.budget-bars .bl {
+  grid-area: l;
+  color: var(--ink-soft);
+}
+.budget-bars b {
+  grid-area: v;
+  font-variant-numeric: tabular-nums;
+}
+.budget-bars .bb {
+  grid-area: b;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--meter-track);
+  overflow: hidden;
+}
+.budget-bars .bb span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+.budget-bars.in .bb span {
+  background: var(--sev-good);
+}
+.budget-bars.out .bb span {
+  background: var(--sev-bad);
+  opacity: 0.75;
+}
+.earners {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.earners li {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: var(--meter-track);
+}
+.earners .rank {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffd98f;
+  color: #7a5a14;
+  font-size: 12px;
+  font-weight: 800;
+}
+.earners .who b {
+  display: block;
+  font-size: 12.5px;
+}
+.earners .who small,
+.earners .earn small {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.earners .earn {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--sev-good-ink);
+  font-variant-numeric: tabular-nums;
+}
+.trend-table td.up {
+  color: var(--sev-good-ink);
+}
+.trend-table td.down {
+  color: var(--sev-bad-ink);
+}
+
+/* Notable people */
+.nb {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border-radius: 50%;
+  background: var(--nb);
+  color: #3d3557;
+  font-weight: 800;
+  box-shadow: 0 0 0 2px var(--panel-edge);
+}
+.notables {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.notables li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: var(--meter-track);
+}
+.notables.next li {
+  grid-template-columns: auto 1fr;
+  padding: 6px 10px;
+}
+.np-text {
+  display: grid;
+  gap: 2px;
+  font-size: 12.5px;
+  line-height: 1.25;
+}
+.np-text small {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.np-bonus {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--sev-good-ink);
+}
+.np-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--panel-edge);
+  overflow: hidden;
+}
+.np-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+.notable-card .nb {
+  margin: 0 auto;
 }
 
 /* Trends: stat tiles with sparklines */
@@ -2244,6 +2486,7 @@ button:focus-visible {
           </span>
         </div>
         <div class="clock" id="stat-clock">Day 1</div>
+        <div class="money-row" aria-label="Town budget"><span class="money-coin" aria-hidden="true">$</span><span id="stat-money">$0</span><span id="stat-net" class="net"></span></div>
         <div class="tier"><span class="tier-name" id="tier-name">Hamlet</span><span class="tier-bar" aria-hidden="true"><span id="tier-meter"></span></span><span class="badge" id="tier-badge" hidden></span></div>
       </section>
 
@@ -2344,8 +2587,13 @@ const VARIANT_KEYS = Object.keys(BUILDING_VARIANTS);
 // Future per-structure data (upkeep, power draw, pollution, …) belongs here.
 const STRUCTURES = {
   house: { label: 'House', capacity: 4, jobs: 0, greenery: 0, height: 27 },
+  cottage: { label: 'Cottage', capacity: 2, jobs: 0, greenery: 0, height: 20 },
+  apartments: { label: 'Apartments', capacity: 10, jobs: 0, greenery: 0, height: 44 },
   tower: { label: 'Tower', capacity: 16, jobs: 0, greenery: 0, height: 70 },
   shop: { label: 'Shop', capacity: 0, jobs: 5, greenery: 0, height: 22 },
+  cafe: { label: 'Café', capacity: 0, jobs: 3, greenery: 0, height: 18, service: 'fun', radius: 3 },
+  mall: { label: 'Mall', capacity: 0, jobs: 24, greenery: 0, height: 26 },
+  factory: { label: 'Factory', capacity: 0, jobs: 20, greenery: 0, height: 34, pollution: 1 },
   office: { label: 'Office', capacity: 0, jobs: 16, greenery: 0, height: 58 },
   school: { label: 'School', capacity: 0, jobs: 4, greenery: 0, height: 30, service: 'school', radius: 7 },
   clinic: { label: 'Clinic', capacity: 0, jobs: 4, greenery: 0, height: 28, service: 'health', radius: 7 },
@@ -2371,11 +2619,41 @@ const COVERAGE_IDS = ['school', 'health', 'fun'];
 // Unlocks are permanent. Tools not listed here are always available.
 const MILESTONES = [
   { id: 'hamlet', label: 'Hamlet', pop: 0, unlocks: [] },
-  { id: 'village', label: 'Village', pop: 60, unlocks: ['school', 'playground'] },
-  { id: 'town', label: 'Town', pop: 200, unlocks: ['tower', 'office', 'clinic'] },
+  { id: 'village', label: 'Village', pop: 60, unlocks: ['school', 'playground', 'apartments', 'factory'] },
+  { id: 'town', label: 'Town', pop: 200, unlocks: ['tower', 'office', 'clinic', 'mall'] },
   { id: 'city', label: 'City', pop: 450, unlocks: ['field'] },
   { id: 'metropolis', label: 'Metropolis', pop: 900, unlocks: [] },
 ];
+
+// ---- Town budget ----------------------------------------------------------------------
+// What each thing costs to build (Milestones mode; Sandbox builds for free).
+const COSTS = {
+  road: 20,
+  house: 150,
+  cottage: 80,
+  apartments: 600,
+  tower: 1000,
+  shop: 300,
+  cafe: 200,
+  office: 1200,
+  mall: 2500,
+  factory: 1500,
+  school: 2000,
+  clinic: 2500,
+  playground: 400,
+  field: 1500,
+  tree: 10,
+  park: 100,
+  water: 50,
+  bulldoze: 0,
+};
+// Upkeep per in-game day.
+const UPKEEP = { road: 0.5, school: 30, clinic: 35, park: 2, playground: 5, field: 12 };
+// Taxes per in-game day: every resident pays a little, every worker a little more, and each business
+// pays per filled job.
+const TAX = { resident: 0.8, worker: 1.2 };
+const BUSINESS_TAX = { shop: 1.5, cafe: 1.5, office: 2, mall: 1.5, factory: 2.2 };
+const START_MONEY = { land: 10000, town: 25000 };
 
 // Resident thoughts: red needs fixing, yellow is worth a look, green is going well.
 const SEVERITY_COLORS = { bad: '#ef6461', caution: '#f2b230', good: '#5cbf88' };
@@ -2388,6 +2666,8 @@ const TOOL_GROUPS = [
     label: 'Homes',
     tools: [
       { id: 'house', label: 'House', key: '1' },
+      { id: 'cottage', label: 'Cottage', key: 'k' },
+      { id: 'apartments', label: 'Apartments', key: 'a' },
       { id: 'tower', label: 'Tower', key: '2' },
     ],
   },
@@ -2396,7 +2676,10 @@ const TOOL_GROUPS = [
     label: 'Work',
     tools: [
       { id: 'shop', label: 'Shop', key: '3' },
+      { id: 'cafe', label: 'Café', key: 'e' },
       { id: 'office', label: 'Office', key: '4' },
+      { id: 'mall', label: 'Mall', key: 'l' },
+      { id: 'factory', label: 'Factory', key: 'y' },
     ],
   },
   {
@@ -2434,7 +2717,7 @@ const CAR_COLORS = ['#ff9f8f', '#8fd0bd', '#b49ad1', '#ffd98f', '#9cc4ea', '#f7f
 const SHIRT_COLORS = ['#ff8f7e', '#7fc4ad', '#a98bd0', '#ffcf6e', '#86b5e6', '#f49ab8', '#ffffff'];
 const SKIN_TONES = ['#f6d5bd', '#e8b896', '#c98e6a', '#8d5a3f', '#f1c7a5'];
 
-return { TILE_W, TILE_H, DEFAULT_MAP_SIZE, SAVE_VERSION, DAY_LENGTH_SECONDS, SIM_STEP, PALETTE, BUILDING_VARIANTS, VARIANT_KEYS, STRUCTURES, WORKER_SHARE, ROAD_CAPACITY, SERVICES, COVERAGE_IDS, MILESTONES, SEVERITY_COLORS, TOOL_GROUPS, TOOLS, VIEWS, CAR_COLORS, SHIRT_COLORS, SKIN_TONES };
+return { TILE_W, TILE_H, DEFAULT_MAP_SIZE, SAVE_VERSION, DAY_LENGTH_SECONDS, SIM_STEP, PALETTE, BUILDING_VARIANTS, VARIANT_KEYS, STRUCTURES, WORKER_SHARE, ROAD_CAPACITY, SERVICES, COVERAGE_IDS, MILESTONES, COSTS, UPKEEP, TAX, BUSINESS_TAX, START_MONEY, SEVERITY_COLORS, TOOL_GROUPS, TOOLS, VIEWS, CAR_COLORS, SHIRT_COLORS, SKIN_TONES };
 })();
 
 // ---- state.js ----
@@ -2442,6 +2725,9 @@ const __mod_state = (() => {
 // City State: the single source of truth. Tiles own their world state; no drawing or timing logic lives here.
 
 const { STRUCTURES, VARIANT_KEYS, DEFAULT_MAP_SIZE } = __mod_config;
+// Structures that come in the four pastel colourways.
+const VARIANT_TYPES = new Set(['house', 'cottage', 'apartments', 'tower', 'shop', 'cafe', 'office', 'mall']);
+
 // Neighbour directions with the road-connection bit each one sets: N, E, S, W.
 const DIRS = [
   { dx: 0, dy: -1, bit: 1 },
@@ -2606,8 +2892,9 @@ class CityState {
 
   createStructure(type, rand = Math.random) {
     const s = { id: this.nextId++, type, residents: 0 };
-    if (type === 'house' || type === 'tower' || type === 'shop' || type === 'office') s.variant = VARIANT_KEYS[Math.floor(rand() * VARIANT_KEYS.length)];
+    if (VARIANT_TYPES.has(type)) s.variant = VARIANT_KEYS[Math.floor(rand() * VARIANT_KEYS.length)];
     if (type === 'tower') s.floors = 4 + Math.floor(rand() * 3);
+    if (type === 'apartments') s.floors = 3 + Math.floor(rand() * 2);
     if (type === 'office') s.floors = 3 + Math.floor(rand() * 3);
     if (type === 'tree') s.shape = Math.floor(rand() * 4);
     return s;
@@ -2711,7 +2998,7 @@ class CityState {
   }
 }
 
-return { DIRS, CityState };
+return { VARIANT_TYPES, DIRS, CityState };
 })();
 
 // ---- utils.js ----
@@ -2861,8 +3148,38 @@ const FACTORS = [
       return -0.14 * worst;
     },
   },
-  { id: 'pollution', label: 'Pollution', enabled: false, compute: () => 0 },
+  {
+    id: 'pollution',
+    label: 'Factory smoke',
+    enabled: true,
+    // Homes near a factory are less pleasant; the effect fades over about five tiles.
+    compute: (city, tile) => {
+      let worst = 0;
+      for (let dy = -4; dy <= 4; dy++) {
+        for (let dx = -4; dx <= 4; dx++) {
+          const n = city.getTile(tile.x + dx, tile.y + dy);
+          if (!n?.structure || !STRUCTURES[n.structure.type].pollution) continue;
+          worst = Math.max(worst, 1 - Math.hypot(dx, dy) / 5.5);
+        }
+      }
+      return -0.18 * worst;
+    },
+  },
   { id: 'safety', label: 'Safety', enabled: false, compute: () => 0 },
+  {
+    id: 'culture',
+    label: 'Artist nearby',
+    enabled: true,
+    // A Great Artist makes their street more appealing.
+    compute: (city, tile) => {
+      let best = 0;
+      for (const a of city.derived.notableEffects?.artists || []) {
+        const d = Math.hypot(a.x - tile.x, a.y - tile.y);
+        if (d <= 3.5) best = Math.max(best, 1 - d / 4.5);
+      }
+      return 0.08 * best;
+    },
+  },
   { id: 'overcrowding', label: 'Overcrowding', enabled: false, compute: () => 0 },
   { id: 'walkability', label: 'Walkability', enabled: false, compute: () => 0 },
   { id: 'utilities', label: 'Utilities', enabled: false, compute: () => 0 },
@@ -3088,7 +3405,7 @@ function computeCoverage(city) {
   for (const src of city.tiles) {
     const def = src.structure && STRUCTURES[src.structure.type];
     if (!def?.service) continue;
-    const r = def.radius;
+    const r = def.radius + (city.derived.notableEffects?.radius?.[def.service] || 0); // notable people widen it
     for (let dy = -r; dy <= r; dy++) {
       for (let dx = -r; dx <= r; dx++) {
         const t = city.getTile(src.x + dx, src.y + dy);
@@ -3584,6 +3901,7 @@ class AgentSystem {
       if (type === 'park') return 8;
       if (type === 'playground') return 7;
       if (type === 'field') return 6;
+      if (type === 'cafe') return 5;
       if (type === 'tree') return 2;
       if (type === 'road') return 0.15;
       return 0.4;
@@ -3709,6 +4027,9 @@ const CAREERS = {
   office: { titles: ['Office junior', 'Analyst', 'Team lead', 'Director'], pay: [26000, 38000, 52000, 80000], smarts: 45 },
   school: { titles: ['Teaching assistant', 'Teacher', 'Head teacher'], pay: [22000, 34000, 48000], smarts: 55 },
   clinic: { titles: ['Care assistant', 'Nurse', 'Doctor'], pay: [22000, 36000, 70000], smarts: 60 },
+  cafe: { titles: ['Barista', 'Café manager'], pay: [16000, 26000], smarts: 0 },
+  mall: { titles: ['Sales assistant', 'Floor manager', 'Mall director'], pay: [19000, 30000, 55000], smarts: 10 },
+  factory: { titles: ['Machine operator', 'Foreman', 'Plant manager'], pay: [24000, 34000, 60000], smarts: 20 },
 };
 
 const STAGES = [
@@ -6153,6 +6474,363 @@ class Milestones {
 return { tierFor, unlockTier, Milestones };
 })();
 
+// ---- economy.js ----
+const __mod_economy = (() => {
+// Town budget: taxes come in from residents, workers and businesses; upkeep goes out on roads,
+// schools, clinics and parks; building things costs money up front (except in Sandbox).
+// The balance and a daily ledger are saved in city.systems.economy. Per-building earnings are
+// derived each market refresh into tile.earning and city.derived.economy.
+
+const { STRUCTURES, COSTS, UPKEEP, TAX, BUSINESS_TAX, START_MONEY, WORKER_SHARE } = __mod_config;
+const KEEP_DAYS = 7;
+
+// The category a building's money shows up under in the budget.
+function categoryOf(type) {
+  const def = STRUCTURES[type];
+  if (!def) return null;
+  if (def.capacity) return 'homes';
+  if (BUSINESS_TAX[type]) return type;
+  if (UPKEEP[type]) return type;
+  return null;
+}
+
+const CATEGORY_LABELS = {
+  homes: 'Home taxes',
+  shop: 'Shops',
+  cafe: 'Cafés',
+  office: 'Offices',
+  mall: 'Malls',
+  factory: 'Factories',
+  road: 'Roads',
+  school: 'Schools',
+  clinic: 'Clinics',
+  park: 'Parks',
+  playground: 'Playgrounds',
+  field: 'Sports fields',
+};
+
+class Economy {
+  constructor(city) {
+    this.city = city;
+    this.modifiers = { businessTax: 1, buildCost: 1, upkeep: 1 }; // notable people can change these
+  }
+
+  get sandbox() {
+    return this.city.systems.mode === 'sandbox';
+  }
+
+  // Lazily created, so older saves start with a sensible balance.
+  get state() {
+    const s = this.city.systems;
+    if (!s.economy) s.economy = { money: START_MONEY.town, today: { day: this.city.day, income: 0, expenses: 0, built: 0 }, days: [] };
+    return s.economy;
+  }
+
+  get money() {
+    return this.state.money;
+  }
+
+  reset(start) {
+    this.city.systems.economy = { money: START_MONEY[start] ?? START_MONEY.town, today: { day: this.city.day, income: 0, expenses: 0, built: 0 }, days: [] };
+  }
+
+  // ---- Building costs -------------------------------------------------------------
+
+  costOf(tool) {
+    if (this.sandbox) return 0;
+    return Math.round((COSTS[tool] || 0) * (tool === 'bulldoze' ? 1 : this.modifiers.buildCost));
+  }
+
+  canAfford(amount) {
+    return this.sandbox || amount <= this.state.money;
+  }
+
+  // How many of `n` placements fit the budget.
+  affordable(tool, n) {
+    const c = this.costOf(tool);
+    if (!c) return n;
+    return Math.max(0, Math.min(n, Math.floor(this.state.money / c)));
+  }
+
+  spend(amount) {
+    if (!amount) return;
+    this.state.money -= amount;
+    this.state.today.built += amount;
+  }
+
+  refund(amount) {
+    if (!amount) return;
+    this.state.money += amount;
+    this.state.today.built -= amount;
+  }
+
+  // ---- Daily taxes and upkeep -----------------------------------------------------------
+
+  // Per-building earnings per day (positive = taxes in, negative = upkeep out), and the totals.
+  assess() {
+    const city = this.city;
+    const income = {};
+    const expenses = {};
+    const earners = [];
+    for (const t of city.tiles) {
+      t.earning = 0;
+      const s = t.structure;
+      if (!s) continue;
+      const def = STRUCTURES[s.type];
+      let e = 0;
+      if (def.capacity) {
+        const workers = Math.round(s.residents * WORKER_SHARE) * (t.employment || 0);
+        e = s.residents * TAX.resident + workers * TAX.worker;
+      } else if (BUSINESS_TAX[s.type]) {
+        e = (t.workersFilled || 0) * BUSINESS_TAX[s.type] * this.modifiers.businessTax;
+      } else if (UPKEEP[s.type]) {
+        e = -UPKEEP[s.type] * this.modifiers.upkeep;
+      }
+      if (!e) continue;
+      t.earning = e;
+      const cat = categoryOf(s.type);
+      if (e > 0) income[cat] = (income[cat] || 0) + e;
+      else expenses[cat] = (expenses[cat] || 0) - e;
+      if (s.type !== 'road') earners.push(t);
+    }
+    const sum = (o) => Object.values(o).reduce((a, b) => a + b, 0);
+    const totalIn = sum(income);
+    const totalOut = sum(expenses);
+    earners.sort((a, b) => b.earning - a.earning);
+    const result = {
+      income,
+      expenses,
+      totalIn,
+      totalOut,
+      net: totalIn - totalOut,
+      top: earners.filter((t) => t.earning > 0).slice(0, 5),
+      costly: earners.filter((t) => t.earning < 0).reverse().slice(0, 3).reverse(),
+    };
+    city.derived.economy = result;
+    return result;
+  }
+
+  // Money flows in and out continuously, a day's worth per in-game day.
+  update(dayFraction) {
+    const d = this.city.derived.economy;
+    if (!d || dayFraction <= 0) return;
+    const st = this.state;
+    st.money += d.net * dayFraction;
+    // Without Sandbox the town can't borrow: upkeep stops at zero (residents notice).
+    if (!this.sandbox && st.money < 0) st.money = 0;
+    st.today.income += d.totalIn * dayFraction;
+    st.today.expenses += d.totalOut * dayFraction;
+    if (this.city.day !== st.today.day) {
+      st.days.push({ day: st.today.day, income: Math.round(st.today.income), expenses: Math.round(st.today.expenses), built: Math.round(st.today.built) });
+      if (st.days.length > KEEP_DAYS) st.days.shift();
+      st.today = { day: this.city.day, income: 0, expenses: 0, built: 0 };
+    }
+  }
+}
+
+const money = (n) => `${n < 0 ? '−' : ''}$${Math.round(Math.abs(n)).toLocaleString()}`;
+
+return { categoryOf, CATEGORY_LABELS, Economy, money };
+})();
+
+// ---- notables.js ----
+const __mod_notables = (() => {
+// Notable people: like great people in Civilization, a famous resident is born in (or moves to) the
+// town when its buildings have earned enough "inspiration" of one kind. Schools inspire scientists,
+// clinics doctors, businesses merchants, factories engineers, parks and cafés artists, sports fields
+// athletes, and a growing population town planners. Each notable gives the whole town a bonus.
+//
+// Saved in city.systems.notables = { points: { type: n }, people: [...], nextId }.
+// Data-driven: add a type to NOTABLE_TYPES with its sources, its bonus text and its effect.
+
+const { STRUCTURES } = __mod_config;
+const { FIRST_NAMES, LAST_NAMES } = __mod_lifeData;
+const { addressOf } = __mod_streets;
+const { pick } = __mod_utils;
+const count = (city, types) => {
+  const set = new Set(Array.isArray(types) ? types : [types]);
+  let n = 0;
+  for (const t of city.tiles) if (t.structure && set.has(t.structure.type)) n++;
+  return n;
+};
+
+const NOTABLE_TYPES = [
+  {
+    id: 'scientist',
+    title: 'Great Scientist',
+    color: '#9cc4ea',
+    icon: '⚗',
+    attract: 'Schools and offices inspire scientists',
+    bonus: 'Schools reach 2 tiles further',
+    rate: (city) => 6 * count(city, 'school') + 1.5 * count(city, 'office'),
+  },
+  {
+    id: 'doctor',
+    title: 'Great Doctor',
+    color: '#8fd0a5',
+    icon: '✚',
+    attract: 'Clinics inspire doctors',
+    bonus: 'Clinics reach 2 tiles further',
+    rate: (city) => 8 * count(city, 'clinic'),
+  },
+  {
+    id: 'merchant',
+    title: 'Great Merchant',
+    color: '#ffd98f',
+    icon: '$',
+    attract: 'Shops, cafés, malls and offices inspire merchants',
+    bonus: 'Businesses pay 15% more tax',
+    rate: (city) => 1.5 * count(city, ['shop', 'cafe']) + 4 * count(city, 'mall') + 1 * count(city, 'office'),
+  },
+  {
+    id: 'engineer',
+    title: 'Great Engineer',
+    color: '#c9b8e8',
+    icon: '⚙',
+    attract: 'Factories and roads inspire engineers',
+    bonus: 'Everything costs 15% less to build',
+    rate: (city) => 6 * count(city, 'factory') + 0.08 * count(city, 'road'),
+  },
+  {
+    id: 'artist',
+    title: 'Great Artist',
+    color: '#f5a3b5',
+    icon: '✿',
+    attract: 'Parks and cafés inspire artists',
+    bonus: 'Homes near the artist are 8% more desirable',
+    rate: (city) => 2.5 * count(city, 'park') + 2 * count(city, 'cafe'),
+  },
+  {
+    id: 'athlete',
+    title: 'Great Athlete',
+    color: '#ff9f8f',
+    icon: '★',
+    attract: 'Sports fields and playgrounds inspire athletes',
+    bonus: 'Playgrounds, fields and cafés reach 2 tiles further',
+    rate: (city) => 7 * count(city, 'field') + 2.5 * count(city, 'playground'),
+  },
+  {
+    id: 'planner',
+    title: 'Great Town Planner',
+    color: '#b8e0d2',
+    icon: '⌂',
+    attract: 'A growing population inspires town planners',
+    bonus: 'Upkeep costs 15% less',
+    rate: (city) => (city.stats.population || 0) / 60,
+  },
+];
+const notableType = (id) => NOTABLE_TYPES.find((t) => t.id === id);
+
+// Inspiration needed for the next notable rises with every one the town already has.
+function threshold(people) {
+  return 30 + 25 * people;
+}
+
+class Notables {
+  constructor(city, { rng = Math.random } = {}) {
+    this.city = city;
+    this.rng = rng;
+  }
+
+  get state() {
+    const s = this.city.systems;
+    if (!s.notables) s.notables = { points: {}, people: [], nextId: 1 };
+    return s.notables;
+  }
+
+  get people() {
+    return this.state.people;
+  }
+
+  countOf(type) {
+    return this.people.filter((p) => p.type === type).length;
+  }
+
+  // Inspiration per day for each type, given what's built now.
+  rates() {
+    const out = {};
+    for (const t of NOTABLE_TYPES) out[t.id] = t.rate(this.city);
+    return out;
+  }
+
+  // Called with the fraction of a day that passed. Returns the newcomer, if one arrived.
+  update(dayFraction, rates = this.rates()) {
+    if (dayFraction <= 0) return null;
+    const st = this.state;
+    const need = threshold(st.people.length);
+    let ready = null;
+    for (const t of NOTABLE_TYPES) {
+      st.points[t.id] = (st.points[t.id] || 0) + (rates[t.id] || 0) * dayFraction;
+      if (st.points[t.id] >= need && (!ready || st.points[t.id] > st.points[ready.id])) ready = t;
+    }
+    if (!ready || !this.city.homes().length) return null;
+    st.points[ready.id] = 0;
+    return this.arrive(ready.id);
+  }
+
+  // A notable person is born into, or moves to, one of the town's homes.
+  arrive(typeId, { born = null } = {}) {
+    const st = this.state;
+    const type = notableType(typeId);
+    const homes = this.city
+      .homes()
+      .filter((h) => !st.people.some((p) => p.home && p.home.x === h.x && p.home.y === h.y))
+      .sort((a, b) => b.desirability - a.desirability);
+    const home = homes[0] || this.city.homes()[0] || null;
+    const wasBorn = born ?? (home?.structure.residents > 0 && this.rng() < 0.5);
+    const person = {
+      id: st.nextId++,
+      type: typeId,
+      first: pick(FIRST_NAMES, this.rng),
+      last: pick(LAST_NAMES, this.rng),
+      home: home ? { x: home.x, y: home.y } : null,
+      day: this.city.day,
+      born: wasBorn,
+    };
+    st.people.push(person);
+    this.city.emit('notable', { person, notable: type, address: home ? addressOf(home) : null });
+    return person;
+  }
+
+  // A notable whose home is bulldozed moves to another home (they don't leave town).
+  syncHomes() {
+    for (const p of this.people) {
+      const t = p.home && this.city.getTile(p.home.x, p.home.y);
+      if (t?.structure && STRUCTURES[t.structure.type].capacity) continue;
+      const next = this.city.homes().sort((a, b) => b.desirability - a.desirability)[0];
+      p.home = next ? { x: next.x, y: next.y } : null;
+    }
+  }
+
+  // Town-wide effects of everyone here. The first of a kind gives the most; more still help.
+  effects() {
+    const n = (id) => this.countOf(id);
+    const steps = (k, first, more, cap) => Math.min(cap, k ? first + (k - 1) * more : 0);
+    return {
+      radius: { school: steps(n('scientist'), 2, 1, 4), health: steps(n('doctor'), 2, 1, 4), fun: steps(n('athlete'), 2, 1, 4) },
+      businessTax: 1 + steps(n('merchant'), 0.15, 0.1, 0.45),
+      buildCost: 1 - steps(n('engineer'), 0.15, 0.1, 0.45),
+      upkeep: 1 - steps(n('planner'), 0.15, 0.1, 0.45),
+      artists: this.people.filter((p) => p.type === 'artist' && p.home).map((p) => p.home),
+    };
+  }
+
+  // Progress towards the next notable of each kind, best first.
+  progress(rates = this.rates()) {
+    const need = threshold(this.people.length);
+    return NOTABLE_TYPES.map((t) => {
+      const pts = this.state.points[t.id] || 0;
+      const rate = rates[t.id] || 0;
+      return { type: t, points: pts, need, fraction: Math.min(1, pts / need), rate, days: rate > 0 ? Math.max(0, (need - pts) / rate) : Infinity };
+    }).sort((a, b) => a.days - b.days || b.fraction - a.fraction);
+  }
+}
+
+const fullName = (p) => `${p.first} ${p.last}`;
+
+return { NOTABLE_TYPES, notableType, threshold, Notables, fullName };
+})();
+
 // ---- roadPlanner.js ----
 const __mod_roadPlanner = (() => {
 // Road planner: when a street is jammed, find a new stretch of road that would actually ease it.
@@ -6510,6 +7188,18 @@ function computeThoughts(city, milestones) {
     );
   }
 
+  // Money: only a worry outside Sandbox.
+  const econ = city.derived.economy;
+  const purse = city.systems.economy;
+  if (econ && purse && city.systems.mode !== 'sandbox') {
+    const costly = econ.costly?.[0];
+    if (econ.net < 0) {
+      add('budget', purse.money < -econ.net * 2 ? 'bad' : 'caution', 4.5, `The town spends ${Math.round(-econ.net)} dollars a day more than it earns.`, 'More homes and workplaces bring in taxes; services and parks cost upkeep', costly || null, costly ? [costly] : []);
+    } else if (purse.money < 200 && econ.net < 100) {
+      add('budget', 'caution', 2.5, 'The town is nearly out of money.', 'Taxes come in every day; homes and businesses pay the most', econ.top?.[0] || null, econ.top?.[0] ? [econ.top[0]] : []);
+    }
+  }
+
   if (unlocked('clinic')) {
     const far = lived.filter((h) => (h.coverage.health || 0) < 0.1);
     if (far.length) add('health', 'caution', 2.5, "There's no clinic if someone gets sick.", 'Build a clinic', worstOf(far), far);
@@ -6589,6 +7279,8 @@ const { AgentSystem } = __mod_agents;
 const { LifeSystem } = __mod_life;
 const { WeatherSystem } = __mod_weather;
 const { Milestones } = __mod_milestones;
+const { Economy } = __mod_economy;
+const { Notables } = __mod_notables;
 const { computeThoughts } = __mod_advisor;
 const { daylightAt } = __mod_time;
 const { clamp, pickWeighted } = __mod_utils;
@@ -6602,6 +7294,9 @@ class Simulation {
     this.life = new LifeSystem(city);
     this.weather = new WeatherSystem(city);
     this.milestones = new Milestones(city);
+    this.economy = new Economy(city);
+    this.notables = new Notables(city);
+    this._notableRates = null;
     this._thoughtTimer = 0;
     this._streetsRev = -1;
     this.speed = 1; // 0 pauses; 1–3 run faster
@@ -6623,6 +7318,8 @@ class Simulation {
       this._acc -= SIM_STEP;
       this.tick();
     }
+    this.economy.update(step / DAY_LENGTH_SECONDS);
+    if (this._notableRates && this.notables.update(step / DAY_LENGTH_SECONDS, this._notableRates)) city.dirty = true; // their bonuses apply now
     this.weather.update(step);
     this.agents.update(step, daylightAt(city.clock));
     this.life.update(step);
@@ -6634,9 +7331,15 @@ class Simulation {
     this.updateStreets();
     // Jobs, traffic and desirability feed each other, so refresh them together about once a second.
     if (city.dirty || this._marketTimer <= 0) {
-      if (city.dirty) computeCoverage(city);
+      if (city.dirty) {
+        this.notables.syncHomes();
+        this.applyNotables();
+        computeCoverage(city);
+      }
       city.derived.labor = computeLaborMarket(city);
       recomputeDesirability(city);
+      this.economy.assess();
+      this._notableRates = this.notables.rates();
       this._marketTimer = 1;
     }
     this.updateHousing();
@@ -6654,12 +7357,23 @@ class Simulation {
   refresh() {
     this._streetsRev = -1;
     this.updateStreets();
+    this.notables.syncHomes();
+    this.applyNotables();
     computeCoverage(this.city);
     this.city.derived.labor = computeLaborMarket(this.city);
     recomputeDesirability(this.city);
+    this.economy.assess();
+    this._notableRates = this.notables.rates();
     this.updateStats();
     void this.milestones.state; // settle the starting title without a celebration
     this.city.derived.thoughts = computeThoughts(this.city, this.milestones);
+  }
+
+  // Notable people's bonuses: wider coverage, cheaper building, more tax, less upkeep.
+  applyNotables() {
+    const fx = this.notables.effects();
+    this.city.derived.notableEffects = fx;
+    Object.assign(this.economy.modifiers, { businessTax: fx.businessTax, buildCost: fx.buildCost, upkeep: fx.upkeep });
   }
 
   // Trends for the City panel: a sample every three in-game hours, the last six days kept.
@@ -6668,6 +7382,7 @@ class Simulation {
     const city = this.city;
     const slot = Math.floor((city.day + city.clock) * TREND_SAMPLES_PER_DAY);
     const tr = (city.systems.trends ||= { slot: -1, t: [], pop: [], happy: [], employ: [], traffic: [] });
+    tr.money ||= [];
     if (tr.slot === slot) return;
     tr.slot = slot;
     const s = city.stats;
@@ -6676,7 +7391,9 @@ class Simulation {
     tr.happy.push(s.homes ? s.happiness : 0);
     tr.employ.push(Math.round((s.employment ?? 1) * 100));
     tr.traffic.push(Math.round((s.traffic || 0) * 100));
-    for (const k of ['t', 'pop', 'happy', 'employ', 'traffic']) if (tr[k].length > TREND_KEEP) tr[k].splice(0, tr[k].length - TREND_KEEP);
+    tr.money.push(Math.round(this.economy.money));
+    while (tr.money.length < tr.t.length) tr.money.unshift(tr.money[0]); // older saves had no money trend
+    for (const k of ['t', 'pop', 'happy', 'employ', 'traffic', 'money']) if (tr[k].length > TREND_KEEP) tr[k].splice(0, tr[k].length - TREND_KEEP);
   }
 
   // Street names and addresses follow the map; recompute only when a tile changed.
@@ -7010,6 +7727,7 @@ const { lit, litA, rgba, mixHex } = __mod_color;
 const { clamp, hash2 } = __mod_utils;
 const { shortName, addressOf } = __mod_streets;
 const { rampStops, settings } = __mod_settings;
+const { notableType } = __mod_notables;
 const SLAB_DEPTH = 18;
 // Unlit lighting for the cached ground layer; the frame's real light is multiplied on afterwards.
 const NEUTRAL_LIGHT = { ambient: [1, 1, 1], daylight: 1, windowLit: 0, lamps: 0, shadow: { alpha: 0 }, clock: 0.5 };
@@ -7101,6 +7819,12 @@ function growthOf(t, ghost = false) {
     if (ghost) return { floors: total };
     const occ = s.residents / STRUCTURES.tower.capacity;
     return { floors: Math.max(2, Math.min(total, Math.ceil(total * (0.3 + 0.7 * occ)))) };
+  }
+  if (s.type === 'apartments') {
+    const total = s.floors || 3;
+    if (ghost) return { floors: total };
+    const occ = s.residents / STRUCTURES.apartments.capacity;
+    return { floors: Math.max(2, Math.min(total, Math.ceil(total * (0.4 + 0.6 * occ)))) };
   }
   if (s.type === 'office') {
     const total = s.floors || 4;
@@ -8306,6 +9030,11 @@ class Renderer {
     if (s.type === 'office') return { inset: 0.14, h: 8 + growthOf(t).floors * 12 };
     if (s.type === 'school') return { inset: 0.12, h: 26 };
     if (s.type === 'clinic') return { inset: 0.15, h: 24 };
+    if (s.type === 'cottage') return { inset: 0.27, h: 18 };
+    if (s.type === 'apartments') return { inset: 0.15, h: 8 + growthOf(t).floors * 10 };
+    if (s.type === 'cafe') return { inset: 0.24, h: 14 };
+    if (s.type === 'mall') return { inset: 0.06, h: 20 };
+    if (s.type === 'factory') return { inset: 0.1, h: 22 };
     return null;
   }
 
@@ -8383,6 +9112,16 @@ class Renderer {
         return this.drawTower(ctx, x, y, s, L, ghost);
       case 'shop':
         return this.drawShop(ctx, x, y, s, L, ghost);
+      case 'cottage':
+        return this.drawCottage(ctx, x, y, s, L, ghost);
+      case 'apartments':
+        return this.drawApartments(ctx, x, y, s, L, ghost);
+      case 'cafe':
+        return this.drawCafe(ctx, x, y, s, L, ghost);
+      case 'mall':
+        return this.drawMall(ctx, x, y, s, L, ghost);
+      case 'factory':
+        return this.drawFactory(ctx, x, y, s, L, ghost);
       case 'office':
         return this.drawOffice(ctx, x, y, s, L, ghost);
       case 'school':
@@ -8761,6 +9500,237 @@ class Renderer {
     ctx.fillStyle = lit(v.roof, 0.85, L);
     poly(ctx, this.faceQuad('L', x0 + 0.12, y1 - 0.1, x1 - 0.12, y1 - 0.04, 0.12, 0.88, h + 1.6, h + 4.4));
     ctx.fill();
+  }
+
+  // A little cottage: low walls, a steep roof, a chimney and a round window.
+  drawCottage(ctx, x, y, s, L, ghost) {
+    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.blush;
+    const x0 = x + 0.27;
+    const x1 = x + 0.73;
+    const y0 = y + 0.29;
+    const y1 = y + 0.71;
+    const h = 9;
+    const top = h + 11;
+    const occ = ghost ? 0 : s.residents / STRUCTURES.cottage.capacity;
+    this.drawBox(ctx, L, x0, y0, x1, y1, 0, h, v.wall, false);
+    const xm = (x0 + x1) / 2;
+    const o = 0.04;
+    const roof = this.roofColor(v.roof);
+    ctx.fillStyle = lit(v.wall, 0.92, L);
+    poly(ctx, [[x0, y1, h], [x1, y1, h], [xm, y1, top]]);
+    ctx.fill();
+    ctx.fillStyle = lit(roof, 1.05, L);
+    poly(ctx, [[x0 - o, y0 - o, h], [x0 - o, y1 + o, h], [xm, y1 + o, top], [xm, y0 - o, top]]);
+    ctx.fill();
+    ctx.fillStyle = lit(roof, 0.82, L);
+    poly(ctx, [[x1 + o, y0 - o, h], [x1 + o, y1 + o, h], [xm, y1 + o, top], [xm, y0 - o, top]]);
+    ctx.fill();
+    // Door and a round attic window on the gable.
+    ctx.fillStyle = lit(v.roof, 0.7, L);
+    poly(ctx, this.faceQuad('L', x0, y0, x1, y1, 0.38, 0.62, 0, 6.5));
+    ctx.fill();
+    const w = gridToWorld(xm, y1, h + 4.5);
+    const isLit = this.isWindowLit(x, y, 0, occ, L);
+    ctx.fillStyle = isLit ? lit(PALETTE.windowLit, 1.1, NEUTRAL_LIGHT) : lit(PALETTE.glass, 0.95, L);
+    ctx.beginPath();
+    ctx.arc(w.x, w.y, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+    if (isLit) this.glows.push({ x: w.x, y: w.y, r: 7, a: 0.35 * L.windowLit, rgb: '255,226,154' });
+    this.drawWindow(ctx, L, this.faceQuad('R', x0, y0, x1, y1, 0.25, 0.75, 3, 7.5), 0.8, this.isWindowLit(x, y, 1, occ, L));
+    this.drawBox(ctx, L, xm + 0.06, y0 + 0.06, xm + 0.13, y0 + 0.13, top - 7, 8, v.trim);
+  }
+
+  // Apartments: a mid-rise block with balconies on every floor and a railing round the roof.
+  drawApartments(ctx, x, y, s, L, ghost) {
+    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.mint;
+    const tile = this.city.getTile(x, y);
+    const floors = ghost || !tile ? s.floors || 3 : growthOf(tile).floors;
+    const x0 = x + 0.15;
+    const x1 = x + 0.85;
+    const y0 = y + 0.15;
+    const y1 = y + 0.85;
+    const fh = 10;
+    const h = 6 + floors * fh;
+    const occ = ghost ? 0 : s.residents / STRUCTURES.apartments.capacity;
+    this.drawBox(ctx, L, x0, y0, x1, y1, 0, h, v.wall);
+    let wi = 0;
+    for (let f = 0; f < floors; f++) {
+      const v0 = 4 + f * fh;
+      for (const face of ['L', 'R']) {
+        for (let k = 0; k < 2; k++) {
+          const u0 = 0.14 + k * 0.44;
+          this.drawWindow(ctx, L, this.faceQuad(face, x0, y0, x1, y1, u0, u0 + 0.28, v0 + 1.5, v0 + 7), face === 'L' ? 0.94 : 0.82, this.isWindowLit(x, y, wi++, occ, L));
+        }
+      }
+      // A balcony slab with a railing on the front face.
+      ctx.fillStyle = lit(v.trim, 0.98, L);
+      poly(ctx, [
+        [x0 + 0.08, y1, v0],
+        [x0 + 0.4, y1, v0],
+        [x0 + 0.4, y1 + 0.07, v0],
+        [x0 + 0.08, y1 + 0.07, v0],
+      ]);
+      ctx.fill();
+      ctx.strokeStyle = lit(v.trim, 0.85, L);
+      ctx.lineWidth = 0.7;
+      poly(ctx, [
+        [x0 + 0.08, y1 + 0.07, v0 + 2.5],
+        [x0 + 0.4, y1 + 0.07, v0 + 2.5],
+      ]);
+      ctx.stroke();
+    }
+    // Roof railing.
+    ctx.strokeStyle = lit(v.trim, 1, L);
+    ctx.lineWidth = 0.8;
+    poly(ctx, [
+      [x0 + 0.02, y0 + 0.02, h + 2.5],
+      [x1 - 0.02, y0 + 0.02, h + 2.5],
+      [x1 - 0.02, y1 - 0.02, h + 2.5],
+      [x0 + 0.02, y1 - 0.02, h + 2.5],
+    ]);
+    ctx.stroke();
+    this.drawBox(ctx, L, x0 + 0.42, y0 + 0.1, x0 + 0.58, y0 + 0.26, h, 5, v.trim);
+  }
+
+  // A café: a small shopfront with an awning and tables with parasols on the pavement.
+  drawCafe(ctx, x, y, s, L, ghost) {
+    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.peach;
+    const x0 = x + 0.24;
+    const x1 = x + 0.78;
+    const y0 = y + 0.18;
+    const y1 = y + 0.6;
+    const h = 13;
+    const fill = this.workFill(x, y, s, ghost);
+    this.drawBox(ctx, L, x0, y0, x1, y1, 0, h, v.wall);
+    const open = !ghost && fill > 0 && this.shopOpen(L) && L.windowLit > 0.05;
+    this.drawWindow(ctx, L, this.faceQuad('L', x0, y0, x1, y1, 0.1, 0.7, 2, 8.5), 0.92, open);
+    for (let i = 0; i < 4; i++) {
+      const a = x0 + ((x1 - x0) * i) / 4;
+      const b = x0 + ((x1 - x0) * (i + 1)) / 4;
+      ctx.fillStyle = lit(i % 2 ? '#ffffff' : v.roof, 1, L);
+      poly(ctx, [[a, y1, 11], [b, y1, 11], [b, y1 + 0.1, 8], [a, y1 + 0.1, 8]]);
+      ctx.fill();
+    }
+    // A coffee cup sign on the roof.
+    const c = gridToWorld((x0 + x1) / 2, (y0 + y1) / 2, h + 5);
+    ctx.fillStyle = lit('#ffffff', 1, L);
+    ctx.beginPath();
+    ctx.roundRect(c.x - 3, c.y - 2.5, 6, 5, 1.5);
+    ctx.fill();
+    ctx.strokeStyle = lit('#ffffff', 1, L);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(c.x + 3.2, c.y, 1.4, -Math.PI / 2, Math.PI / 2);
+    ctx.stroke();
+    ctx.fillStyle = lit(v.roof, 0.8, L);
+    ctx.fillRect(c.x - 2, c.y - 1.2, 4, 1.2);
+    // Two tables with parasols out front.
+    for (const [gx, gy] of [
+      [x + 0.36, y + 0.8],
+      [x + 0.66, y + 0.82],
+    ]) {
+      const p = gridToWorld(gx, gy);
+      ctx.fillStyle = lit('#ffffff', 0.92, L);
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y - 3, 2.6, 1.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = lit('#b0a8c4', 1, L);
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x, p.y - 9);
+      ctx.stroke();
+      ctx.fillStyle = lit(v.roof, 1, L);
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y - 9, 4.4, 2.2, 0, Math.PI, 0);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // A mall: a wide, low block with a glass entrance, a coloured sign band and rooftop units.
+  drawMall(ctx, x, y, s, L, ghost) {
+    const v = BUILDING_VARIANTS[s.variant] || BUILDING_VARIANTS.lavender;
+    const x0 = x + 0.06;
+    const x1 = x + 0.94;
+    const y0 = y + 0.08;
+    const y1 = y + 0.9;
+    const h = 18;
+    const fill = this.workFill(x, y, s, ghost);
+    this.drawBox(ctx, L, x0, y0, x1, y1, 0, h, v.trim);
+    const open = !ghost && fill > 0 && this.shopOpen(L) && L.windowLit > 0.05;
+    // Sign band across the top of both faces.
+    ctx.fillStyle = lit(v.wall, 1, L);
+    poly(ctx, this.faceQuad('L', x0, y0, x1, y1, 0, 1, h - 5, h));
+    ctx.fill();
+    ctx.fillStyle = lit(v.wall, 0.82, L);
+    poly(ctx, this.faceQuad('R', x0, y0, x1, y1, 0, 1, h - 5, h));
+    ctx.fill();
+    // Glass entrance and display windows.
+    this.drawWindow(ctx, L, this.faceQuad('L', x0, y0, x1, y1, 0.36, 0.64, 0, 10), 0.95, open);
+    this.drawWindow(ctx, L, this.faceQuad('L', x0, y0, x1, y1, 0.06, 0.3, 3, 10), 0.92, open);
+    this.drawWindow(ctx, L, this.faceQuad('L', x0, y0, x1, y1, 0.7, 0.94, 3, 10), 0.92, open);
+    this.drawWindow(ctx, L, this.faceQuad('R', x0, y0, x1, y1, 0.1, 0.9, 3, 10), 0.8, open && hash2(x, y, 7) < 0.8);
+    // Rooftop air-conditioning units and a skylight.
+    this.drawBox(ctx, L, x0 + 0.12, y0 + 0.14, x0 + 0.28, y0 + 0.3, h, 4, '#e8e4ee');
+    this.drawBox(ctx, L, x1 - 0.3, y0 + 0.14, x1 - 0.14, y0 + 0.3, h, 4, '#e8e4ee');
+    ctx.fillStyle = lit(PALETTE.glass, 1.05, L);
+    poly(ctx, [
+      [x0 + 0.3, y0 + 0.42, h + 0.2],
+      [x1 - 0.3, y0 + 0.42, h + 0.2],
+      [x1 - 0.3, y1 - 0.18, h + 0.2],
+      [x0 + 0.3, y1 - 0.18, h + 0.2],
+    ]);
+    ctx.fill();
+  }
+
+  // A factory: a sawtooth roof, a tall chimney and smoke while people are at work.
+  drawFactory(ctx, x, y, s, L, ghost) {
+    const x0 = x + 0.1;
+    const x1 = x + 0.9;
+    const y0 = y + 0.14;
+    const y1 = y + 0.86;
+    const h = 14;
+    const wall = '#d9d2e3';
+    const fill = this.workFill(x, y, s, ghost);
+    this.drawBox(ctx, L, x0, y0, x1, y1, 0, h, wall, false);
+    // Sawtooth roof: three ridges running front to back.
+    const teeth = 3;
+    for (let i = 0; i < teeth; i++) {
+      const a = x0 + ((x1 - x0) * i) / teeth;
+      const b = x0 + ((x1 - x0) * (i + 1)) / teeth;
+      ctx.fillStyle = lit('#b8aed0', 0.96, L);
+      poly(ctx, [[a, y0, h], [a, y1, h], [b, y1, h + 7], [b, y0, h + 7]]);
+      ctx.fill();
+      ctx.fillStyle = lit(PALETTE.glass, 0.82, L);
+      poly(ctx, [[b, y0, h], [b, y1, h], [b, y1, h + 7], [b, y0, h + 7]]);
+      ctx.fill();
+      ctx.fillStyle = lit(wall, 0.9, L);
+      poly(ctx, [[a, y1, h], [b, y1, h], [b, y1, h + 7]]);
+      ctx.fill();
+    }
+    // Loading door and windows.
+    ctx.fillStyle = lit('#a99fc2', 0.85, L);
+    poly(ctx, this.faceQuad('L', x0, y0, x1, y1, 0.1, 0.36, 0, 8));
+    ctx.fill();
+    const working = !ghost && fill > 0 && L.clock > 0.27 && L.clock < 0.78;
+    this.drawWindow(ctx, L, this.faceQuad('L', x0, y0, x1, y1, 0.5, 0.9, 5, 10), 0.92, working && L.windowLit > 0.05);
+    this.drawWindow(ctx, L, this.faceQuad('R', x0, y0, x1, y1, 0.15, 0.85, 5, 10), 0.8, working && L.windowLit > 0.05);
+    // Chimney.
+    const cx0 = x1 - 0.2;
+    const cy0 = y0 + 0.06;
+    this.drawBox(ctx, L, cx0, cy0, cx0 + 0.1, cy0 + 0.1, 0, 34, '#e9a89a');
+    this.drawBox(ctx, L, cx0 - 0.01, cy0 - 0.01, cx0 + 0.11, cy0 + 0.11, 30, 3, '#ffffff');
+    if (working && !this.reduceMotion) {
+      const top = gridToWorld(cx0 + 0.05, cy0 + 0.05, 36);
+      for (let i = 0; i < 4; i++) {
+        const t = (this.time * 0.35 + i / 4 + hash2(x, y, 3)) % 1;
+        ctx.fillStyle = litA('#f4f1f7', 1, L, (0.6 * (1 - t)).toFixed(3));
+        ctx.beginPath();
+        ctx.arc(top.x + t * 10 + Math.sin(t * 6) * 2, top.y - t * 22, 2.5 + t * 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
   }
 
   drawOffice(ctx, x, y, s, L, ghost) {
@@ -9258,7 +10228,43 @@ class Renderer {
   }
 
   // Pins over the Life Story character's home and workplace, drawn above everything else.
+  // Badges over the homes of notable people: their type's colour and symbol, gently bobbing.
+  drawNotables(ctx) {
+    const people = this.city.systems.notables?.people;
+    if (!people?.length) return;
+    const z = Math.max(0.7, 1 / Math.sqrt(this.camera.zoom));
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `800 ${(8 * z).toFixed(1)}px system-ui, -apple-system, sans-serif`;
+    people.forEach((p, i) => {
+      if (!p.home) return;
+      const t = this.city.getTile(p.home.x, p.home.y);
+      const type = notableType(p.type);
+      if (!t || !type) return;
+      const f = t.structure ? this.footprint(t) : null;
+      const bob = this.reduceMotion ? 0 : Math.sin(this.time * 2 + i) * 1.5;
+      const pos = gridToWorld(p.home.x + 0.5, p.home.y + 0.5, (f?.h || 12) + 10 + bob);
+      const r = 6 * z;
+      ctx.fillStyle = 'rgba(52,44,96,0.22)';
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y + 1.5 * z, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = type.color;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.6 * z;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#3d3557';
+      ctx.fillText(type.icon, pos.x, pos.y + 0.5 * z);
+    });
+    ctx.restore();
+  }
+
   drawLifePins(ctx, L) {
+    this.drawNotables(ctx);
     this.homeTag = null;
     const c = this.city.systems.life?.char;
     if (!c?.alive) return;
@@ -9887,11 +10893,10 @@ const __mod_share = (() => {
 // visitor's simulation grows the town again from its buildings.
 
 const { STRUCTURES, VARIANT_KEYS } = __mod_config;
-const { CityState } = __mod_state;
+const { CityState, VARIANT_TYPES } = __mod_state;
 const FORMAT = 1;
 const TYPES = Object.keys(STRUCTURES); // a type's code is its index + 1; 0 means empty
 const HASH_KEY = 'town=';
-const VARIANT_TYPES = new Set(['house', 'tower', 'shop', 'office']); // as CityState.createStructure
 
 // Two bytes per tile: [water flag | type code] and [variant | shape | floors].
 function packCity(city) {
@@ -10225,17 +11230,30 @@ function generateTown(city, seed = (Math.random() * 2 ** 32) >>> 0, { town = tru
     const onAvenue = t.x === cx + 1 || t.x === cx - 1 || t.y === cy + 1 || t.y === cy - 1;
     const r = rand();
     if (d <= 3) {
-      if (r < 0.32) place(t.x, t.y, 'tower');
-      else if (r < 0.6) place(t.x, t.y, 'office');
-      else if (r < 0.86) place(t.x, t.y, 'shop');
-    } else if (d <= 7) {
-      if (onAvenue && r < 0.25) place(t.x, t.y, 'shop');
-      else if (r < 0.12) place(t.x, t.y, 'tower');
-      else if (r < 0.2) place(t.x, t.y, 'office');
-      else if (r < 0.82) place(t.x, t.y, 'house');
+      if (r < 0.28) place(t.x, t.y, 'tower');
+      else if (r < 0.52) place(t.x, t.y, 'office');
+      else if (r < 0.72) place(t.x, t.y, 'shop');
+      else if (r < 0.82) place(t.x, t.y, 'cafe');
+      else if (r < 0.92) place(t.x, t.y, 'apartments');
+    } else if (d <= Math.max(4, half - 1)) {
+      if (onAvenue && r < 0.2) place(t.x, t.y, 'shop');
+      else if (onAvenue && r < 0.28) place(t.x, t.y, 'cafe');
+      else if (r < 0.38) place(t.x, t.y, 'apartments');
+      else if (r < 0.46) place(t.x, t.y, 'tower');
+      else if (r < 0.52) place(t.x, t.y, 'office');
+      else if (r < 0.92) place(t.x, t.y, 'house');
     } else if (r < (onAvenue ? 0.12 : 0.03)) place(t.x, t.y, 'shop');
-    else if (r < 0.74) place(t.x, t.y, 'house');
+    else if (r < 0.62) place(t.x, t.y, 'house');
+    else if (r < 0.95) place(t.x, t.y, 'cottage');
   }
+
+  // A mall downtown and a factory out on the edge of town, away from most homes.
+  const downtown = lots.filter((t) => isEmpty(t.x, t.y) || ['shop', 'house'].includes(tile(t.x, t.y).structure?.type)).filter((t) => ring(t.x, t.y) <= 4);
+  const mallSpot = downtown.sort(() => rand() - 0.5)[0];
+  if (mallSpot) place(mallSpot.x, mallSpot.y, 'mall');
+  const edge = lots.filter((t) => ring(t.x, t.y) >= half - 1 && (isEmpty(t.x, t.y) || tile(t.x, t.y).structure?.type === 'cottage'));
+  const factorySpot = edge.sort(() => rand() - 0.5)[0];
+  if (factorySpot) place(factorySpot.x, factorySpot.y, 'factory');
 
   // A school and a clinic on opposite sides of downtown.
   const serviceSpot = (sx, sy) => {
@@ -10385,6 +11403,8 @@ const __mod_ui = (() => {
 // Reads city state for display; changes only go through the callbacks main.js provides.
 
 const { TOOL_GROUPS, TOOLS, VIEWS, STRUCTURES, SERVICES } = __mod_config;
+const { money } = __mod_economy;
+const { notableType } = __mod_notables;
 const { FACTORS } = __mod_desirability;
 const { formatClock } = __mod_time;
 const { workersIn } = __mod_labor;
@@ -10410,6 +11430,11 @@ const ICONS = {
   pause: svg('<path d="M9 5v14M15 5v14" stroke-width="2.6"/>'),
   play: svg('<path d="M7 4.5v15l12-7.5z"/>'),
   layers: svg('<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 12.5 9 5 9-5"/><path d="m3 17 9 5 9-5"/>'),
+  cottage: svg('<path d="M5 12 12 6l7 6"/><path d="M7 11v8h10v-8"/><path d="M11 19v-4h2v4"/><path d="M15.5 8V5.5h2V10"/>'),
+  apartments: svg('<rect x="5" y="4" width="14" height="17" rx="1.5"/><path d="M8.5 8h2M13.5 8h2M8.5 12h2M13.5 12h2M8.5 16h2M13.5 16h2"/>'),
+  cafe: svg('<path d="M5 10h11v4a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z"/><path d="M16 11h1.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3.5c0 1.5 1.5 1.5 1.5 3M12 3.5c0 1.5 1.5 1.5 1.5 3"/>'),
+  mall: svg('<path d="M3 10h18v10H3z"/><path d="M5 10 7 5h10l2 5"/><path d="M10 20v-5h4v5"/><path d="M6 13h2M16 13h2"/>'),
+  factory: svg('<path d="M3 20V11l5 3v-3l5 3v-3l5 3V4h3v16z"/><path d="M7 17h2M12 17h2"/>'),
   lock: svg('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'),
   playground: svg('<path d="M4 20 7 6h3l3 14"/><path d="M5.5 13h6"/><path d="M14 8h6v12"/><path d="M14 8c0 5 2 8 6 9"/>'),
   field: svg('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/><circle cx="12" cy="12" r="2.5"/><path d="M3 9.5h2.5v5H3M21 9.5h-2.5v5H21"/>'),
@@ -10433,8 +11458,10 @@ const LEGENDS = {
 const pct = (v) => `${Math.round(v * 100)}%`;
 
 class Interface {
-  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect, sound, locks, onShare, onBackHome, hasBackup, display }) {
+  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect, sound, locks, onShare, onBackHome, hasBackup, display, costOf, budget }) {
     this.sound = sound;
+    this.costOf = costOf || (() => 0); // tool → price in the current mode (0 in Sandbox)
+    this.budget = budget; // () → { money, net, sandbox } for the stats bubble
     this.onShare = onShare;
     this.onBackHome = onBackHome;
     this.hasBackup = hasBackup || (() => false);
@@ -10555,7 +11582,8 @@ class Interface {
         (t) =>
           `<button type="button" class="tray-item${this.locked(t.id) ? ' locked' : ''}" data-tool="${t.id}" aria-pressed="${t.id === this.tool}"` +
           `${this.locked(t.id) ? ` aria-label="${t.label}, locked until ${this.locks.unlockLabel(t.id)}"` : ''}>` +
-          `<span class="tool-icon tint-${t.id}">${ICONS[t.id]}</span><span>${t.label}</span><kbd>${t.key.toUpperCase()}</kbd>` +
+          `<span class="tool-icon tint-${t.id}">${ICONS[t.id]}</span><span>${t.label}</span>` +
+          (this.costOf(t.id) ? `<small class="price">${money(this.costOf(t.id))}</small>` : `<kbd>${t.key.toUpperCase()}</kbd>`) +
           `${this.locked(t.id) ? `<span class="lock" aria-hidden="true">${ICONS.lock}</span>` : ''}</button>`
       )
       .join('');
@@ -10591,7 +11619,8 @@ class Interface {
       const g = TOOL_GROUPS.find((x) => x.id === b.dataset.group);
       const choice = TOOLS.find((t) => t.id === this.groupChoice[g.id]);
       b.setAttribute('aria-pressed', String(g.id === group.id));
-      b.title = g.tools.length > 1 ? `${g.label}: ${choice.label} (${choice.key.toUpperCase()})` : `${choice.label} (${choice.key.toUpperCase()})`;
+      const price = this.costOf(choice.id) ? ` · ${money(this.costOf(choice.id))}` : '';
+      b.title = g.tools.length > 1 ? `${g.label}: ${choice.label} (${choice.key.toUpperCase()})${price}` : `${choice.label} (${choice.key.toUpperCase()})${price}`;
       b.innerHTML =
         `<span class="tool-icon tint-${choice.id}">${ICONS[choice.id]}</span>` +
         `<span class="tool-label">${g.tools.length > 1 ? choice.label : g.label}</span>` +
@@ -10751,6 +11780,14 @@ class Interface {
     const work = s.jobs ? ` · ${pct(s.employment ?? 1)} employed` : '';
     const w = city.derived.weather;
     const sky = w && w.kind !== 'clear' ? ` · ${WEATHER_LABELS[w.kind]}` : '';
+    if (this.budget) {
+      const b = this.budget();
+      set('money', document.getElementById('stat-money'), b.sandbox ? `${money(b.money)} · Sandbox` : money(b.money));
+      const net = Math.round(b.net);
+      const netEl = document.getElementById('stat-net');
+      set('net', netEl, `${net >= 0 ? '▲' : '▼'} ${money(Math.abs(net))}/day`);
+      netEl.classList.toggle('down', net < 0);
+    }
     set('clock', this.clockEl, `${seasonFor(city.day).label} · Day ${city.day} · ${formatClock(city.clock)}${sky}${work}`);
   }
 
@@ -10774,6 +11811,10 @@ class Interface {
     }
     if (def?.jobs) facts.push(['Jobs filled', `${t.workersFilled} of ${def.jobs}`]);
     if (def?.service) facts.push(['Covers', `${def.radius} tiles around it`]);
+    for (const p of city.systems.notables?.people || []) {
+      if (p.home && p.home.x === t.x && p.home.y === t.y) facts.push(['Home of', `${p.first} ${p.last}, ${notableType(p.type)?.title || ''}`]);
+    }
+    if (t.earning) facts.push([t.earning > 0 ? 'Pays in taxes' : 'Upkeep', `${money(Math.abs(t.earning))}/day`]);
     if (s?.type === 'road') facts.push(['Traffic', t.congestion < 0.02 ? 'Clear' : `${pct(t.congestion)} busy`]);
     if (!city.accessRoad(t.x, t.y) && def && !def.walkable) facts.push(['Road access', 'None nearby']);
     const showFactors = t.terrain !== 'water' && s?.type !== 'road';
@@ -11199,6 +12240,62 @@ class LifeInterface {
 return { avatarSVG, LifeInterface };
 })();
 
+// ---- notablesUI.js ----
+const __mod_notablesUI = (() => {
+// Notable people section of the City panel: who lives here (with their bonus and a Show me), and
+// who is likely to arrive next, with what inspires them.
+
+const { notableType, fullName } = __mod_notables;
+const { addressOf } = __mod_streets;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+function notableBadge(type, size = 28) {
+  return `<span class="nb" style="--nb:${type.color};width:${size}px;height:${size}px;font-size:${Math.round(size * 0.5)}px" aria-hidden="true">${type.icon}</span>`;
+}
+
+const when = (days) => (days === Infinity ? null : days < 0.5 ? 'any moment now' : days < 1.5 ? 'in about a day' : `in about ${Math.round(days)} days`);
+
+function notablesKey(notables) {
+  const prog = notables.progress().slice(0, 3);
+  return JSON.stringify([notables.people.map((p) => [p.id, p.home?.x, p.home?.y]), prog.map((p) => [p.type.id, Math.round(p.fraction * 20), Math.round(p.days)])]);
+}
+
+function notablesHTML(city, notables) {
+  const people = notables.people
+    .slice()
+    .reverse()
+    .map((p) => {
+      const t = notableType(p.type);
+      const home = p.home && city.getTile(p.home.x, p.home.y);
+      return (
+        `<li>${notableBadge(t)}<span class="np-text"><b>${esc(fullName(p))}</b><small>${esc(t.title)} · ${p.born ? 'born here' : 'moved here'} on day ${p.day}${home ? ` · ${esc(addressOf(home))}` : ''}</small><span class="np-bonus">${esc(t.bonus)}</span></span>` +
+        (p.home ? `<button type="button" class="ghost-btn small" data-showtile="${p.home.x},${p.home.y}">Show me</button>` : '') +
+        '</li>'
+      );
+    })
+    .join('');
+  const next = notables
+    .progress()
+    .slice(0, 3)
+    .map((p) => {
+      const eta = when(p.days);
+      return (
+        `<li>${notableBadge(p.type, 22)}<span class="np-text"><b>${esc(p.type.title)}</b><small>${eta ? `Likely ${eta}` : esc(p.type.attract)}</small>` +
+        `<span class="np-bar" role="img" aria-label="${Math.round(p.fraction * 100)}% of the way"><span style="width:${(p.fraction * 100).toFixed(0)}%;background:${p.type.color}"></span></span>` +
+        (eta ? `<small>${esc(p.type.attract)}</small>` : '') +
+        '</span></li>'
+      );
+    })
+    .join('');
+  return (
+    (people ? `<ul class="notables">${people}</ul>` : '<p class="insp-note">No notable people yet. Build the places that inspire them and someone special will be born or move in.</p>') +
+    `<span class="sheet-label">Who's next</span><ul class="notables next">${next}</ul>`
+  );
+}
+
+return { notableBadge, notablesKey, notablesHTML };
+})();
+
 // ---- trendsUI.js ----
 const __mod_trendsUI = (() => {
 // Trends: stat tiles with a sparkline for the City panel. Each tile shows the value now, the change
@@ -11207,6 +12304,7 @@ const __mod_trendsUI = (() => {
 
 const { formatClock } = __mod_time;
 const TREND_SERIES = [
+  { id: 'money', label: 'Balance', unit: '$', upIsGood: true },
   { id: 'pop', label: 'Population', unit: '', upIsGood: true },
   { id: 'happy', label: 'Happiness', unit: '%', upIsGood: true },
   { id: 'employ', label: 'Employment', unit: '%', upIsGood: true },
@@ -11217,7 +12315,7 @@ const W = 120;
 const H = 34;
 const PAD = 4;
 
-const fmt = (v, unit) => `${Math.round(v).toLocaleString()}${unit}`;
+const fmt = (v, unit) => (unit === '$' ? `$${Math.round(v).toLocaleString()}` : `${Math.round(v).toLocaleString()}${unit}`);
 const timeLabel = (t) => `Day ${Math.floor(t)}, ${formatClock(t - Math.floor(t))}`;
 
 function points(values) {
@@ -11234,7 +12332,7 @@ function points(values) {
 function trendsHTML(trends) {
   const n = trends?.t?.length || 0;
   if (n < 2) return '<p class="insp-note">Trends appear after a few in-game hours.</p>';
-  const tiles = TREND_SERIES.map((s) => {
+  const tiles = TREND_SERIES.filter((s) => trends[s.id]?.length === n).map((s) => {
     const values = trends[s.id];
     const now = values[values.length - 1];
     const delta = now - values[0];
@@ -11260,7 +12358,7 @@ function trendsHTML(trends) {
     .map((t, i) => ({ t, i }))
     .slice(-8)
     .reverse()
-    .map(({ t, i }) => `<tr><th scope="row">${timeLabel(t)}</th>${TREND_SERIES.map((s) => `<td>${fmt(trends[s.id][i], s.unit)}</td>`).join('')}</tr>`)
+    .map(({ t, i }) => `<tr><th scope="row">${timeLabel(t)}</th>${TREND_SERIES.map((s) => `<td>${trends[s.id] ? fmt(trends[s.id][i], s.unit) : '–'}</td>`).join('')}</tr>`)
     .join('');
   return (
     `<div class="trend-grid">${tiles}</div>` +
@@ -11335,6 +12433,76 @@ function bindTrendHover(root, getTrends) {
 return { TREND_SERIES, timeLabel, trendsHTML, bindTrendHover };
 })();
 
+// ---- budgetUI.js ----
+const __mod_budgetUI = (() => {
+// Budget section of the City panel: the balance, what comes in and goes out each day by kind of
+// building, the buildings that earn the most, and the last few days. Read-only HTML builders.
+
+const { STRUCTURES } = __mod_config;
+const { CATEGORY_LABELS, money } = __mod_economy;
+const { addressOf } = __mod_streets;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+function bars(entries, kind, max) {
+  if (!entries.length) return `<p class="insp-note">${kind === 'in' ? 'No taxes yet: build homes and workplaces.' : 'No upkeep yet.'}</p>`;
+  return `<ul class="budget-bars ${kind}">${entries
+    .map(
+      ([cat, v]) =>
+        `<li><span class="bl">${esc(CATEGORY_LABELS[cat] || cat)}</span><span class="bb"><span style="width:${Math.max(3, (v / max) * 100).toFixed(0)}%"></span></span><b>${money(v)}</b></li>`
+    )
+    .join('')}</ul>`;
+}
+
+// A key that only changes when the visible numbers do (to the dollar), so buttons stay put.
+function budgetKey(econ, state, sandbox) {
+  if (!econ) return 'none';
+  return JSON.stringify([
+    Math.round(state.money),
+    Math.round(econ.net),
+    sandbox,
+    econ.top.map((t) => [t.x, t.y, Math.round(t.earning)]),
+    state.days.length,
+  ]);
+}
+
+function budgetHTML(econ, state, sandbox) {
+  if (!econ) return '<p class="insp-note">The budget appears in a moment.</p>';
+  const inc = Object.entries(econ.income).sort((a, b) => b[1] - a[1]);
+  const out = Object.entries(econ.expenses).sort((a, b) => b[1] - a[1]);
+  const max = Math.max(1, ...inc.map((e) => e[1]), ...out.map((e) => e[1]));
+  const net = econ.net;
+  const top = econ.top
+    .map(
+      (t, i) =>
+        `<li><span class="rank">${i + 1}</span><span class="who"><b>${esc(STRUCTURES[t.structure.type].label)}</b><small>${esc(addressOf(t))}</small></span>` +
+        `<span class="earn">+${money(t.earning)}<small>/day</small></span><button type="button" class="ghost-btn small" data-showtile="${t.x},${t.y}">Show me</button></li>`
+    )
+    .join('');
+  const days = state.days
+    .slice(-5)
+    .reverse()
+    .map((d) => {
+      const n = d.income - d.expenses;
+      return `<tr><th scope="row">Day ${d.day}</th><td>${money(d.income)}</td><td>${money(d.expenses)}</td><td>${money(d.built)}</td><td class="${n >= 0 ? 'up' : 'down'}">${n >= 0 ? '+' : '−'}${money(Math.abs(n))}</td></tr>`;
+    })
+    .join('');
+  return (
+    `<div class="budget-head"><div><span class="insp-kicker">Balance</span><strong>${money(state.money)}</strong></div>` +
+    `<div class="budget-net ${net >= 0 ? 'up' : 'down'}"><span>${net >= 0 ? '▲' : '▼'} ${money(Math.abs(net))}</span><small>per day</small></div></div>` +
+    (sandbox ? '<p class="insp-note">Sandbox: building is free, but taxes and upkeep still show what the town would earn.</p>' : '') +
+    (!sandbox && state.money <= 0 && net < 0 ? '<p class="budget-warn">The town is out of money. Upkeep is unpaid until taxes come in.</p>' : '') +
+    `<div class="budget-cols"><div><span class="sheet-label">Coming in · ${money(econ.totalIn)}/day</span>${bars(inc, 'in', max)}</div>` +
+    `<div><span class="sheet-label">Going out · ${money(econ.totalOut)}/day</span>${bars(out, 'out', max)}</div></div>` +
+    (top ? `<span class="sheet-label">Top earners</span><ol class="earners">${top}</ol>` : '') +
+    (days
+      ? `<details class="trend-table"><summary>Last few days</summary><table><thead><tr><th scope="col">Day</th><th scope="col">Taxes</th><th scope="col">Upkeep</th><th scope="col">Built</th><th scope="col">Net</th></tr></thead><tbody>${days}</tbody></table></details>`
+      : '')
+  );
+}
+
+return { budgetKey, budgetHTML };
+})();
+
 // ---- cityUI.js ----
 const __mod_cityUI = (() => {
 // City panel: the town's title, progress to the next milestone, what it unlocks, and what residents
@@ -11342,6 +12510,8 @@ const __mod_cityUI = (() => {
 
 const { MILESTONES, STRUCTURES, TOOLS } = __mod_config;
 const { trendsHTML, bindTrendHover } = __mod_trendsUI;
+const { budgetHTML, budgetKey } = __mod_budgetUI;
+const { notablesHTML, notablesKey } = __mod_notablesUI;
 const SEVERITY_LABEL = { bad: 'Needs fixing', caution: 'Worth a look', good: 'Going well' };
 
 const labelOf = (id) => STRUCTURES[id]?.label || TOOLS.find((t) => t.id === id)?.label || id;
@@ -11349,7 +12519,10 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const CLOSE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
 
 class CityPanel {
-  constructor({ milestones, onShow, onOpen, onBuild }) {
+  constructor({ milestones, onShow, onOpen, onBuild, economy, onShowTile, notables }) {
+    this.notables = notables; // () → Notables
+    this.economy = economy; // () → Economy
+    this.onShowTile = onShowTile; // (x, y) → fly there
     this.onBuild = onBuild; // (thought) → build its suggested road
     this.milestones = milestones; // () => Milestones
     this.onShow = onShow; // (thought) → move the camera there
@@ -11377,7 +12550,10 @@ class CityPanel {
       const b = e.target.closest('button');
       if (!b) return;
       if (b.dataset.close != null) this.toggle(false);
-      else if (b.dataset.build != null) {
+      else if (b.dataset.showtile) {
+        const [x, y] = b.dataset.showtile.split(',').map(Number);
+        this.onShowTile?.(x, y);
+      } else if (b.dataset.build != null) {
         const th = this.thoughts[Number(b.dataset.build)];
         if (th?.plan) this.onBuild?.(th);
       } else if (b.dataset.show != null) {
@@ -11434,6 +12610,29 @@ class CityPanel {
       this.panel.innerHTML = this.html(city, m, p);
       this._trendSlot = null;
     }
+    // The budget redraws only when its numbers change.
+    const budgetBox = this.panel.querySelector('.budget');
+    if (budgetBox && this.economy) {
+      const eco = this.economy();
+      const bkey = budgetKey(city.derived.economy, eco.state, eco.sandbox);
+      if (bkey !== this._budgetKey || this._budgetBox !== budgetBox) {
+        this._budgetKey = bkey;
+        this._budgetBox = budgetBox;
+        const open = !!budgetBox.querySelector('details')?.open;
+        budgetBox.innerHTML = budgetHTML(city.derived.economy, eco.state, eco.sandbox);
+        if (open) budgetBox.querySelector('details')?.setAttribute('open', '');
+      }
+    }
+    const npBox = this.panel.querySelector('.notable-people');
+    if (npBox && this.notables) {
+      const n = this.notables();
+      const nkey = notablesKey(n);
+      if (nkey !== this._npKey || this._npBox !== npBox) {
+        this._npKey = nkey;
+        this._npBox = npBox;
+        npBox.innerHTML = notablesHTML(city, n);
+      }
+    }
     // Charts redraw only when a new sample arrives, so a hover isn't interrupted.
     const tr = city.systems.trends;
     const box = this.panel.querySelector('.trends');
@@ -11481,6 +12680,8 @@ class CityPanel {
     return (
       `<header><div><span class="insp-kicker">Your town</span><h2>${p.current.label}</h2></div>` +
       `<button type="button" class="insp-close" data-close aria-label="Close city panel">${CLOSE}</button></header>` +
+      `<h3>Budget</h3><div class="budget"></div>` +
+      `<h3>Notable people</h3><div class="notable-people"></div>` +
       next +
       ladder +
       `<h3>Trends</h3><div class="trends"></div>` +
@@ -11528,12 +12729,13 @@ class History {
   }
 
   // Run `edit` and remember what it changed. `coords` lists every tile the edit may touch.
-  record(label, coords, edit) {
+  // `cost` is what the edit spent, refunded on undo and charged again on redo (via onMoney).
+  record(label, coords, edit, { cost = 0 } = {}) {
     const before = this.city.snapshot(coords);
     const result = edit();
     if (!result) return result;
     const after = this.city.snapshot(coords);
-    this.undoStack.push({ label, before, after });
+    this.undoStack.push({ label, before, after, cost });
     if (this.undoStack.length > LIMIT) this.undoStack.shift();
     this.redoStack.length = 0;
     this.changed();
@@ -11544,6 +12746,7 @@ class History {
     const e = this.undoStack.pop();
     if (!e) return null;
     this.city.restore(e.before);
+    if (e.cost) this.onMoney?.(e.cost);
     this.redoStack.push(e);
     this.changed();
     return e.label;
@@ -11553,6 +12756,7 @@ class History {
     const e = this.redoStack.pop();
     if (!e) return null;
     this.city.restore(e.after);
+    if (e.cost) this.onMoney?.(-e.cost);
     this.undoStack.push(e);
     this.changed();
     return e.label;
@@ -11883,6 +13087,9 @@ const { NewTownSheet } = __mod_newTownUI;
 const { Interface } = __mod_ui;
 const { LifeInterface } = __mod_lifeUI;
 const { summaryOf } = __mod_life;
+const { money } = __mod_economy;
+const { fullName } = __mod_notables;
+const { notableBadge } = __mod_notablesUI;
 const { addressOf } = __mod_streets;
 const { CityPanel } = __mod_cityUI;
 const { unlockTier } = __mod_milestones;
@@ -11895,6 +13102,11 @@ const { daylightAt } = __mod_time;
 const MAX_STROKE = 160;
 const TOOL_SOUNDS = {
   house: 'pop',
+  cottage: 'pop',
+  apartments: 'popBig',
+  cafe: 'pop',
+  mall: 'popBig',
+  factory: 'popBig',
   shop: 'pop',
   tower: 'popBig',
   office: 'popBig',
@@ -11971,6 +13183,8 @@ function start(hotData = {}) {
       isUnlocked: (id) => sim.milestones.isUnlocked(id),
       unlockLabel: (id) => MILESTONES[unlockTier(id)]?.label || '',
     },
+    costOf: (tool) => sim.economy.costOf(tool),
+    budget: () => ({ money: sim.economy.money, net: city.derived.economy?.net || 0, sandbox: sim.economy.sandbox }),
     onShare: () => shareTown(),
     onBackHome: () => backHome(),
     hasBackup: () => hasBackup,
@@ -12038,9 +13252,42 @@ function start(hotData = {}) {
   }
   const build = (label, coords, edit) => history.record(label, coords, () => withFeedback(coords, edit));
 
+  // Placing things costs money (Sandbox is free). A drag places as many as the budget allows.
+  history.onMoney = (delta) => (delta > 0 ? sim.economy.refund(delta) : sim.economy.spend(-delta));
+  function buyAndBuild(tool, coords, label) {
+    const each = sim.economy.costOf(tool);
+    let list = coords;
+    if (each) {
+      const n = sim.economy.affordable(tool, coords.length);
+      const name = STRUCTURES[tool]?.label || (tool === 'water' ? 'Water' : tool);
+      if (!n) {
+        ui.toast(`Not enough money: ${name.toLowerCase()} costs ${money(each)} and the town has ${money(sim.economy.money)}`, 3200);
+        return false;
+      }
+      if (n < coords.length) {
+        list = coords.slice(0, n);
+        ui.toast(`The money ran out after ${n} of ${coords.length}`, 2800);
+      }
+    }
+    const cost = each * list.length;
+    const ok = history.record(label(list.length), list, () => withFeedback(list, () => (list.length === 1 ? city.apply(tool, list[0].x, list[0].y) : city.applyMany(tool, list))), { cost });
+    if (ok && cost) {
+      sim.economy.spend(cost);
+      const end = list[list.length - 1];
+      renderer.floatText(end.x, end.y, `−${money(cost)}`, '#c0605a', 0.1, 46);
+    }
+    return ok;
+  }
+
   // ---- Milestones -------------------------------------------------------------
   const cityPanel = new CityPanel({
     milestones: () => sim.milestones,
+    economy: () => sim.economy,
+    notables: () => sim.notables,
+    onShowTile: (x, y) => {
+      focusTile(x, y);
+      if (window.innerWidth < 560) cityPanel.toggle(false);
+    },
     onOpen: () => {
       lifeUI.toggle(false);
       ui.toggleMore(false);
@@ -12054,7 +13301,7 @@ function start(hotData = {}) {
     onBuild: (th) => {
       const coords = th.plan.filter((c) => city.canApply('road', c.x, c.y) && city.getTile(c.x, c.y).terrain === 'grass' && (!city.getTile(c.x, c.y).structure || city.getTile(c.x, c.y).structure.type === 'tree'));
       if (!coords.length) return ui.toast('That spot has changed. A new suggestion will come along shortly', 3000);
-      build(`${coords.length} road${coords.length > 1 ? 's' : ''}`, coords, () => city.applyMany('road', coords));
+      if (!buyAndBuild('road', coords, (n) => `${n} road${n > 1 ? 's' : ''}`)) return;
       cityPanel.focus(null);
       sim.refresh();
       ui.toast('New road built. Drivers will start using it right away', 3200);
@@ -12077,11 +13324,21 @@ function start(hotData = {}) {
     cityPanel.toggle(false);
     lifeUI.toggle(false);
   };
-  let milestoneTimer = null;
-  function celebrate(m) {
+  // A notable person arrived: a card with who they are, where they live and what they bring.
+  function welcomeNotable({ person, notable: type, address }) {
     audio.play('fanfare');
     renderer.confetti();
-    ui.refreshLocks();
+    const card = cardEl();
+    card.classList.add('notable-card');
+    card.innerHTML =
+      `${notableBadge(type, 44)}<span class="insp-kicker">${person.born ? 'Born in your town' : 'Moved to your town'}</span>` +
+      `<h2>${fullName(person)}</h2><p><b>${type.title}</b>${address ? ` · ${address}` : ''}</p>` +
+      `<p class="np-bonus">Bonus: ${type.bonus}</p>` +
+      (person.home ? `<button type="button" class="primary-btn small" data-notable-show="${person.home.x},${person.home.y}">Show me</button>` : '');
+    showCard(card, 7000);
+    ui.toast(`${type.title} ${fullName(person)} ${person.born ? 'was born' : 'moved in'}${address ? ` at ${address}` : ''}`, 5000);
+  }
+  function cardEl() {
     let card = document.getElementById('milestone-card');
     if (!card) {
       card = document.createElement('section');
@@ -12089,16 +13346,35 @@ function start(hotData = {}) {
       card.className = 'milestone-card glass';
       card.setAttribute('role', 'status');
       document.getElementById('app').appendChild(card);
-      card.addEventListener('click', () => (card.hidden = true));
+      card.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-notable-show]');
+        if (b) {
+          const [x, y] = b.dataset.notableShow.split(',').map(Number);
+          focusTile(x, y);
+        }
+        card.hidden = true;
+      });
     }
+    card.classList.remove('notable-card');
+    return card;
+  }
+  function showCard(card, ms) {
+    card.hidden = false;
+    clearTimeout(milestoneTimer);
+    milestoneTimer = setTimeout(() => (card.hidden = true), ms);
+  }
+  let milestoneTimer = null;
+  function celebrate(m) {
+    audio.play('fanfare');
+    renderer.confetti();
+    ui.refreshLocks();
+    const card = cardEl();
     const names = sim.milestones.sandbox ? [] : m.unlocks.map((u) => STRUCTURES[u]?.label || u);
     card.innerHTML =
       `<span class="insp-kicker">New milestone</span><h2>You're a ${m.label}!</h2>` +
       `<p>${m.pop.toLocaleString()} people now call your town home.</p>` +
       (names.length ? `<p class="tier-unlocks">Unlocked ${names.map((n) => `<span class="unlock-chip">${n}</span>`).join('')}</p>` : '');
-    card.hidden = false;
-    clearTimeout(milestoneTimer);
-    milestoneTimer = setTimeout(() => (card.hidden = true), 5200);
+    showCard(card, 5200);
   }
 
   // ---- Undo and redo --------------------------------------------------------
@@ -12202,6 +13478,8 @@ function start(hotData = {}) {
     fresh.systems.mode = mode;
     if (city.systems.life) fresh.systems.life = city.systems.life;
     swapCity(fresh);
+    sim.economy.reset(start);
+    sim.economy.assess();
     if (start === 'town') sim.milestones.settleForCapacity();
     ui.refreshLocks();
     if (sim.life.char?.alive) sim.life.syncWithCity();
@@ -12249,6 +13527,7 @@ function start(hotData = {}) {
     }
     if (!hasBackup) hasBackup = saveBackup(city); // keep your own town (and Life Story) safe
     swapCity(other);
+    sim.economy.reset('town');
     sim.milestones.settleForCapacity();
     ui.refreshLocks();
     saveCity(city);
@@ -12375,6 +13654,7 @@ function start(hotData = {}) {
     else if (ev.type === 'restored') audio.play('undo');
     else if (ev.type === 'lifeEvent') audio.play('chime');
     if (ev.type === 'milestone') celebrate(ev.milestone);
+    if (ev.type === 'notable') welcomeNotable(ev);
     if (ev.type === 'achievement') {
       audio.play('fanfare', { gap: 1 });
       ui.toast(`★ Achievement: ${ev.achievement.label}. ${ev.achievement.desc}`, 3600);
@@ -12409,7 +13689,7 @@ function start(hotData = {}) {
       }
       if (!t) return;
       if (!sim.milestones.isUnlocked(tool)) return ui.setTool(tool);
-      if (!build(labelFor(tool), [t], () => city.apply(tool, t.x, t.y))) nope(t.x, t.y);
+      if (!buyAndBuild(tool, [t], () => labelFor(tool))) nope(t.x, t.y);
     },
     onBulldoze: (sx, sy) => {
       const t = tileAt(sx, sy);
@@ -12454,7 +13734,7 @@ function start(hotData = {}) {
       if (!commit || !s) return;
       const coords = s.tiles.filter((c) => city.canApply(s.tool, c.x, c.y));
       if (!coords.length) return nope(s.start.x, s.start.y);
-      build(labelFor(s.tool, coords.length), coords, () => city.applyMany(s.tool, coords));
+      if (!buyAndBuild(s.tool, coords, (n) => labelFor(s.tool, n))) nope(s.start.x, s.start.y);
     },
   });
 

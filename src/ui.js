@@ -2,6 +2,8 @@
 // Reads city state for display; changes only go through the callbacks main.js provides.
 
 import { TOOL_GROUPS, TOOLS, VIEWS, STRUCTURES, SERVICES } from './config.js';
+import { money } from './economy.js';
+import { notableType } from './notables.js';
 import { FACTORS } from './desirability.js';
 import { formatClock } from './time.js';
 import { workersIn } from './labor.js';
@@ -28,6 +30,11 @@ const ICONS = {
   pause: svg('<path d="M9 5v14M15 5v14" stroke-width="2.6"/>'),
   play: svg('<path d="M7 4.5v15l12-7.5z"/>'),
   layers: svg('<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 12.5 9 5 9-5"/><path d="m3 17 9 5 9-5"/>'),
+  cottage: svg('<path d="M5 12 12 6l7 6"/><path d="M7 11v8h10v-8"/><path d="M11 19v-4h2v4"/><path d="M15.5 8V5.5h2V10"/>'),
+  apartments: svg('<rect x="5" y="4" width="14" height="17" rx="1.5"/><path d="M8.5 8h2M13.5 8h2M8.5 12h2M13.5 12h2M8.5 16h2M13.5 16h2"/>'),
+  cafe: svg('<path d="M5 10h11v4a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z"/><path d="M16 11h1.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3.5c0 1.5 1.5 1.5 1.5 3M12 3.5c0 1.5 1.5 1.5 1.5 3"/>'),
+  mall: svg('<path d="M3 10h18v10H3z"/><path d="M5 10 7 5h10l2 5"/><path d="M10 20v-5h4v5"/><path d="M6 13h2M16 13h2"/>'),
+  factory: svg('<path d="M3 20V11l5 3v-3l5 3v-3l5 3V4h3v16z"/><path d="M7 17h2M12 17h2"/>'),
   lock: svg('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'),
   playground: svg('<path d="M4 20 7 6h3l3 14"/><path d="M5.5 13h6"/><path d="M14 8h6v12"/><path d="M14 8c0 5 2 8 6 9"/>'),
   field: svg('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/><circle cx="12" cy="12" r="2.5"/><path d="M3 9.5h2.5v5H3M21 9.5h-2.5v5H21"/>'),
@@ -51,8 +58,10 @@ const LEGENDS = {
 const pct = (v) => `${Math.round(v * 100)}%`;
 
 export class Interface {
-  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect, sound, locks, onShare, onBackHome, hasBackup, display }) {
+  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect, sound, locks, onShare, onBackHome, hasBackup, display, costOf, budget }) {
     this.sound = sound;
+    this.costOf = costOf || (() => 0); // tool → price in the current mode (0 in Sandbox)
+    this.budget = budget; // () → { money, net, sandbox } for the stats bubble
     this.onShare = onShare;
     this.onBackHome = onBackHome;
     this.hasBackup = hasBackup || (() => false);
@@ -173,7 +182,8 @@ export class Interface {
         (t) =>
           `<button type="button" class="tray-item${this.locked(t.id) ? ' locked' : ''}" data-tool="${t.id}" aria-pressed="${t.id === this.tool}"` +
           `${this.locked(t.id) ? ` aria-label="${t.label}, locked until ${this.locks.unlockLabel(t.id)}"` : ''}>` +
-          `<span class="tool-icon tint-${t.id}">${ICONS[t.id]}</span><span>${t.label}</span><kbd>${t.key.toUpperCase()}</kbd>` +
+          `<span class="tool-icon tint-${t.id}">${ICONS[t.id]}</span><span>${t.label}</span>` +
+          (this.costOf(t.id) ? `<small class="price">${money(this.costOf(t.id))}</small>` : `<kbd>${t.key.toUpperCase()}</kbd>`) +
           `${this.locked(t.id) ? `<span class="lock" aria-hidden="true">${ICONS.lock}</span>` : ''}</button>`
       )
       .join('');
@@ -209,7 +219,8 @@ export class Interface {
       const g = TOOL_GROUPS.find((x) => x.id === b.dataset.group);
       const choice = TOOLS.find((t) => t.id === this.groupChoice[g.id]);
       b.setAttribute('aria-pressed', String(g.id === group.id));
-      b.title = g.tools.length > 1 ? `${g.label}: ${choice.label} (${choice.key.toUpperCase()})` : `${choice.label} (${choice.key.toUpperCase()})`;
+      const price = this.costOf(choice.id) ? ` · ${money(this.costOf(choice.id))}` : '';
+      b.title = g.tools.length > 1 ? `${g.label}: ${choice.label} (${choice.key.toUpperCase()})${price}` : `${choice.label} (${choice.key.toUpperCase()})${price}`;
       b.innerHTML =
         `<span class="tool-icon tint-${choice.id}">${ICONS[choice.id]}</span>` +
         `<span class="tool-label">${g.tools.length > 1 ? choice.label : g.label}</span>` +
@@ -369,6 +380,14 @@ export class Interface {
     const work = s.jobs ? ` · ${pct(s.employment ?? 1)} employed` : '';
     const w = city.derived.weather;
     const sky = w && w.kind !== 'clear' ? ` · ${WEATHER_LABELS[w.kind]}` : '';
+    if (this.budget) {
+      const b = this.budget();
+      set('money', document.getElementById('stat-money'), b.sandbox ? `${money(b.money)} · Sandbox` : money(b.money));
+      const net = Math.round(b.net);
+      const netEl = document.getElementById('stat-net');
+      set('net', netEl, `${net >= 0 ? '▲' : '▼'} ${money(Math.abs(net))}/day`);
+      netEl.classList.toggle('down', net < 0);
+    }
     set('clock', this.clockEl, `${seasonFor(city.day).label} · Day ${city.day} · ${formatClock(city.clock)}${sky}${work}`);
   }
 
@@ -392,6 +411,10 @@ export class Interface {
     }
     if (def?.jobs) facts.push(['Jobs filled', `${t.workersFilled} of ${def.jobs}`]);
     if (def?.service) facts.push(['Covers', `${def.radius} tiles around it`]);
+    for (const p of city.systems.notables?.people || []) {
+      if (p.home && p.home.x === t.x && p.home.y === t.y) facts.push(['Home of', `${p.first} ${p.last}, ${notableType(p.type)?.title || ''}`]);
+    }
+    if (t.earning) facts.push([t.earning > 0 ? 'Pays in taxes' : 'Upkeep', `${money(Math.abs(t.earning))}/day`]);
     if (s?.type === 'road') facts.push(['Traffic', t.congestion < 0.02 ? 'Clear' : `${pct(t.congestion)} busy`]);
     if (!city.accessRoad(t.x, t.y) && def && !def.walkable) facts.push(['Road access', 'None nearby']);
     const showFactors = t.terrain !== 'water' && s?.type !== 'road';

@@ -15,6 +15,9 @@ import { NewTownSheet } from './newTownUI.js';
 import { Interface } from './ui.js';
 import { LifeInterface } from './lifeUI.js';
 import { summaryOf } from './life.js';
+import { money } from './economy.js';
+import { fullName } from './notables.js';
+import { notableBadge } from './notablesUI.js';
 import { addressOf } from './streets.js';
 import { CityPanel } from './cityUI.js';
 import { unlockTier } from './milestones.js';
@@ -28,6 +31,11 @@ import { daylightAt } from './time.js';
 const MAX_STROKE = 160;
 const TOOL_SOUNDS = {
   house: 'pop',
+  cottage: 'pop',
+  apartments: 'popBig',
+  cafe: 'pop',
+  mall: 'popBig',
+  factory: 'popBig',
   shop: 'pop',
   tower: 'popBig',
   office: 'popBig',
@@ -104,6 +112,8 @@ function start(hotData = {}) {
       isUnlocked: (id) => sim.milestones.isUnlocked(id),
       unlockLabel: (id) => MILESTONES[unlockTier(id)]?.label || '',
     },
+    costOf: (tool) => sim.economy.costOf(tool),
+    budget: () => ({ money: sim.economy.money, net: city.derived.economy?.net || 0, sandbox: sim.economy.sandbox }),
     onShare: () => shareTown(),
     onBackHome: () => backHome(),
     hasBackup: () => hasBackup,
@@ -171,9 +181,42 @@ function start(hotData = {}) {
   }
   const build = (label, coords, edit) => history.record(label, coords, () => withFeedback(coords, edit));
 
+  // Placing things costs money (Sandbox is free). A drag places as many as the budget allows.
+  history.onMoney = (delta) => (delta > 0 ? sim.economy.refund(delta) : sim.economy.spend(-delta));
+  function buyAndBuild(tool, coords, label) {
+    const each = sim.economy.costOf(tool);
+    let list = coords;
+    if (each) {
+      const n = sim.economy.affordable(tool, coords.length);
+      const name = STRUCTURES[tool]?.label || (tool === 'water' ? 'Water' : tool);
+      if (!n) {
+        ui.toast(`Not enough money: ${name.toLowerCase()} costs ${money(each)} and the town has ${money(sim.economy.money)}`, 3200);
+        return false;
+      }
+      if (n < coords.length) {
+        list = coords.slice(0, n);
+        ui.toast(`The money ran out after ${n} of ${coords.length}`, 2800);
+      }
+    }
+    const cost = each * list.length;
+    const ok = history.record(label(list.length), list, () => withFeedback(list, () => (list.length === 1 ? city.apply(tool, list[0].x, list[0].y) : city.applyMany(tool, list))), { cost });
+    if (ok && cost) {
+      sim.economy.spend(cost);
+      const end = list[list.length - 1];
+      renderer.floatText(end.x, end.y, `−${money(cost)}`, '#c0605a', 0.1, 46);
+    }
+    return ok;
+  }
+
   // ---- Milestones -------------------------------------------------------------
   const cityPanel = new CityPanel({
     milestones: () => sim.milestones,
+    economy: () => sim.economy,
+    notables: () => sim.notables,
+    onShowTile: (x, y) => {
+      focusTile(x, y);
+      if (window.innerWidth < 560) cityPanel.toggle(false);
+    },
     onOpen: () => {
       lifeUI.toggle(false);
       ui.toggleMore(false);
@@ -187,7 +230,7 @@ function start(hotData = {}) {
     onBuild: (th) => {
       const coords = th.plan.filter((c) => city.canApply('road', c.x, c.y) && city.getTile(c.x, c.y).terrain === 'grass' && (!city.getTile(c.x, c.y).structure || city.getTile(c.x, c.y).structure.type === 'tree'));
       if (!coords.length) return ui.toast('That spot has changed. A new suggestion will come along shortly', 3000);
-      build(`${coords.length} road${coords.length > 1 ? 's' : ''}`, coords, () => city.applyMany('road', coords));
+      if (!buyAndBuild('road', coords, (n) => `${n} road${n > 1 ? 's' : ''}`)) return;
       cityPanel.focus(null);
       sim.refresh();
       ui.toast('New road built. Drivers will start using it right away', 3200);
@@ -210,11 +253,21 @@ function start(hotData = {}) {
     cityPanel.toggle(false);
     lifeUI.toggle(false);
   };
-  let milestoneTimer = null;
-  function celebrate(m) {
+  // A notable person arrived: a card with who they are, where they live and what they bring.
+  function welcomeNotable({ person, notable: type, address }) {
     audio.play('fanfare');
     renderer.confetti();
-    ui.refreshLocks();
+    const card = cardEl();
+    card.classList.add('notable-card');
+    card.innerHTML =
+      `${notableBadge(type, 44)}<span class="insp-kicker">${person.born ? 'Born in your town' : 'Moved to your town'}</span>` +
+      `<h2>${fullName(person)}</h2><p><b>${type.title}</b>${address ? ` · ${address}` : ''}</p>` +
+      `<p class="np-bonus">Bonus: ${type.bonus}</p>` +
+      (person.home ? `<button type="button" class="primary-btn small" data-notable-show="${person.home.x},${person.home.y}">Show me</button>` : '');
+    showCard(card, 7000);
+    ui.toast(`${type.title} ${fullName(person)} ${person.born ? 'was born' : 'moved in'}${address ? ` at ${address}` : ''}`, 5000);
+  }
+  function cardEl() {
     let card = document.getElementById('milestone-card');
     if (!card) {
       card = document.createElement('section');
@@ -222,16 +275,35 @@ function start(hotData = {}) {
       card.className = 'milestone-card glass';
       card.setAttribute('role', 'status');
       document.getElementById('app').appendChild(card);
-      card.addEventListener('click', () => (card.hidden = true));
+      card.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-notable-show]');
+        if (b) {
+          const [x, y] = b.dataset.notableShow.split(',').map(Number);
+          focusTile(x, y);
+        }
+        card.hidden = true;
+      });
     }
+    card.classList.remove('notable-card');
+    return card;
+  }
+  function showCard(card, ms) {
+    card.hidden = false;
+    clearTimeout(milestoneTimer);
+    milestoneTimer = setTimeout(() => (card.hidden = true), ms);
+  }
+  let milestoneTimer = null;
+  function celebrate(m) {
+    audio.play('fanfare');
+    renderer.confetti();
+    ui.refreshLocks();
+    const card = cardEl();
     const names = sim.milestones.sandbox ? [] : m.unlocks.map((u) => STRUCTURES[u]?.label || u);
     card.innerHTML =
       `<span class="insp-kicker">New milestone</span><h2>You're a ${m.label}!</h2>` +
       `<p>${m.pop.toLocaleString()} people now call your town home.</p>` +
       (names.length ? `<p class="tier-unlocks">Unlocked ${names.map((n) => `<span class="unlock-chip">${n}</span>`).join('')}</p>` : '');
-    card.hidden = false;
-    clearTimeout(milestoneTimer);
-    milestoneTimer = setTimeout(() => (card.hidden = true), 5200);
+    showCard(card, 5200);
   }
 
   // ---- Undo and redo --------------------------------------------------------
@@ -335,6 +407,8 @@ function start(hotData = {}) {
     fresh.systems.mode = mode;
     if (city.systems.life) fresh.systems.life = city.systems.life;
     swapCity(fresh);
+    sim.economy.reset(start);
+    sim.economy.assess();
     if (start === 'town') sim.milestones.settleForCapacity();
     ui.refreshLocks();
     if (sim.life.char?.alive) sim.life.syncWithCity();
@@ -382,6 +456,7 @@ function start(hotData = {}) {
     }
     if (!hasBackup) hasBackup = saveBackup(city); // keep your own town (and Life Story) safe
     swapCity(other);
+    sim.economy.reset('town');
     sim.milestones.settleForCapacity();
     ui.refreshLocks();
     saveCity(city);
@@ -508,6 +583,7 @@ function start(hotData = {}) {
     else if (ev.type === 'restored') audio.play('undo');
     else if (ev.type === 'lifeEvent') audio.play('chime');
     if (ev.type === 'milestone') celebrate(ev.milestone);
+    if (ev.type === 'notable') welcomeNotable(ev);
     if (ev.type === 'achievement') {
       audio.play('fanfare', { gap: 1 });
       ui.toast(`★ Achievement: ${ev.achievement.label}. ${ev.achievement.desc}`, 3600);
@@ -542,7 +618,7 @@ function start(hotData = {}) {
       }
       if (!t) return;
       if (!sim.milestones.isUnlocked(tool)) return ui.setTool(tool);
-      if (!build(labelFor(tool), [t], () => city.apply(tool, t.x, t.y))) nope(t.x, t.y);
+      if (!buyAndBuild(tool, [t], () => labelFor(tool))) nope(t.x, t.y);
     },
     onBulldoze: (sx, sy) => {
       const t = tileAt(sx, sy);
@@ -587,7 +663,7 @@ function start(hotData = {}) {
       if (!commit || !s) return;
       const coords = s.tiles.filter((c) => city.canApply(s.tool, c.x, c.y));
       if (!coords.length) return nope(s.start.x, s.start.y);
-      build(labelFor(s.tool, coords.length), coords, () => city.applyMany(s.tool, coords));
+      if (!buyAndBuild(s.tool, coords, (n) => labelFor(s.tool, n))) nope(s.start.x, s.start.y);
     },
   });
 

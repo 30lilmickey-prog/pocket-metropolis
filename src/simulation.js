@@ -9,6 +9,8 @@ import { AgentSystem } from './agents.js';
 import { LifeSystem } from './life.js';
 import { WeatherSystem } from './weather.js';
 import { Milestones } from './milestones.js';
+import { Economy } from './economy.js';
+import { Notables } from './notables.js';
 import { computeThoughts } from './advisor.js';
 import { daylightAt } from './time.js';
 import { clamp, pickWeighted } from './utils.js';
@@ -23,6 +25,9 @@ export class Simulation {
     this.life = new LifeSystem(city);
     this.weather = new WeatherSystem(city);
     this.milestones = new Milestones(city);
+    this.economy = new Economy(city);
+    this.notables = new Notables(city);
+    this._notableRates = null;
     this._thoughtTimer = 0;
     this._streetsRev = -1;
     this.speed = 1; // 0 pauses; 1–3 run faster
@@ -44,6 +49,8 @@ export class Simulation {
       this._acc -= SIM_STEP;
       this.tick();
     }
+    this.economy.update(step / DAY_LENGTH_SECONDS);
+    if (this._notableRates && this.notables.update(step / DAY_LENGTH_SECONDS, this._notableRates)) city.dirty = true; // their bonuses apply now
     this.weather.update(step);
     this.agents.update(step, daylightAt(city.clock));
     this.life.update(step);
@@ -55,9 +62,15 @@ export class Simulation {
     this.updateStreets();
     // Jobs, traffic and desirability feed each other, so refresh them together about once a second.
     if (city.dirty || this._marketTimer <= 0) {
-      if (city.dirty) computeCoverage(city);
+      if (city.dirty) {
+        this.notables.syncHomes();
+        this.applyNotables();
+        computeCoverage(city);
+      }
       city.derived.labor = computeLaborMarket(city);
       recomputeDesirability(city);
+      this.economy.assess();
+      this._notableRates = this.notables.rates();
       this._marketTimer = 1;
     }
     this.updateHousing();
@@ -75,12 +88,23 @@ export class Simulation {
   refresh() {
     this._streetsRev = -1;
     this.updateStreets();
+    this.notables.syncHomes();
+    this.applyNotables();
     computeCoverage(this.city);
     this.city.derived.labor = computeLaborMarket(this.city);
     recomputeDesirability(this.city);
+    this.economy.assess();
+    this._notableRates = this.notables.rates();
     this.updateStats();
     void this.milestones.state; // settle the starting title without a celebration
     this.city.derived.thoughts = computeThoughts(this.city, this.milestones);
+  }
+
+  // Notable people's bonuses: wider coverage, cheaper building, more tax, less upkeep.
+  applyNotables() {
+    const fx = this.notables.effects();
+    this.city.derived.notableEffects = fx;
+    Object.assign(this.economy.modifiers, { businessTax: fx.businessTax, buildCost: fx.buildCost, upkeep: fx.upkeep });
   }
 
   // Trends for the City panel: a sample every three in-game hours, the last six days kept.
@@ -89,6 +113,7 @@ export class Simulation {
     const city = this.city;
     const slot = Math.floor((city.day + city.clock) * TREND_SAMPLES_PER_DAY);
     const tr = (city.systems.trends ||= { slot: -1, t: [], pop: [], happy: [], employ: [], traffic: [] });
+    tr.money ||= [];
     if (tr.slot === slot) return;
     tr.slot = slot;
     const s = city.stats;
@@ -97,7 +122,9 @@ export class Simulation {
     tr.happy.push(s.homes ? s.happiness : 0);
     tr.employ.push(Math.round((s.employment ?? 1) * 100));
     tr.traffic.push(Math.round((s.traffic || 0) * 100));
-    for (const k of ['t', 'pop', 'happy', 'employ', 'traffic']) if (tr[k].length > TREND_KEEP) tr[k].splice(0, tr[k].length - TREND_KEEP);
+    tr.money.push(Math.round(this.economy.money));
+    while (tr.money.length < tr.t.length) tr.money.unshift(tr.money[0]); // older saves had no money trend
+    for (const k of ['t', 'pop', 'happy', 'employ', 'traffic', 'money']) if (tr[k].length > TREND_KEEP) tr[k].splice(0, tr[k].length - TREND_KEEP);
   }
 
   // Street names and addresses follow the map; recompute only when a tile changed.
