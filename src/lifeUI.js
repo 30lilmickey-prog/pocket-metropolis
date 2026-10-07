@@ -181,6 +181,7 @@ export class LifeInterface {
       <div class="life-actions">
         ${waiting ? '<button type="button" class="primary-btn" data-act="showcard">Open the waiting event</button>' : '<button type="button" class="primary-btn" data-act="ageup">Age up · +1 year</button>'}
         <button type="button" class="ghost-btn" data-act="focus" ${c.home ? '' : 'disabled'}>Show home</button>
+        <button type="button" class="ghost-btn" data-act="follow" aria-pressed="${!!this.h.isFollowing?.()}">${this.h.isFollowing?.() ? 'Stop following' : 'Follow on map'}</button>
       </div>
       <p class="life-hint">Life moves one year per city day. Age up skips ahead; time stops while an event waits.</p>
       <ul class="stat-bars">${bars}<li><span>Money</span><span></span><b>${money(c.money)}</b></li></ul>
@@ -234,7 +235,7 @@ export class LifeInterface {
   }
 
   deathHTML(c) {
-    const kid = c.children.find((k) => k.alive !== false);
+    const kid = c.children.find((k) => k.alive !== false) || { name: 'a niece or nephew', relative: true };
     const career = c.job && CAREERS[c.job.type];
     return `<header class="life-head">
         <div class="avatar gone">${avatarSVG(c.look, 64)}</div>
@@ -248,9 +249,10 @@ export class LifeInterface {
         <div><dt>Friends</dt><dd>${c.friends.length}</dd></div>
       </dl>
       <div class="life-actions">
-        ${kid ? `<button type="button" class="primary-btn" data-act="continue">Continue as ${esc(kid.name.split(' ')[0])}</button>` : ''}
-        <button type="button" class="${kid ? 'ghost-btn' : 'primary-btn'}" data-act="newlife">Start a new life</button>
+        <button type="button" class="primary-btn" data-act="continue">${kid.relative ? 'Continue with a niece or nephew' : `Continue as ${esc(kid.name.split(' ')[0])}`}</button>
+        <button type="button" class="ghost-btn" data-act="newlife">Start a new life</button>
       </div>
+      <p class="life-hint">The family story carries on by itself in a few moments.</p>
       ${this.historyHTML()}
       <h3>Life story</h3>
       <ol class="life-log">${c.log
@@ -291,6 +293,10 @@ export class LifeInterface {
       this.cardMinimized = false;
     } else if (t.dataset.act === 'showcard') this.cardMinimized = false;
     else if (t.dataset.act === 'focus') return this.h.onFocus();
+    else if (t.dataset.act === 'follow') {
+      this.h.onFollow?.();
+      if (window.innerWidth < 760) return this.toggle(false); // phones: close the panel so the map shows
+    }
     else if (t.dataset.activity) {
       const result = this.h.onActivity(t.dataset.activity);
       if (result?.text) this.outcome = { ...result, age: this.life.char?.age };

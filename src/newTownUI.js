@@ -1,5 +1,6 @@
-// New town sheet: choose Sandbox or Milestones, a map size, and whether to start on empty land or
-// with a ready-made starter town. Starting replaces the current town (your Life Story carries on).
+// New town sheet: choose Sandbox or Milestones, a map size, how to start (a seed that grows, empty
+// land, or a ready-made starter town), whether it grows by itself, and who your main person is.
+// Opened from a save slot, the new town goes into that slot.
 
 export const MAP_SIZES = [
   { id: 'small', label: 'Small', size: 16, hint: '16 × 16' },
@@ -11,19 +12,27 @@ const MODES = [
   { id: 'milestones', label: 'Milestones', hint: 'Unlock buildings as your town grows.' },
 ];
 const STARTS = [
+  { id: 'seed', label: 'A seed', hint: 'A crossroads and a few cottages in 1850. Watch it grow into a city.' },
   { id: 'land', label: 'Empty land', hint: 'Grass, a river and woods. Start from scratch.' },
   { id: 'town', label: 'Starter town', hint: 'A little town that is already up and running.' },
+];
+
+const GROWTH = [
+  { id: 'on', label: 'Grows by itself', hint: 'Homes, shops, streets and parks appear where people need them. You can still build.' },
+  { id: 'off', label: 'I build it', hint: 'Nothing is built unless you build it.' },
 ];
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const CLOSE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
 
 export class NewTownSheet {
-  constructor({ onStart, onOpen }) {
-    this.onStart = onStart; // ({ mode, size, start }) → build the new town
+  constructor({ onStart, onOpen, family }) {
+    this.onStart = onStart; // ({ mode, size, start, grow, person, slot }) → build the new town
     this.onOpen = onOpen;
+    this.family = family; // () → the main person's name, if there is one
     this.el = document.getElementById('newtown-sheet');
-    this.choice = { mode: 'sandbox', size: 'small', start: 'land' };
+    this.choice = { mode: 'milestones', size: 'medium', start: 'seed', grow: 'on', person: 'new' };
+    this.slot = null; // the save slot the town goes into (null: replace the current one)
     this.el.addEventListener('click', (e) => {
       const b = e.target.closest('button');
       if (!b) return;
@@ -36,7 +45,7 @@ export class NewTownSheet {
       if (b.dataset.go != null) {
         const size = MAP_SIZES.find((m) => m.id === this.choice.size).size;
         this.toggle(false);
-        this.onStart({ mode: this.choice.mode, size, start: this.choice.start });
+        this.onStart({ mode: this.choice.mode, size, start: this.choice.start, grow: this.choice.grow === 'on', person: this.choice.person, slot: this.slot });
       }
     });
     window.addEventListener('keydown', (e) => {
@@ -48,14 +57,17 @@ export class NewTownSheet {
     return !this.el.hidden;
   }
 
-  toggle(force) {
+  toggle(force, { slot = null } = {}) {
     const open = force ?? this.el.hidden;
+    if (open) this.slot = slot;
     if (open) this.onOpen?.();
     this.el.hidden = !open;
     if (open) this.render();
   }
 
   render() {
+    const name = this.family?.() || null;
+    if (!name) this.choice.person = 'new';
     const group = (key, label, items) => {
       const current = items.find((i) => i.id === this.choice[key]);
       return (
@@ -71,7 +83,14 @@ export class NewTownSheet {
       group('mode', 'Mode', MODES) +
       group('size', 'Map size', MAP_SIZES) +
       group('start', 'Start with', STARTS) +
-      '<button type="button" class="primary-btn" data-go>Start building</button>' +
-      '<p class="sheet-hint center">This replaces your current town. Your Life Story and achievements carry on.</p>';
+      group('grow', 'Growth', GROWTH) +
+      (name
+        ? group('person', 'Main person', [
+            { id: 'new', label: 'Someone new', hint: 'Create a new main person to follow, then their children and grandchildren.' },
+            { id: 'keep', label: `Keep ${name}`, hint: `${name} and the family move to the new town.` },
+          ])
+        : '') +
+      '<button type="button" class="primary-btn" data-go>Start</button>' +
+      `<p class="sheet-hint center">${this.slot ? `Starts in save slot ${this.slot}.` : 'This replaces the town in your current save slot. Use Save slots to keep it.'}</p>`;
   }
 }

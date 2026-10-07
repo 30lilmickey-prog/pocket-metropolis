@@ -13,6 +13,10 @@
 - [x] Phase 1 polish: sound effects and ambience, drag to build, undo and redo, buildings that grow and vary, seasons and weather
 - [x] Town budget (costs, taxes, upkeep, top earners) and five new buildings: cottage, apartments, café, mall, factory
 - [x] Notable people (Civ-style great people) with town-wide bonuses
+- [x] Growing through the eras (ideas from genesis): a seed in 1850 that grows by itself, five eras that change roads, lamps, vehicles and buildings, town decisions with good and bad effects, a town history
+- [x] Main person you follow on the map; the story passes to their children (or a niece or nephew) generation after generation
+- [x] Three save slots
+- [ ] Eras next: a growth timelapse to replay the town from its first road, a chronicle camera that drifts to where things happen, trains and a station in the railway age, buses in the motor age
 - [x] Townsfolk (ideas from emergent-city): named residents with personalities, needs and daily routines; friendships, love and weddings; favourite places; town news; mood dots on walkers; unmet needs as resident wishes
 - [ ] Townsfolk next: tap a walker to follow them, birthdays and babies for married couples, pets, neighbourhood character (leafy uptown or busy quarter) from who lives where, a weekly town festival
 - [ ] Special buildings and bonuses for notable people (a lab for scientists, a gallery for artists, a stadium for athletes)

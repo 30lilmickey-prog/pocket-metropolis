@@ -2536,3 +2536,278 @@ button:focus-visible {
 .tf-mem {
   font-style: italic;
 }
+
+/* Town decisions */
+.decision-card {
+  position: absolute;
+  left: 50%;
+  top: calc(env(safe-area-inset-top, 0px) + 150px);
+  transform: translateX(-50%);
+  z-index: 8;
+  width: min(420px, calc(100vw - 24px));
+  max-height: calc(100% - 270px);
+  overflow-y: auto;
+  padding: 16px 16px 12px;
+  border-radius: 24px;
+  display: grid;
+  gap: 8px;
+  animation: card-in 0.4s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.decision-card h2 {
+  margin: 0;
+  font: 600 22px/1.15 var(--font-display);
+}
+.decision-card p {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.decision-choices {
+  display: grid;
+  gap: 8px;
+}
+.decision-choice {
+  display: grid;
+  gap: 5px;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 2px solid transparent;
+  background: var(--meter-track);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.decision-choice:hover:not(:disabled) {
+  border-color: var(--stat-rel, #b48ad6);
+  background: var(--press);
+}
+.decision-choice:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.decision-choice b {
+  font-size: 14.5px;
+}
+.decision-choice small {
+  color: var(--sev-bad-ink);
+  font-weight: 800;
+}
+.dtags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+}
+.dtag {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--panel-edge);
+  color: var(--ink-soft);
+}
+.dtag.good {
+  background: color-mix(in srgb, var(--sev-good) 22%, transparent);
+  color: var(--sev-good-ink);
+}
+.dtag.bad {
+  background: color-mix(in srgb, var(--sev-bad) 18%, transparent);
+  color: var(--sev-bad-ink);
+}
+.decision-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.decision-foot small {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.decision-pill,
+.follow-chip {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  gap: 6px;
+  font-weight: 800;
+}
+.decision-pill {
+  top: calc(env(safe-area-inset-top, 0px) + 126px);
+  outline: 2px solid var(--sev-caution);
+  white-space: nowrap;
+}
+.follow-chip {
+  top: calc(env(safe-area-inset-top, 0px) + 76px);
+  white-space: nowrap;
+}
+.follow-chip span {
+  color: var(--sev-bad);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+#btn-follow.is-on {
+  background: var(--press);
+  outline: 2px solid var(--stat-rel, #b48ad6);
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (max-width: 760px), (max-height: 520px) {
+  #btn-follow {
+    display: none;
+  }
+  .decision-card {
+    top: calc(env(safe-area-inset-top, 0px) + 112px);
+    max-height: calc(100% - 230px);
+  }
+  .follow-chip {
+    top: calc(env(safe-area-inset-top, 0px) + 118px);
+  }
+  .decision-pill {
+    top: calc(env(safe-area-inset-top, 0px) + 166px);
+  }
+}
+
+/* Save slots */
+.slots {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.slot {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: var(--meter-track);
+}
+.slot.playing {
+  outline: 2px solid var(--sev-good);
+}
+.slot-num {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--panel-edge);
+  font-weight: 800;
+}
+.slot-body p {
+  margin: 0 0 2px;
+  font-size: 12.5px;
+  font-weight: 650;
+}
+.slot-title {
+  font-size: 14px !important;
+}
+.slot-empty,
+.slot-when {
+  color: var(--ink-soft);
+}
+.slot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+  align-items: center;
+}
+.slot-badge {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--sev-good-ink);
+}
+.ghost-btn.danger {
+  color: var(--sev-bad-ink);
+}
+
+/* Era and town history */
+.era-now {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.era-now b {
+  font-size: 16px;
+}
+.era-now small {
+  display: block;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--ink-soft);
+}
+.era-dot {
+  display: grid;
+  gap: 3px;
+}
+.era-dot i {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--meter-track);
+}
+.era-dot i.on {
+  background: #b48ad6;
+}
+.era-need {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  font-weight: 650;
+}
+.chronicle-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.chronicle-list li {
+  display: grid;
+  grid-template-columns: 40px 18px 1fr auto;
+  gap: 6px;
+  align-items: center;
+  font-size: 12.5px;
+  font-weight: 650;
+  padding: 4px 6px;
+  border-radius: 10px;
+}
+.chronicle-list li.chron-era {
+  background: color-mix(in srgb, #b48ad6 16%, transparent);
+}
+.chronicle-list li.chron-family {
+  background: color-mix(in srgb, #f49ab8 14%, transparent);
+}
+.chron-year {
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+.decision-pill,
+.follow-chip {
+  width: auto !important;
+  height: 40px !important;
+  padding: 0 16px !important;
+  border-radius: 20px !important;
+  display: inline-flex;
+  align-items: center;
+  font-size: 13px;
+}
+.decision-pill[hidden],
+.follow-chip[hidden] {
+  display: none;
+}
+.decision-pill:hover,
+.decision-pill:active,
+.follow-chip:hover,
+.follow-chip:active {
+  transform: translateX(-50%);
+}

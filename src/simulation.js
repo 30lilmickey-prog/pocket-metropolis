@@ -12,6 +12,9 @@ import { Milestones } from './milestones.js';
 import { Economy } from './economy.js';
 import { Notables } from './notables.js';
 import { Townsfolk } from './townsfolk.js';
+import { Eras } from './eras.js';
+import { Growth } from './growth.js';
+import { Decisions } from './decisions.js';
 import { computeThoughts } from './advisor.js';
 import { daylightAt } from './time.js';
 import { clamp, pickWeighted } from './utils.js';
@@ -29,6 +32,9 @@ export class Simulation {
     this.economy = new Economy(city);
     this.notables = new Notables(city);
     this.townsfolk = new Townsfolk(city);
+    this.eras = new Eras(city);
+    this.growth = new Growth(city, { eras: this.eras, economy: this.economy, milestones: this.milestones });
+    this.decisions = new Decisions(city, { economy: this.economy, growth: this.growth, eras: this.eras, townsfolk: this.townsfolk });
     this._notableRates = null;
     this._thoughtTimer = 0;
     this._streetsRev = -1;
@@ -52,6 +58,7 @@ export class Simulation {
       this.tick();
     }
     this.economy.update(step / DAY_LENGTH_SECONDS);
+    this.growth.update(step);
     if (this._notableRates && this.notables.update(step / DAY_LENGTH_SECONDS, this._notableRates)) city.dirty = true; // their bonuses apply now
     this.weather.update(step);
     this.agents.update(step, daylightAt(city.clock));
@@ -81,6 +88,8 @@ export class Simulation {
     this.updateStats();
     this.updateTrends();
     this.milestones.update();
+    this.eras.update();
+    this.decisions.update();
     this._thoughtTimer -= SIM_STEP;
     if (this._thoughtTimer <= 0) {
       city.derived.thoughts = computeThoughts(city, this.milestones);
@@ -101,6 +110,7 @@ export class Simulation {
     this._notableRates = this.notables.rates();
     this.updateStats();
     void this.milestones.state; // settle the starting title without a celebration
+    void this.eras.state; // and the era and calendar
     this.city.derived.thoughts = computeThoughts(this.city, this.milestones);
   }
 
