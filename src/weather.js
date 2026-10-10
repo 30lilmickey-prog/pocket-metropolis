@@ -20,7 +20,20 @@ const ODDS = {
   winter: { clear: 0.32, cloudy: 0.2, snow: 0.38, fog: 0.1 },
 };
 
-export const WEATHER_LABELS = { clear: 'Clear', cloudy: 'Cloudy', rain: 'Rain', snow: 'Snow', fog: 'Fog' };
+export const WEATHER_LABELS = {
+  clear: 'Clear',
+  cloudy: 'Cloudy',
+  rain: 'Rain',
+  snow: 'Snow',
+  fog: 'Fog',
+  // Extreme weather, started by the disasters system (disasters.js).
+  storm: 'Thunderstorm',
+  heatwave: 'Heatwave',
+  blizzard: 'Blizzard',
+  flood: 'Flood',
+  tornado: 'Tornado',
+  hurricane: 'Hurricane',
+};
 
 export function seasonFor(day) {
   return SEASONS[Math.floor((Math.max(1, day) - 1) / DAYS_PER_SEASON) % SEASONS.length];
@@ -35,7 +48,7 @@ export class WeatherSystem {
   constructor(city, rng = Math.random) {
     this.city = city;
     this.rng = rng;
-    city.derived.weather = { kind: 'clear', rain: 0, snow: 0, fog: 0, cloud: 0, snowCover: 0 };
+    city.derived.weather = { kind: 'clear', rain: 0, snow: 0, fog: 0, cloud: 0, snowCover: 0, wind: 0, heat: 0, severe: false };
   }
 
   get spell() {
@@ -69,10 +82,15 @@ export class WeatherSystem {
     const w = this.city.derived.weather;
     const ease = (cur, target, rate) => cur + (target - cur) * Math.min(1, dt * rate);
     w.kind = kind;
-    w.rain = ease(w.rain, kind === 'rain' ? 1 : 0, 0.25);
-    w.snow = ease(w.snow, kind === 'snow' ? 1 : 0, 0.25);
-    w.fog = ease(w.fog, kind === 'fog' ? 1 : 0, 0.2);
-    w.cloud = ease(w.cloud, kind === 'clear' ? 0 : kind === 'cloudy' || kind === 'fog' ? 0.6 : 1, 0.25);
+    const wet = { rain: 1, storm: 1, hurricane: 1, flood: 0.75, tornado: 0.4 }[kind] || 0;
+    w.rain = ease(w.rain, wet, 0.25);
+    w.snow = ease(w.snow, kind === 'snow' || kind === 'blizzard' ? 1 : 0, 0.25);
+    w.fog = ease(w.fog, kind === 'fog' ? 1 : kind === 'blizzard' ? 0.45 : 0, 0.2);
+    w.cloud = ease(w.cloud, kind === 'clear' || kind === 'heatwave' ? 0 : kind === 'cloudy' || kind === 'fog' ? 0.6 : 1, 0.25);
+    // Extreme weather: wind slants the rain and bends trees, a heatwave bakes the light.
+    w.wind = ease(w.wind || 0, { hurricane: 1, tornado: 0.8, blizzard: 0.7, storm: 0.5 }[kind] || 0, 0.3);
+    w.heat = ease(w.heat || 0, kind === 'heatwave' ? 1 : 0, 0.2);
+    w.severe = !!this.spell.severe;
     // Snow settles through winter and melts away early in spring.
     const season = seasonFor(this.city.day).id;
     const p = seasonProgress(this.city.day, this.city.clock);

@@ -72,9 +72,10 @@ export class CityState {
     return this.inBounds(x, y) ? this.tiles[y * this.width + x] : null;
   }
 
+  // A usable road: washed-out and snowed-in roads can't be driven until they are cleared.
   isRoad(x, y) {
-    const t = this.getTile(x, y);
-    return !!t && t.structure?.type === 'road';
+    const s = this.getTile(x, y)?.structure;
+    return !!s && s.type === 'road' && !s.broken && !s.snowed;
   }
 
   roadNeighbors(x, y) {
@@ -109,7 +110,9 @@ export class CityState {
     if (tool === 'bulldoze') return !!t.structure || t.terrain === 'water';
     if (tool === 'water') return t.terrain !== 'water' || !!t.structure;
     if (!STRUCTURES[tool]) return false;
-    return t.structure?.type !== tool;
+    // Building the same thing again over storm damage rebuilds it.
+    const s = t.structure;
+    return s?.type !== tool || !!s.broken || !!s.snowed || (s.damage || 0) >= 0.34;
   }
 
   // The one entry point for player edits. Returns true when the city changed.

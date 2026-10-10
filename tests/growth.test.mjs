@@ -114,7 +114,7 @@ test('decisions ask, apply their effects, and lapse to the last choice', () => {
   sim.decisions.update();
   assert.ok(city.derived.spirit > 0);
   // Unanswered for a day: the last choice happens by itself.
-  sim.decisions.ask('storm');
+  sim.decisions.ask('newcomers');
   city.day += 2;
   sim.decisions.update();
   assert.equal(sim.decisions.state.pending, null);

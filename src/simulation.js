@@ -15,6 +15,7 @@ import { Townsfolk } from './townsfolk.js';
 import { Eras } from './eras.js';
 import { Growth } from './growth.js';
 import { Decisions } from './decisions.js';
+import { Disasters, soundness } from './disasters.js';
 import { computeThoughts } from './advisor.js';
 import { daylightAt } from './time.js';
 import { clamp, pickWeighted } from './utils.js';
@@ -35,6 +36,8 @@ export class Simulation {
     this.eras = new Eras(city);
     this.growth = new Growth(city, { eras: this.eras, economy: this.economy, milestones: this.milestones });
     this.decisions = new Decisions(city, { economy: this.economy, growth: this.growth, eras: this.eras, townsfolk: this.townsfolk });
+    this.disasters = new Disasters(city, { economy: this.economy, decisions: this.decisions, eras: this.eras });
+    this.decisions.disasters = this.disasters;
     this._notableRates = null;
     this._thoughtTimer = 0;
     this._streetsRev = -1;
@@ -61,6 +64,7 @@ export class Simulation {
     this.growth.update(step);
     if (this._notableRates && this.notables.update(step / DAY_LENGTH_SECONDS, this._notableRates)) city.dirty = true; // their bonuses apply now
     this.weather.update(step);
+    this.disasters.update(step);
     this.agents.update(step, daylightAt(city.clock));
     this.life.update(step);
     // Townsfolk live hour by hour; the trips they make show up as walkers.
@@ -150,7 +154,7 @@ export class Simulation {
 
   // Desirability maps to how full a home can get: a bare lot fills a little, a leafy one fills up.
   targetResidents(tile) {
-    const cap = STRUCTURES[tile.structure.type].capacity;
+    const cap = STRUCTURES[tile.structure.type].capacity * soundness(tile.structure); // storm damage halves it
     return Math.round(cap * clamp((tile.desirability - 0.15) / 0.7, 0, 1));
   }
 
