@@ -211,6 +211,12 @@ export class Renderer {
           else if (i < 120) this.ring(c.x, c.y, '#ffffff', d);
         });
         break;
+      case 'lightning':
+        this.bolt = { x: ev.x, y: ev.y, age: 0, seed: Math.random() };
+        break;
+      case 'disasterHit':
+        this.dust(ev.x, ev.y, ev.destroyed ? 18 : 6);
+        break;
       case 'movedIn':
         if (this.particles.filter((p) => p.kind === 'heart').length < 10) this.heart(ev.x, ev.y);
         break;
@@ -344,6 +350,7 @@ export class Renderer {
       this.drawSlab(ctx, L);
       for (const t of tiles) this.drawGround(ctx, t, L);
     }
+    this.drawFlood(ctx, tiles, L);
     if (view.overlay && view.overlay !== 'none') for (const t of tiles) this.drawOverlay(ctx, t, view.overlay);
     if (view.issues?.length) this.drawIssues(ctx, view.issues);
     this.drawStreetNames(ctx, rect);
@@ -367,6 +374,8 @@ export class Renderer {
       items.push({ d: pose.gx + pose.gy + 0.05, kind: 'car', c, pose });
     }
     for (const w of this.agents.walkers) items.push({ d: w.gx + w.gy + 0.05, kind: 'walker', w });
+    const twister = city.systems.disasters?.active;
+    if (twister?.kind === 'tornado' && twister.pos) items.push({ d: twister.pos.x + twister.pos.y + 0.5, kind: 'tornado', pos: twister.pos });
     if (view.ghost) items.push({ d: view.ghost.x + view.ghost.y + 1.01, kind: 'ghost', ghost: view.ghost });
     if (view.plan && STRUCTURES[view.plan.tool] && view.plan.tool !== 'road') {
       for (const c of view.plan.tiles) {
@@ -387,6 +396,7 @@ export class Renderer {
 
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     this.drawPrecipitation(ctx, dt, w);
+    this.drawWeatherFx(ctx, dt, w);
     this.drawFog(ctx, w, L);
     this.drawVignette(ctx, L);
     this.drawThoughts(ctx);
@@ -561,6 +571,46 @@ export class Renderer {
   }
 
   // Rain streaks and snowflakes, drawn in screen space over the city.
+  // Lightning (a flash and a bolt to the spot it hit) and the orange haze of a heatwave.
+  drawWeatherFx(ctx, dt, w) {
+    if ((w.heat || 0) > 0.02) {
+      ctx.save();
+      ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      ctx.fillStyle = `rgba(255,150,60,${(0.09 * w.heat).toFixed(3)})`;
+      ctx.fillRect(0, 0, this.w, this.h);
+      ctx.restore();
+    }
+    const b = this.bolt;
+    if (!b) return;
+    b.age += dt;
+    if (b.age > 0.9) {
+      this.bolt = null;
+      return;
+    }
+    const k = 1 - b.age / 0.9;
+    ctx.save();
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    if (!this.reduceMotion) {
+      ctx.fillStyle = `rgba(235,240,255,${(0.35 * k * k).toFixed(3)})`;
+      ctx.fillRect(0, 0, this.w, this.h);
+    }
+    const end = this.worldToScreen(gridToWorld(b.x + 0.5, b.y + 0.5, 20));
+    ctx.strokeStyle = `rgba(255,252,220,${k.toFixed(3)})`;
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    let px = end.x + (b.seed - 0.5) * 80;
+    ctx.moveTo(px, -10);
+    const steps = 7;
+    for (let i = 1; i <= steps; i++) {
+      const yy = -10 + ((end.y + 10) * i) / steps;
+      px = i === steps ? end.x : px + (end.x - px) / (steps - i + 1) + (hash2(i, b.seed * 100, 3) - 0.5) * 30;
+      ctx.lineTo(px, yy);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
   drawPrecipitation(ctx, dt, w) {
     const rain = w.rain || 0;
     const snow = w.snow || 0;
@@ -580,10 +630,10 @@ export class Renderer {
     for (const d of this.drops) {
       if (snowy) {
         d.y += (38 + 30 * d.s) * dt;
-        d.x += Math.sin(this.time * 1.3 + d.p) * 14 * dt;
+        d.x += Math.sin(this.time * 1.3 + d.p) * 14 * dt - 220 * (w.wind || 0) * dt;
       } else {
         d.y += (620 + 260 * d.s) * dt;
-        d.x -= 140 * dt;
+        d.x -= (140 + 520 * (w.wind || 0)) * dt;
       }
       if (d.y > this.h + 10) {
         d.y = -10;
@@ -596,7 +646,7 @@ export class Renderer {
         ctx.arc(d.x, d.y, r, 0, Math.PI * 2);
       } else {
         ctx.moveTo(d.x, d.y);
-        ctx.lineTo(d.x + 3 * d.s, d.y - 13 * d.s);
+        ctx.lineTo(d.x + (3 + 10 * (w.wind || 0)) * d.s, d.y - 13 * d.s);
       }
     }
     if (snowy) ctx.fill();
@@ -959,7 +1009,16 @@ export class Renderer {
   }
 
   drawRoad(ctx, t, L) {
-    if ((this.era ?? 3) < 2) return this.drawOldRoad(ctx, t, L);
+    if ((this.era ?? 3) < 2) {
+      this.drawOldRoad(ctx, t, L);
+      if (t.structure.broken || t.structure.snowed) this.drawRoadTrouble(ctx, t, L);
+      return;
+    }
+    this.drawModernRoad(ctx, t, L);
+    if (t.structure.broken || t.structure.snowed) this.drawRoadTrouble(ctx, t, L);
+  }
+
+  drawModernRoad(ctx, t, L) {
     const { x, y, roadMask: m } = t;
     ctx.fillStyle = lit(PALETTE.road, 0.98 + hash2(x, y, 2) * 0.03, L);
     tilePoly(ctx, x, y);
@@ -1365,6 +1424,7 @@ export class Renderer {
     if (s.type === 'cafe') return { inset: 0.24, h: 14 };
     if (s.type === 'mall') return { inset: 0.06, h: 20 };
     if (s.type === 'factory') return { inset: 0.1, h: 22 };
+    if (s.type === 'rubble') return { inset: 0.18, h: 6 };
     return null;
   }
 
@@ -1412,6 +1472,7 @@ export class Renderer {
     if (it.kind === 'car') return this.drawCar(ctx, it.c, it.pose, L);
     if (it.kind === 'walker') return this.drawWalker(ctx, it.w, L);
     if (it.kind === 'lamp') return this.drawLamp(ctx, it.lamp, L);
+    if (it.kind === 'tornado') return this.drawTornado(ctx, it.pos, L);
     if (it.kind === 'ghost') {
       ctx.save();
       ctx.globalAlpha = 0.5;
@@ -1431,6 +1492,186 @@ export class Renderer {
       ctx.translate(-c.x, -c.y);
     }
     this.drawStructure(ctx, t.x, t.y, t.structure, L, false);
+    if ((t.structure.damage || 0) >= 0.15 && t.structure.type !== 'road') this.drawDamage(ctx, t, L);
+    ctx.restore();
+  }
+
+  // ---- Extreme weather ----------------------------------------------------------------------
+
+  // A heap of broken walls, planks and a lone chimney where a building stood.
+  drawRubble(ctx, x, y, L) {
+    const pile = [
+      [0.22, 0.3, 0.55, 0.62, 5, '#b7aa9a'],
+      [0.45, 0.4, 0.78, 0.72, 4, '#c9bcac'],
+      [0.3, 0.55, 0.6, 0.8, 3.5, '#a99c8c'],
+      [0.55, 0.22, 0.75, 0.42, 3, '#d3c6b4'],
+    ];
+    for (const [a, b, c, d, h, col] of pile) this.drawBox(ctx, L, x + a, y + b, x + c, y + d, 0, h + hash2(x, y, a * 10) * 2, col);
+    ctx.strokeStyle = lit('#8a6b4e', 1, L);
+    ctx.lineWidth = 1.4;
+    ctx.lineCap = 'round';
+    for (let k = 0; k < 3; k++) {
+      const p = gridToWorld(x + 0.3 + hash2(x, y, 60 + k) * 0.4, y + 0.3 + hash2(x, y, 70 + k) * 0.4, 6);
+      const ang = hash2(x, y, 80 + k) * Math.PI;
+      ctx.beginPath();
+      ctx.moveTo(p.x - Math.cos(ang) * 6, p.y - Math.sin(ang) * 2);
+      ctx.lineTo(p.x + Math.cos(ang) * 6, p.y + Math.sin(ang) * 2);
+      ctx.stroke();
+    }
+    this.drawBox(ctx, L, x + 0.62, y + 0.32, x + 0.7, y + 0.4, 0, 11, '#c08f7c');
+  }
+
+  // Cracks on a damaged building, a blue tarp once it is badly hit, and flames while it burns.
+  drawDamage(ctx, t, L) {
+    const s = t.structure;
+    const f = this.footprint(t) || { inset: 0.2, h: 16 };
+    const x0 = t.x + f.inset;
+    const x1 = t.x + 1 - f.inset;
+    const y1 = t.y + 1 - f.inset;
+    const h = f.h;
+    ctx.strokeStyle = litA('#4b4157', 1, L, 0.55);
+    ctx.lineWidth = 0.9;
+    const crack = (u, v) => {
+      const a = gridToWorld(x0 + (x1 - x0) * u, y1, h * v);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(a.x + 2, a.y + 3);
+      ctx.lineTo(a.x - 1, a.y + 6);
+      ctx.lineTo(a.x + 2.5, a.y + 9);
+      ctx.stroke();
+    };
+    crack(0.3, 0.85);
+    if (s.damage >= 0.34) {
+      crack(0.7, 0.6);
+      // A blue tarp over the broken roof.
+      const top = gridToWorld(t.x + 0.5, t.y + 0.5, h + 2);
+      ctx.fillStyle = lit('#5f8fd6', 1, L);
+      ctx.beginPath();
+      ctx.moveTo(top.x - 9, top.y);
+      ctx.lineTo(top.x, top.y - 4.5);
+      ctx.lineTo(top.x + 9, top.y);
+      ctx.lineTo(top.x, top.y + 4.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = litA('#ffffff', 1, L, 0.5);
+      ctx.stroke();
+    }
+    const nowDay = this.city.day + this.city.clock;
+    if (s.burning && s.burning > nowDay) {
+      const top = gridToWorld(t.x + 0.5, t.y + 0.5, h);
+      for (let k = 0; k < 3; k++) {
+        const fl = 0.6 + 0.4 * Math.sin(this.time * 14 + k * 2);
+        ctx.fillStyle = `rgba(255,${140 + k * 30},60,${(0.8 * fl).toFixed(3)})`;
+        ctx.beginPath();
+        ctx.ellipse(top.x - 5 + k * 5, top.y - 4 * fl, 2.6, 6 * fl, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      this.glows.push({ x: top.x, y: top.y - 4, r: 26, a: 0.55, rgb: '255,150,70' });
+      if (Math.random() < 0.3) this.particles.push({ kind: 'smoke', x: top.x, y: top.y - 8, vx: 6 + Math.random() * 8, vy: -16, r: 3, age: 0, life: 1.8 });
+    }
+  }
+
+  // Washed-out roads: mud, cracks and a warning cone. Snowed-in roads: a white drift.
+  drawRoadTrouble(ctx, t, L) {
+    const s = t.structure;
+    const { x, y } = t;
+    if (s.broken) {
+      ctx.fillStyle = litA('#9b7a58', 1, L, 0.85);
+      poly(ctx, [
+        [x + 0.2, y + 0.25],
+        [x + 0.78, y + 0.2],
+        [x + 0.82, y + 0.72],
+        [x + 0.28, y + 0.8],
+      ]);
+      ctx.fill();
+      ctx.fillStyle = litA('#8ec1dc', 1, L, 0.7);
+      gridEllipse(ctx, x + 0.5, y + 0.5, 0, 0.18);
+      ctx.fill();
+      ctx.strokeStyle = litA('#5d4a3a', 1, L, 0.8);
+      ctx.lineWidth = 1;
+      const a = gridToWorld(x + 0.25, y + 0.3);
+      const b = gridToWorld(x + 0.75, y + 0.7);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo((a.x + b.x) / 2 + 3, (a.y + b.y) / 2 - 2);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+      // Orange traffic cone.
+      const c = gridToWorld(x + 0.3, y + 0.62);
+      ctx.fillStyle = '#f08a3c';
+      ctx.beginPath();
+      ctx.moveTo(c.x - 2.2, c.y);
+      ctx.lineTo(c.x, c.y - 6.5);
+      ctx.lineTo(c.x + 2.2, c.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(c.x - 1.2, c.y - 3.6, 2.4, 1);
+    } else if (s.snowed) {
+      ctx.fillStyle = litA('#f7f9fc', 1, L, 0.92);
+      tilePoly(ctx, x, y, 0.04);
+      ctx.fill();
+    }
+  }
+
+  // Flood water spreading over the land near rivers and lakes.
+  drawFlood(ctx, tiles, L) {
+    const a = this.city.systems.disasters?.active;
+    if (!a?.flooded) return;
+    const nowDay = this.city.day + this.city.clock;
+    const f = (nowDay - a.started) / Math.max(0.01, a.ends - a.started);
+    const level = clamp(Math.min(f / 0.2, (1 - f) / 0.2, 1), 0, 1);
+    if (level <= 0) return;
+    const set = this._floodSet && this._floodSet.src === a.flooded ? this._floodSet : (this._floodSet = { src: a.flooded, has: new Set(a.flooded) });
+    const W = this.city.width;
+    ctx.save();
+    for (const t of tiles) {
+      if (!set.has.has(t.y * W + t.x)) continue;
+      ctx.fillStyle = litA(PALETTE.water, 0.95, L, (0.62 * level).toFixed(3));
+      tilePoly(ctx, t.x, t.y, 0.02);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(255,255,255,${(0.35 * level).toFixed(3)})`;
+      ctx.lineWidth = 0.8;
+      const r = 0.12 + ((this.time * 0.25 + hash2(t.x, t.y, 9)) % 1) * 0.25;
+      gridEllipse(ctx, t.x + 0.5, t.y + 0.5, 0, r);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // A grey, spinning funnel with debris swirling round its base.
+  drawTornado(ctx, pos, L) {
+    const base = gridToWorld(pos.x, pos.y);
+    const spin = this.time * 7;
+    ctx.save();
+    ctx.fillStyle = 'rgba(52,44,96,0.18)';
+    ctx.beginPath();
+    ctx.ellipse(base.x, base.y, 26, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    for (let i = 0; i < 34; i++) {
+      const k = i / 33;
+      const y = base.y - k * 150;
+      const rx = 5 + k * k * 44;
+      const sway = Math.sin(this.time * 2 + k * 3) * k * 9;
+      ctx.fillStyle = litA(mixHex('#4e4a5e', '#8f8aa3', k), 1, L, (0.7 + 0.15 * Math.sin(spin + i * 0.7)).toFixed(3));
+      ctx.beginPath();
+      ctx.ellipse(base.x + sway, y, rx, Math.max(4, rx * 0.42), 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // The storm cloud it hangs from.
+    ctx.fillStyle = litA('#6c6880', 1, L, 0.85);
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      ctx.ellipse(base.x + (i - 2) * 22 + Math.sin(this.time * 2) * 9, base.y - 156 + (i % 2) * 6, 30, 13, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = litA('#6d5a48', 1, L, 0.85);
+    for (let i = 0; i < 10; i++) {
+      const a = spin * 1.3 + i * 0.63;
+      const r = 14 + (i % 3) * 7;
+      const h = 8 + ((i * 7) % 30);
+      ctx.fillRect(base.x + Math.cos(a) * r - 1, base.y - h + Math.sin(a) * r * 0.35 - 1, 2.4, 2.4);
+    }
     ctx.restore();
   }
 
@@ -1460,6 +1701,8 @@ export class Renderer {
         return this.drawClinic(ctx, x, y, s, L, ghost);
       case 'tree':
         return this.drawTree(ctx, x + 0.5, y + 0.5, s.shape || 0, L, hash2(x, y, 12) * 6.28, 1, x, y);
+      case 'rubble':
+        return this.drawRubble(ctx, x, y, L);
       case 'park':
         return this.drawParkProps(ctx, x, y, L);
       case 'playground':
@@ -2821,6 +3064,13 @@ export class Renderer {
         ctx.fillStyle = litA('#f3ebdf', 1, L, (0.85 * (1 - t)).toFixed(3));
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r * (1 + t * 1.4), 0, Math.PI * 2);
+        ctx.fill();
+      } else if (p.kind === 'smoke') {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        ctx.fillStyle = `rgba(90,86,100,${(0.45 * (1 - t)).toFixed(3)})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * (1 + t * 2.5), 0, Math.PI * 2);
         ctx.fill();
       } else if (p.kind === 'ring') {
         const r = 0.2 + t * 0.55;

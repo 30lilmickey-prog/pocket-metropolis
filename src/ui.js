@@ -63,7 +63,8 @@ const pct = (v) => `${Math.round(v * 100)}%`;
 export const SPEEDS = [1, 3, 10];
 
 export class Interface {
-  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect, sound, locks, onShare, onBackHome, hasBackup, display, costOf, budget, growth, onSlots }) {
+  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect, sound, locks, onShare, onBackHome, hasBackup, display, costOf, budget, growth, onSlots, extremeWeather }) {
+    this.extremeWeather = extremeWeather; // { get(), set(level) }: off, gentle or wild
     this.growth = growth; // { get(), set(on) }: the town building itself
     this.onSlots = onSlots; // () → open the save slots sheet
     this.sound = sound;
@@ -284,6 +285,15 @@ export class Interface {
         ? `<span class="sheet-label">Town grows by itself</span><div class="seg big"><button type="button" data-growth="1" aria-pressed="${this.growth.get()}">On</button><button type="button" data-growth="0" aria-pressed="${!this.growth.get()}">Off</button></div>` +
           '<p class="sheet-hint">Homes, shops, streets and parks appear where your people need them. You can keep building too.</p>'
         : '') +
+      (this.extremeWeather
+        ? `<span class="sheet-label">Extreme weather</span><div class="seg big">${[
+            ['off', 'Off'],
+            ['gentle', 'Gentle'],
+            ['wild', 'Wild'],
+          ]
+            .map(([v, l]) => `<button type="button" data-extreme="${v}" aria-pressed="${this.extremeWeather.get() === v}">${l}</button>`)
+            .join('')}</div><p class="sheet-hint">Thunderstorms, heatwaves and blizzards, and now and then a flood, tornado or hurricane that can damage buildings and wash out roads.</p>`
+        : '') +
       `<span class="sheet-label">Map view</span><div class="seg big views">${VIEWS.map(
         (v) => `<button type="button" data-view="${v.id}" aria-pressed="${this.view === v.id}">${v.label}</button>`
       ).join('')}</div>` +
@@ -319,6 +329,7 @@ export class Interface {
     }
     else if (t.dataset.display) this.display.set(t.dataset.display, t.dataset.value === '1');
     else if (t.dataset.growth) this.growth.set(t.dataset.growth === '1');
+    else if (t.dataset.extreme) this.extremeWeather.set(t.dataset.extreme);
     else if (t.dataset.more === 'slots') {
       this.toggleMore(false);
       return this.onSlots?.();
@@ -392,7 +403,7 @@ export class Interface {
     }
     const work = s.jobs ? ` · ${pct(s.employment ?? 1)} employed` : '';
     const w = city.derived.weather;
-    const sky = w && w.kind !== 'clear' ? ` · ${WEATHER_LABELS[w.kind]}` : '';
+    const sky = w && w.kind !== 'clear' ? ` · ${w.severe ? '⚠ ' : ''}${WEATHER_LABELS[w.kind]}` : '';
     if (this.budget) {
       const b = this.budget();
       set('money', document.getElementById('stat-money'), b.sandbox ? `${money(b.money)} · Sandbox` : money(b.money));
@@ -434,6 +445,10 @@ export class Interface {
     }
     const visitors = (city.systems.townsfolk?.people || []).filter((p) => p.at.x === t.x && p.at.y === t.y && !(p.home.x === t.x && p.home.y === t.y));
     if (visitors.length) facts.push(['Here now', visitors.slice(0, 3).map((p) => p.first).join(', ') + (visitors.length > 3 ? ` +${visitors.length - 3}` : '')]);
+    if (s?.type === 'rubble') facts.push(['Condition', `Destroyed${s.was ? ` (was a ${(STRUCTURES[s.was]?.label || s.was).toLowerCase()})` : ''}. Crews will clear it, or bulldoze it`]);
+    else if (s?.broken) facts.push(['Condition', 'Washed out: no traffic until it is repaired (or build a road over it)']);
+    else if (s?.snowed) facts.push(['Condition', 'Snowed in until the blizzard passes']);
+    else if ((s?.damage || 0) >= 0.15) facts.push(['Condition', `${s.damage >= 0.34 ? 'Badly damaged' : 'Damaged'} (${Math.round(s.damage * 100)}%)${s.damage >= 0.34 ? ': half its space is unusable' : ''}`]);
     if (t.earning) facts.push([t.earning > 0 ? 'Pays in taxes' : 'Upkeep', `${money(Math.abs(t.earning))}/day`]);
     if (s?.type === 'road') facts.push(['Traffic', t.congestion < 0.02 ? 'Clear' : `${pct(t.congestion)} busy`]);
     if (!city.accessRoad(t.x, t.y) && def && !def.walkable) facts.push(['Road access', 'None nearby']);

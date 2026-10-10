@@ -2,6 +2,7 @@
 // commute then loads the road tiles along its route, and busy roads cost more to use. Adapted from Cimulity's aggregate
 // nearest-with-overflow matching (MIT, github.com/zeikar/cimulity).
 
+import { soundness } from './disasters.js';
 import { STRUCTURES, WORKER_SHARE, ROAD_CAPACITY } from './config.js';
 
 const NEIGHBOURS = [
@@ -78,7 +79,7 @@ export function computeLaborMarket(city, { extraRoads = null, dryRun = false } =
   const destinations = new Map(); // access road index → workplace tiles
   let jobs = 0;
   for (const w of workplaces) {
-    const cap = STRUCTURES[w.structure.type].jobs;
+    const cap = Math.round(STRUCTURES[w.structure.type].jobs * soundness(w.structure)); // damaged workplaces employ fewer
     jobs += cap;
     filled.set(w, 0);
     const road = city.accessRoad(w.x, w.y);
@@ -143,7 +144,7 @@ export function computeLaborMarket(city, { extraRoads = null, dryRun = false } =
         flows.push({ from: start, to: k, count: take, path });
         let remaining = take;
         for (const w of destinations.get(k)) {
-          const room = STRUCTURES[w.structure.type].jobs - filled.get(w);
+          const room = Math.round(STRUCTURES[w.structure.type].jobs * soundness(w.structure)) - filled.get(w);
           const add = Math.min(room, remaining);
           filled.set(w, filled.get(w) + add);
           remaining -= add;

@@ -142,17 +142,6 @@ export const DECISIONS = [
       { label: 'Sell it', gain: 1000, growth: [1.2, 4], result: 'The land was sold for new houses.' },
     ],
   },
-  {
-    id: 'flood',
-    era: [0, 4],
-    title: 'Spring floods',
-    text: 'The river burst its banks and damaged homes along the water.',
-    when: (ctx) => nearWater(ctx) && ctx.season === 'spring',
-    choices: [
-      { label: 'Repair everything', cost: 900, result: 'The town repaired the flood damage quickly.' },
-      { label: 'Let families fix it', spirit: [-0.06, 5], growth: [0.85, 3], result: 'Families patched up the flood damage themselves.' },
-    ],
-  },
   // ---- Modern times ----
   {
     id: 'highway',
@@ -208,17 +197,47 @@ export const DECISIONS = [
       { label: 'Keep the lots for building', growth: [1.15, 4], result: 'The empty lots were kept for building.' },
     ],
   },
-  // ---- Any time ----
+  // ---- Weather ----
   {
-    id: 'storm',
-    era: [0, 4],
-    title: 'A big storm',
-    text: 'A storm blew in overnight. Roofs are damaged and trees are down.',
+    id: 'buildingcode',
+    era: [1, 4],
+    once: true,
+    title: 'Storm-proof building rules?',
+    text: 'After the last bad weather, builders suggest stronger frames, roofs and foundations for every building.',
+    when: (ctx) => (ctx.city.systems.disasters?.log || []).length > 0,
     choices: [
-      { label: 'Repair now', cost: 600, result: 'Crews repaired the storm damage within days.' },
-      { label: 'Let residents fix it', spirit: [-0.04, 4], result: 'Residents cleaned up after the storm themselves.' },
+      { label: 'Adopt the rules', cost: 1500, resilience: 0.6, growth: [0.9, 4], result: 'The town adopted storm-proof building rules.' },
+      { label: 'Too expensive', result: 'The town kept its old building rules.' },
     ],
   },
+  {
+    id: 'levee',
+    era: [1, 4],
+    once: true,
+    title: 'A flood wall along the river?',
+    text: 'Families by the water ask for a wall to keep floods out.',
+    when: (ctx) => nearWater(ctx) && (ctx.city.systems.disasters?.log || []).some((e) => e.kind === 'flood' || e.kind === 'hurricane'),
+    choices: [
+      { label: 'Build the wall', cost: 2000, levee: true, spirit: [0.03, 6], result: 'A flood wall went up along the river.' },
+      { label: 'Not now', spirit: [-0.02, 4], result: 'The riverside stayed unprotected.' },
+    ],
+  },
+  ...['flood', 'tornado', 'hurricane'].map((kind) => ({
+    id: `prepare-${kind}`,
+    manual: true, // only asked when the disasters system warns of one
+    era: [0, 4],
+    title: { flood: 'Flood warning!', tornado: 'Tornado warning!', hurricane: 'Hurricane warning!' }[kind],
+    text: {
+      flood: 'The river is rising fast and will burst its banks within hours.',
+      tornado: 'A funnel cloud has been spotted heading for town.',
+      hurricane: 'A hurricane is heading straight for the town.',
+    }[kind],
+    choices: [
+      { label: { flood: 'Sandbag the riverbanks', tornado: 'Board up and take shelter', hurricane: 'Board up the town' }[kind], cost: { flood: 500, tornado: 400, hurricane: 800 }[kind], prepare: true, result: 'The town got ready for the storm. Damage should be halved.' },
+      { label: 'Ride it out', result: 'The town waited for the weather to pass.' },
+    ],
+  })),
+  // ---- Any time ----
 ];
 export const decisionById = (id) => DECISIONS.find((d) => d.id === id);
 
@@ -234,6 +253,9 @@ export function effectTags(c) {
   if (c.build) tags.push({ text: `New ${c.build[0] === 'factory' ? 'mill' : c.build[0]}`, tone: 'good' });
   if (c.trees) tags.push({ text: c.trees > 0 ? 'More trees' : 'Fewer trees', tone: c.trees > 0 ? 'good' : 'bad' });
   if (c.fun) tags.push({ text: 'Townsfolk cheer up', tone: 'good' });
+  if (c.prepare) tags.push({ text: 'Half the damage', tone: 'good' });
+  if (c.resilience) tags.push({ text: 'Storms do less damage', tone: 'good' });
+  if (c.levee) tags.push({ text: 'Floods kept out', tone: 'good' });
   return tags;
 }
 
@@ -285,6 +307,7 @@ export class Decisions {
     const now = day(this.city);
     const fits = DECISIONS.filter((d) => {
       if (forceId) return d.id === forceId;
+      if (d.manual) return false;
       if (ctx.era < d.era[0] || ctx.era > d.era[1]) return false;
       const seen = st.seen[d.id];
       if (seen != null && (d.once || now - seen < 10)) return false;
@@ -326,6 +349,9 @@ export class Decisions {
       if (c.trees < 0) this.growth.clearTrees(-c.trees);
       else this.growth.plantTrees(c.trees);
     }
+    if (c.prepare) this.disasters?.prepare();
+    if (c.resilience) this.city.systems.disasters && (this.city.systems.disasters.resilience = c.resilience);
+    if (c.levee && this.city.systems.disasters) this.city.systems.disasters.levee = true;
     if (c.fun && this.townsfolk) {
       for (const p of this.townsfolk.people) {
         p.needs.fun = clamp(p.needs.fun + c.fun, 0, 1);

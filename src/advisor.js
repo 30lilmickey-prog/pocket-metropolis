@@ -50,6 +50,15 @@ export function computeThoughts(city, milestones) {
   const homes = city.tiles.filter(isHome);
   const lived = homes.filter((h) => h.structure.residents > 0);
 
+  // Damage from extreme weather that still needs fixing.
+  const broken = city.tiles.filter((t) => t.structure && (t.structure.type === 'rubble' || t.structure.broken || (t.structure.damage || 0) >= 0.15));
+  if (broken.length) {
+    const roads = broken.filter((t) => t.structure.broken).length;
+    const rubble = broken.filter((t) => t.structure.type === 'rubble').length;
+    const what = [rubble && `${rubble} wrecked`, roads && `${roads} road${roads > 1 ? 's' : ''} washed out`, broken.length - roads - rubble && `${broken.length - roads - rubble} damaged`].filter(Boolean).join(', ');
+    add('repairs', rubble || roads >= 2 ? 'bad' : 'caution', 5.5, `Storm damage needs fixing: ${what}.`, 'Crews repair one thing at a time while there is money. Repair all fixes everything now', broken[0], broken, { repair: true });
+  }
+
   const cutOff = homes.filter((h) => !city.accessRoad(h.x, h.y));
   if (cutOff.length) {
     add('no-road', 'bad', 5, cutOff.length === 1 ? 'A home has no road. Nobody can get to work.' : `${cutOff.length} homes have no road. Nobody there can get to work.`, 'Connect them with a road', cutOff[0], cutOff);

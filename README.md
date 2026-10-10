@@ -87,6 +87,25 @@ Inspired by [genesis](https://github.com/tan-zhuo/genesis): the town is somethin
 
 The slot you're playing saves itself as you go. Towns saved before slots existed are in slot 1.
 
+## Extreme weather
+
+Weather runs from ordinary rain, snow and fog up to storms that can wreck the town.
+
+| Weather | What it does |
+|---|---|
+| ⛈️ Storm | Lightning strikes a building now and then: cracks or a small fire. |
+| 🥵 Heatwave | Hot haze; scorched lawns and the odd fire. |
+| 🌨️ Blizzard | Snows roads in (no traffic) until it passes. |
+| 🌊 Flood | Water spreads from rivers and lakes, washing out roads and soaking buildings. Low ground near water is at risk. |
+| 🌪️ Tornado | A funnel crosses the map, flattening buildings and trees in its path to rubble. |
+| 🌀 Hurricane | Long, town-wide wind and rain: damage everywhere, roads washed out. |
+
+- **Warnings.** Floods, tornadoes and hurricanes come with a warning a little ahead. A decision card lets you pay to prepare (sandbags, shelters, boarding up), which halves the damage, or ride it out.
+- **Damage.** A building with light damage works as normal; badly damaged ones hold half their residents and jobs; destroyed ones become rubble. Washed-out or snowed-in roads block traffic. Tap Inspect to see a tile's condition.
+- **Repairs.** Crews repair one thing at a time while there's money. After a storm, a report card lists the damage with **Show me** and **Repair everything** (free in sandbox), and residents ask for repairs too. Building over rubble or a broken road also rebuilds it.
+- **Decisions.** A building code (sturdier buildings) and a flood wall (floods do far less damage) come up as town decisions.
+- **Setting.** ☰ → **Extreme weather**: Off, Gentle (default) or Wild. New towns are left alone until they have 25 people and a few years behind them, and extreme events are at least four days apart.
+
 ## Life Story
 
 Open **Life** to create a character: name, pronouns, look and two traits. They are born as a baby into a family living in one of your city's homes, marked with a pin on the map.
@@ -150,6 +169,7 @@ Each system lives in its own module under `src/` and talks to the others only th
 | Input/Camera | `input.js`, `camera.js` | Pointer, wheel and pinch gestures; smooth pan and zoom; fitting to the screen. |
 | Persistence | `persistence.js` | Versioned localStorage saves with a migration table; autosave. |
 | Weather | `weather.js` | Seasons from the day count; weather spells with seasonal odds; smoothed rain, snow, fog and snow cover for the renderer and agents. |
+| Extreme weather | `disasters.js` | Storms, heatwaves, blizzards, floods, tornadoes and hurricanes; warnings, damage (`structure.damage`, rubble, broken or snowed roads), repairs. State in `city.systems.disasters`. |
 | Audio | `audio.js` | Synthesised effects (ZzFX-based) and ambience through one master volume. |
 | Sharing and settings | `share.js`, `settings.js`, `minimap.js`, `trendsUI.js` | Town links (pack, deflate, base64url), viewer settings in localStorage, the minimap, and the trend tiles. Trend samples are saved in `city.systems.trends`. |
 | Streets | `streets.js` | Names straight runs of road and numbers the buildings along them; names are saved in `city.systems.streets` by tile. Writes `street` and `address` on tiles. |

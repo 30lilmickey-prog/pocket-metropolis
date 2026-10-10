@@ -16,6 +16,8 @@
 - [x] Growing through the eras (ideas from genesis): a seed in 1850 that grows by itself, five eras that change roads, lamps, vehicles and buildings, town decisions with good and bad effects, a town history
 - [x] Main person you follow on the map; the story passes to their children (or a niece or nephew) generation after generation
 - [x] Three save slots
+- [x] Extreme weather: storms, heatwaves, blizzards, floods, tornadoes and hurricanes that damage or destroy buildings and roads; warnings and preparing; repairs; building code and flood wall; Off/Gentle/Wild setting
+- [ ] Weather next: fire station that puts out fires, insurance, earthquakes, a weather forecast in the stats bubble
 - [ ] Eras next: a growth timelapse to replay the town from its first road, a chronicle camera that drifts to where things happen, trains and a station in the railway age, buses in the motor age
 - [x] Townsfolk (ideas from emergent-city): named residents with personalities, needs and daily routines; friendships, love and weddings; favourite places; town news; mood dots on walkers; unmet needs as resident wishes
 - [ ] Townsfolk next: tap a walker to follow them, birthdays and babies for married couples, pets, neighbourhood character (leafy uptown or busy quarter) from who lives where, a weekly town festival

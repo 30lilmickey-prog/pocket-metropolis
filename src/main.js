@@ -123,6 +123,13 @@ function start(hotData = {}) {
     onShare: () => shareTown(),
     onBackHome: () => backHome(),
     onSlots: () => slotsSheet.toggle(true),
+    extremeWeather: {
+      get: () => sim.disasters.level,
+      set: (v) => {
+        sim.disasters.level = v;
+        ui.toast(v === 'off' ? 'Extreme weather is off for this town' : v === 'wild' ? 'Wild weather: storms and disasters come often' : 'Gentle weather: the odd storm, and a rare disaster', 3200);
+      },
+    },
     growth: {
       get: () => sim.growth.on,
       set: (on) => {
@@ -234,6 +241,7 @@ function start(hotData = {}) {
       focusTile(x, y);
       if (window.innerWidth < 560) cityPanel.toggle(false);
     },
+    onRepair: () => repairAll(),
     onOpen: () => {
       lifeUI.toggle(false);
       ui.toggleMore(false);
@@ -298,6 +306,7 @@ function start(hotData = {}) {
           const [x, y] = b.dataset.notableShow.split(',').map(Number);
           focusTile(x, y);
         }
+        if (e.target.closest('[data-repair-all]')) repairAll();
         card.hidden = true;
       });
     }
@@ -737,6 +746,40 @@ function start(hotData = {}) {
     onOpen: () => ui.closeTray(),
   });
 
+  // ---- Extreme weather ------------------------------------------------------------------------
+  function repairAll() {
+    const r = sim.disasters.repairAll();
+    if (!r) return ui.toast(`Not enough money to repair everything (${money(sim.disasters.repairCost().total)}). Crews will keep working as money comes in`, 4200);
+    if (!r.count) return ui.toast('Nothing needs repairing', 2000);
+    sim.refresh();
+    audio.play('fanfare', { gap: 1 });
+    ui.toast(`Repaired ${r.count} place${r.count > 1 ? 's' : ''}${r.total ? ` for ${money(r.total)}` : ''}`, 3200);
+  }
+  function weatherReport({ kind, info, report: r }) {
+    const lost = r.destroyed + r.damaged + r.roads;
+    if (!lost && !r.trees) return ui.toast(`The ${info.label.toLowerCase()} has passed. No real damage`, 3200);
+    const cost = sim.disasters.repairCost();
+    const card = cardEl();
+    card.classList.add('notable-card');
+    const lines = [
+      r.destroyed && `<b>${r.destroyed}</b> building${r.destroyed > 1 ? 's' : ''} destroyed`,
+      r.damaged && `<b>${r.damaged}</b> damaged`,
+      r.roads && `<b>${r.roads}</b> road${r.roads > 1 ? 's' : ''} washed out`,
+      r.trees && `<b>${r.trees}</b> tree${r.trees > 1 ? 's' : ''} down`,
+    ].filter(Boolean);
+    const first = r.places[0];
+    card.innerHTML =
+      `<span class="insp-kicker">${info.icon} After the ${info.label.toLowerCase()}</span><h2>${lost ? 'Damage report' : 'Trees down'}</h2>` +
+      `<p>${lines.join(' · ')}</p>` +
+      (cost.count ? `<p class="np-bonus">Crews will repair things one by one as money allows.</p>` : '') +
+      '<div class="decision-foot">' +
+      (first ? `<button type="button" class="ghost-btn small" data-notable-show="${first.x},${first.y}">Show me</button>` : '<span></span>') +
+      (cost.count ? `<button type="button" class="primary-btn small" data-repair-all>Repair everything · ${cost.total ? money(cost.total) : 'free'}</button>` : '') +
+      '</div>';
+    showCard(card, 12000);
+    void kind;
+  }
+
   // After a move, fly to the new home and say its address.
   const homeKey = () => {
     const h = sim.life.char?.home;
@@ -760,6 +803,24 @@ function start(hotData = {}) {
     else if (ev.type === 'lifeEvent') audio.play('chime');
     if (ev.type === 'milestone') celebrate(ev.milestone);
     if (ev.type === 'era') newEra(ev);
+    if (ev.type === 'weatherWarning') {
+      audio.play('warning');
+      ui.toast(`⚠ ${ev.info.label} warning! ${ev.info.warn} It will hit in a few hours`, 6000);
+    }
+    if (ev.type === 'extremeWeather' && ev.phase === 'start') {
+      audio.play(ev.info.severity === 'extreme' ? 'warning' : 'thunder');
+      const say = {
+        storm: 'A thunderstorm is rolling in. Lightning may strike tall buildings',
+        heatwave: 'A heatwave! Trees are wilting and fires can break out',
+        blizzard: 'A blizzard! Some roads are snowed in until it passes',
+        flood: 'The river has burst its banks!',
+        tornado: 'A tornado is tearing across the map!',
+        hurricane: 'The hurricane has arrived!',
+      }[ev.kind];
+      ui.toast(`${ev.info.icon} ${say}`, 5200);
+    }
+    if (ev.type === 'extremeWeather' && ev.phase === 'end') weatherReport(ev);
+    if (ev.type === 'lightning') audio.play('thunder', { delay: 0.25, gap: 0.8 });
     if (ev.type === 'decision') {
       audio.play('chime');
       decisionCard.show({ auto: true });

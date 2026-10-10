@@ -64,6 +64,8 @@ export const STRUCTURES = {
   tree: { label: 'Tree', capacity: 0, jobs: 0, greenery: 1, walkable: true, height: 26 },
   park: { label: 'Park', capacity: 0, jobs: 0, greenery: 3, walkable: true, height: 0 },
   road: { label: 'Road', capacity: 0, jobs: 0, greenery: 0, walkable: true, road: true, height: 0 },
+  // What a building becomes when a disaster destroys it. Not a tool: crews or the bulldozer clear it.
+  rubble: { label: 'Rubble', capacity: 0, jobs: 0, greenery: 0, height: 7 },
 };
 
 // Share of residents who go out to work.

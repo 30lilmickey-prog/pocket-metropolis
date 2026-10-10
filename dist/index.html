@@ -2972,6 +2972,8 @@ const STRUCTURES = {
   tree: { label: 'Tree', capacity: 0, jobs: 0, greenery: 1, walkable: true, height: 26 },
   park: { label: 'Park', capacity: 0, jobs: 0, greenery: 3, walkable: true, height: 0 },
   road: { label: 'Road', capacity: 0, jobs: 0, greenery: 0, walkable: true, road: true, height: 0 },
+  // What a building becomes when a disaster destroys it. Not a tool: crews or the bulldozer clear it.
+  rubble: { label: 'Rubble', capacity: 0, jobs: 0, greenery: 0, height: 7 },
 };
 
 // Share of residents who go out to work.
@@ -3165,9 +3167,10 @@ class CityState {
     return this.inBounds(x, y) ? this.tiles[y * this.width + x] : null;
   }
 
+  // A usable road: washed-out and snowed-in roads can't be driven until they are cleared.
   isRoad(x, y) {
-    const t = this.getTile(x, y);
-    return !!t && t.structure?.type === 'road';
+    const s = this.getTile(x, y)?.structure;
+    return !!s && s.type === 'road' && !s.broken && !s.snowed;
   }
 
   roadNeighbors(x, y) {
@@ -3202,7 +3205,9 @@ class CityState {
     if (tool === 'bulldoze') return !!t.structure || t.terrain === 'water';
     if (tool === 'water') return t.terrain !== 'water' || !!t.structure;
     if (!STRUCTURES[tool]) return false;
-    return t.structure?.type !== tool;
+    // Building the same thing again over storm damage rebuilds it.
+    const s = t.structure;
+    return s?.type !== tool || !!s.broken || !!s.snowed || (s.damage || 0) >= 0.34;
   }
 
   // The one entry point for player edits. Returns true when the city changed.
@@ -3587,12 +3592,791 @@ function recomputeDesirability(city) {
 return { FACTORS, recomputeDesirability };
 })();
 
+// ---- weather.js ----
+const __mod_weather = (() => {
+// Seasons and weather. Seasons follow the day count; weather changes every few in-game hours with
+// odds that depend on the season. The current spell is saved in city.systems.weather; the smoothed
+// intensities the renderer and agents read live in city.derived.weather.
+
+const { clamp } = __mod_utils;
+const DAYS_PER_SEASON = 2;
+const SEASONS = [
+  { id: 'spring', label: 'Spring' },
+  { id: 'summer', label: 'Summer' },
+  { id: 'autumn', label: 'Autumn' },
+  { id: 'winter', label: 'Winter' },
+];
+
+// Odds of each kind of weather per season. Snow only falls in winter.
+const ODDS = {
+  spring: { clear: 0.5, cloudy: 0.2, rain: 0.25, fog: 0.05 },
+  summer: { clear: 0.72, cloudy: 0.13, rain: 0.15 },
+  autumn: { clear: 0.38, cloudy: 0.24, rain: 0.28, fog: 0.1 },
+  winter: { clear: 0.32, cloudy: 0.2, snow: 0.38, fog: 0.1 },
+};
+
+const WEATHER_LABELS = {
+  clear: 'Clear',
+  cloudy: 'Cloudy',
+  rain: 'Rain',
+  snow: 'Snow',
+  fog: 'Fog',
+  // Extreme weather, started by the disasters system (disasters.js).
+  storm: 'Thunderstorm',
+  heatwave: 'Heatwave',
+  blizzard: 'Blizzard',
+  flood: 'Flood',
+  tornado: 'Tornado',
+  hurricane: 'Hurricane',
+};
+
+function seasonFor(day) {
+  return SEASONS[Math.floor((Math.max(1, day) - 1) / DAYS_PER_SEASON) % SEASONS.length];
+}
+
+// How far through the current season we are, 0..1 (used to blend autumn into winter and so on).
+function seasonProgress(day, clock) {
+  return (((Math.max(1, day) - 1) % DAYS_PER_SEASON) + clock) / DAYS_PER_SEASON;
+}
+
+class WeatherSystem {
+  constructor(city, rng = Math.random) {
+    this.city = city;
+    this.rng = rng;
+    city.derived.weather = { kind: 'clear', rain: 0, snow: 0, fog: 0, cloud: 0, snowCover: 0, wind: 0, heat: 0, severe: false };
+  }
+
+  get spell() {
+    const s = this.city.systems;
+    if (!s.weather) s.weather = { kind: 'clear', ends: this.city.day + this.city.clock + 0.2 };
+    return s.weather;
+  }
+
+  // Pick the next spell of weather for the season.
+  roll() {
+    const season = seasonFor(this.city.day).id;
+    const odds = ODDS[season];
+    let r = this.rng();
+    let kind = 'clear';
+    for (const [k, p] of Object.entries(odds)) {
+      if ((r -= p) <= 0) {
+        kind = k;
+        break;
+      }
+    }
+    // Fog belongs to mornings; outside them it becomes a grey sky.
+    if (kind === 'fog' && (this.city.clock < 0.2 || this.city.clock > 0.45)) kind = 'cloudy';
+    const length = kind === 'clear' ? 0.25 + this.rng() * 0.35 : 0.1 + this.rng() * 0.2;
+    this.city.systems.weather = { kind, ends: this.city.day + this.city.clock + length };
+  }
+
+  update(dt) {
+    const now = this.city.day + this.city.clock;
+    if (now >= this.spell.ends) this.roll();
+    const kind = this.spell.kind;
+    const w = this.city.derived.weather;
+    const ease = (cur, target, rate) => cur + (target - cur) * Math.min(1, dt * rate);
+    w.kind = kind;
+    const wet = { rain: 1, storm: 1, hurricane: 1, flood: 0.75, tornado: 0.4 }[kind] || 0;
+    w.rain = ease(w.rain, wet, 0.25);
+    w.snow = ease(w.snow, kind === 'snow' || kind === 'blizzard' ? 1 : 0, 0.25);
+    w.fog = ease(w.fog, kind === 'fog' ? 1 : kind === 'blizzard' ? 0.45 : 0, 0.2);
+    w.cloud = ease(w.cloud, kind === 'clear' || kind === 'heatwave' ? 0 : kind === 'cloudy' || kind === 'fog' ? 0.6 : 1, 0.25);
+    // Extreme weather: wind slants the rain and bends trees, a heatwave bakes the light.
+    w.wind = ease(w.wind || 0, { hurricane: 1, tornado: 0.8, blizzard: 0.7, storm: 0.5 }[kind] || 0, 0.3);
+    w.heat = ease(w.heat || 0, kind === 'heatwave' ? 1 : 0, 0.2);
+    w.severe = !!this.spell.severe;
+    // Snow settles through winter and melts away early in spring.
+    const season = seasonFor(this.city.day).id;
+    const p = seasonProgress(this.city.day, this.city.clock);
+    const coverTarget = season === 'winter' ? clamp(0.35 + p * 0.5 + w.snow * 0.3, 0, 1) : season === 'spring' ? clamp(0.4 - p * 2, 0, 1) : 0;
+    w.snowCover = ease(w.snowCover, coverTarget, 0.1);
+    w.season = season;
+  }
+}
+
+return { DAYS_PER_SEASON, SEASONS, WEATHER_LABELS, seasonFor, seasonProgress, WeatherSystem };
+})();
+
+// ---- eras.js ----
+const __mod_eras = (() => {
+// Eras and the town calendar. A town is founded in 1850 and a year passes each in-game day, the same
+// pace as a Life Story life, so a family's grandparents see dirt lanes and horse carts while their
+// grandchildren grow up with buses, asphalt and electric light.
+//
+// An era needs both people and time: enough residents, and enough years since the town was founded.
+// Town decisions can bring an era closer (`state.bonusYears`). Eras never go backwards.
+//
+// Saved in city.systems.era = { index, startYear, bonusYears, history: [{ index, year }] }.
+
+const FOUNDING_YEAR = 1850;
+
+const ERAS = [
+  {
+    id: 'pioneer',
+    label: 'Pioneer days',
+    pop: 0,
+    years: 0,
+    nominal: 1850,
+    blurb: 'Dirt lanes, timber cottages and horse carts.',
+    builds: ['cottage', 'house', 'shop', 'cafe', 'school', 'clinic', 'park', 'playground'],
+  },
+  {
+    id: 'railway',
+    label: 'Railway age',
+    pop: 60,
+    years: 15,
+    nominal: 1865,
+    blurb: 'Cobbled streets, brick houses and gas lamps. The first motor cars rattle by.',
+    builds: ['apartments', 'factory'],
+  },
+  {
+    id: 'motor',
+    label: 'Motor age',
+    pop: 180,
+    years: 35,
+    nominal: 1885,
+    blurb: 'Paved roads, electric street lights and cars for everyone.',
+    builds: ['office', 'mall', 'field'],
+  },
+  {
+    id: 'modern',
+    label: 'Modern times',
+    pop: 400,
+    years: 60,
+    nominal: 1910,
+    blurb: 'Towers rise downtown and the streets hum with traffic.',
+    builds: ['tower'],
+  },
+  {
+    id: 'future',
+    label: 'Bright future',
+    pop: 800,
+    years: 90,
+    nominal: 1940,
+    blurb: 'Solar roofs, quiet electric cars and gardens everywhere.',
+    builds: [],
+  },
+];
+
+// Every building the town can grow by itself in a given era (each era keeps the ones before).
+function buildsFor(index) {
+  return ERAS.slice(0, index + 1).flatMap((e) => e.builds);
+}
+
+// The highest era a town of this size could reach, ignoring the years needed (for older saves).
+function eraForPopulation(pop) {
+  let i = 0;
+  ERAS.forEach((e, k) => {
+    if (pop >= e.pop) i = k;
+  });
+  return i;
+}
+
+class Eras {
+  constructor(city) {
+    this.city = city;
+  }
+
+  get state() {
+    const s = this.city.systems;
+    if (!s.era) {
+      // A town from before eras existed starts in the era its size suggests, and the calendar is set so
+      // the year looks right for it. A brand-new town starts in 1850.
+      const index = eraForPopulation(this.city.stats?.population || 0);
+      const day = Math.max(1, this.city.day || 1);
+      s.era = { index, startYear: index ? ERAS[index].nominal - day : FOUNDING_YEAR - day, bonusYears: 0, foundedDay: index ? day - ERAS[index].years : day, history: [{ index, year: 0 }] };
+      s.era.history[0].year = this.year;
+    }
+    return s.era;
+  }
+
+  get index() {
+    return this.state.index;
+  }
+
+  get current() {
+    return ERAS[this.index];
+  }
+
+  get next() {
+    return ERAS[this.index + 1] || null;
+  }
+
+  // The calendar year right now.
+  get year() {
+    const s = this.city.systems.era;
+    return (s ? s.startYear : FOUNDING_YEAR - 1) + Math.max(1, this.city.day);
+  }
+
+  // Years since the town was founded, plus any head start from decisions.
+  get age() {
+    const st = this.state;
+    return Math.max(0, this.city.day - (st.foundedDay ?? 1)) + (st.bonusYears || 0);
+  }
+
+  // Start a brand-new town's calendar today.
+  found() {
+    const day = Math.max(1, this.city.day);
+    this.city.systems.era = { index: 0, startYear: FOUNDING_YEAR - day, bonusYears: 0, foundedDay: day, history: [{ index: 0, year: FOUNDING_YEAR }] };
+  }
+
+  // What the next era still needs: people and years.
+  progress() {
+    const next = this.next;
+    if (!next) return null;
+    const pop = this.city.stats?.population || 0;
+    return {
+      next,
+      pop,
+      needPop: next.pop,
+      years: this.age,
+      needYears: next.years,
+      fraction: Math.min(1, pop / next.pop) * 0.5 + Math.min(1, this.age / Math.max(1, next.years)) * 0.5,
+    };
+  }
+
+  // Called after stats update. Moves on one era at a time and announces it.
+  update() {
+    const st = this.state;
+    const next = this.next;
+    if (!next) return null;
+    const pop = this.city.stats?.population || 0;
+    if (pop < next.pop || this.age < next.years) return null;
+    st.index++;
+    st.history.push({ index: st.index, year: this.year });
+    this.city.revision++; // roads and lamps are redrawn in the new style
+    this.city.emit('era', { era: ERAS[st.index], index: st.index, year: this.year });
+    return ERAS[st.index];
+  }
+
+  // A decision can bring the next era closer.
+  hurry(years) {
+    this.state.bonusYears = (this.state.bonusYears || 0) + years;
+  }
+}
+
+// The calendar year for any city, without needing an Eras instance (for the UI and Life Story).
+function yearOf(city) {
+  const s = city.systems.era;
+  return (s ? s.startYear : FOUNDING_YEAR - 1) + Math.max(1, city.day);
+}
+
+return { FOUNDING_YEAR, ERAS, buildsFor, eraForPopulation, Eras, yearOf };
+})();
+
+// ---- chronicle.js ----
+const __mod_chronicle = (() => {
+// The town chronicle: a short history of firsts, new eras, decisions and family generations, with the
+// year each happened. Shown in the City panel. Saved in city.systems.chronicle (the latest 60 entries).
+
+const { yearOf } = __mod_eras;
+const KEEP = 60;
+
+function addChronicle(city, text, at = null, kind = 'note') {
+  const list = (city.systems.chronicle ||= []);
+  const item = { year: yearOf(city), day: city.day, text, kind, x: at?.x ?? null, y: at?.y ?? null };
+  list.push(item);
+  if (list.length > KEEP) list.splice(0, list.length - KEEP);
+  city.emit('chronicle', { item });
+  return item;
+}
+
+return { addChronicle };
+})();
+
+// ---- disasters.js ----
+const __mod_disasters = (() => {
+// Extreme weather: from a passing thunderstorm to a tornado that flattens a street.
+//
+//   severe  thunderstorm  lightning strikes tall buildings and trees
+//           heatwave      trees wither, the odd building catches fire, everyone is grumpy
+//           blizzard      roads are snowed in (no driving) until it ends; weak roofs give way
+//   extreme flood         land near water floods: roads wash out, buildings are damaged
+//           tornado       a twister crosses the map and flattens what it touches
+//           hurricane     wind and rain over the whole town, plus flooding by the water
+//
+// Extreme events come with a warning a few hours ahead and a choice to prepare (which halves the
+// damage). Damage is stored on the structure: `damage` 0..1 (a third or more halves what the building
+// can hold), roads `broken` (washed out) or `snowed` (snowed in), and a building at full damage turns
+// into rubble. Crews then repair things one at a time, paid from the town budget, or the player pays
+// to repair everything at once, or builds over the damage.
+//
+// How often it happens is a per-town setting: off, gentle (default) or wild.
+// Saved in city.systems.disasters = { level, next, active, pending, prepared, resilience, levee, log }.
+
+const { STRUCTURES, COSTS } = __mod_config;
+const { seasonFor } = __mod_weather;
+const { addChronicle } = __mod_chronicle;
+const { yearOf } = __mod_eras;
+const { clamp, pickWeighted } = __mod_utils;
+const LEVELS = { off: 0, gentle: 1, wild: 2.6 };
+
+const KINDS = {
+  storm: { label: 'Thunderstorm', severity: 'severe', days: 0.12, icon: '⚡' },
+  heatwave: { label: 'Heatwave', severity: 'severe', days: 0.5, icon: '☀' },
+  blizzard: { label: 'Blizzard', severity: 'severe', days: 0.3, icon: '❄' },
+  flood: { label: 'Flood', severity: 'extreme', days: 0.3, icon: '≋', warn: 'The river is rising fast.' },
+  tornado: { label: 'Tornado', severity: 'extreme', days: 0.08, icon: '🌪', warn: 'A funnel cloud has been spotted.' },
+  hurricane: { label: 'Hurricane', severity: 'extreme', days: 0.25, icon: '🌀', warn: 'A hurricane is heading for the coast.' },
+};
+
+// Chance per check (two checks a day) at the gentle level, by season.
+const ODDS = {
+  spring: { storm: 0.06, flood: 0.03, tornado: 0.02 },
+  summer: { storm: 0.08, heatwave: 0.05, tornado: 0.015, hurricane: 0.01 },
+  autumn: { storm: 0.04, flood: 0.02, hurricane: 0.02 },
+  winter: { blizzard: 0.07 },
+};
+
+const WARNING_DAYS = 0.12; // about three in-game hours of warning before an extreme event
+const CHECK_DAYS = 0.5;
+const COOLDOWN_DAYS = 4; // a breather after an extreme event
+const REPAIR_EVERY_DAYS = 0.03; // crews fix one thing roughly every in-game 45 minutes
+
+// How much of a damaged structure still works: homes hold, and workplaces employ, this share.
+function soundness(s) {
+  if (!s) return 0;
+  if (s.type === 'rubble') return 0;
+  const d = s.damage || 0;
+  return d < 0.34 ? 1 : d < 1 ? 0.5 : 0;
+}
+
+const now = (city) => city.day + city.clock;
+const isBuilding = (s) => !!s && s.type !== 'road' && s.type !== 'rubble' && !STRUCTURES[s.type].walkable;
+
+class Disasters {
+  constructor(city, { economy, decisions, eras, rng = Math.random } = {}) {
+    this.city = city;
+    this.economy = economy;
+    this.decisions = decisions;
+    this.eras = eras;
+    this.rng = rng;
+    this._repairTimer = 0;
+  }
+
+  get state() {
+    const s = this.city.systems;
+    if (!s.disasters) s.disasters = { level: 'gentle', next: now(this.city) + 1, active: null, pending: null, prepared: false, resilience: 1, levee: false, log: [] };
+    return s.disasters;
+  }
+
+  get level() {
+    return this.state.level || 'gentle';
+  }
+
+  set level(v) {
+    this.state.level = LEVELS[v] != null ? v : 'gentle';
+    if (v === 'off') this.state.pending = null;
+  }
+
+  get active() {
+    return this.state.active;
+  }
+
+  // ---- Deciding what comes ---------------------------------------------------------------
+
+  // Called every simulation tick with the game seconds that passed.
+  update(dt) {
+    const st = this.state;
+    const t = now(this.city);
+    if (st.active) {
+      this.run(st.active, dt);
+      if (t >= st.active.ends) this.finish();
+      return;
+    }
+    if (st.pending && t >= st.pending.at) {
+      this.start(st.pending.kind);
+      return;
+    }
+    this._repairTimer -= dt / 300; // dt is game seconds; a day is 300
+    if (this._repairTimer <= 0) {
+      this._repairTimer = REPAIR_EVERY_DAYS;
+      this.repairOne();
+    }
+    if (st.pending || t < st.next) return;
+    st.next = t + CHECK_DAYS;
+    const kind = this.roll();
+    if (!kind) return;
+    if (KINDS[kind].severity === 'extreme') this.warn(kind);
+    else this.start(kind);
+  }
+
+  // Which event (if any) this check brings, from the season, the setting and the town's size.
+  roll() {
+    const mult = LEVELS[this.level] || 0;
+    if (!mult) return null;
+    const st = this.state;
+    const pop = this.city.stats?.population || 0;
+    if (pop < 10) return null;
+    const t = now(this.city);
+    const founded = this.city.systems.era?.foundedDay ?? 0;
+    const canExtreme = pop >= 25 && t - founded >= 3 && t >= (st.cooldownUntil || 0);
+    const hasWater = this.city.tiles.some((x) => x.terrain === 'water');
+    const odds = ODDS[seasonFor(this.city.day).id] || {};
+    for (const [kind, p] of Object.entries(odds)) {
+      if (KINDS[kind].severity === 'extreme' && !canExtreme) continue;
+      if ((kind === 'flood' || kind === 'hurricane') && !hasWater) continue;
+      if (this.rng() < p * mult) return kind;
+    }
+    return null;
+  }
+
+  // A warning a few hours ahead, with the choice to prepare.
+  warn(kind) {
+    const st = this.state;
+    st.pending = { kind, at: now(this.city) + WARNING_DAYS };
+    st.prepared = false;
+    this.city.emit('weatherWarning', { kind, info: KINDS[kind] });
+    if (this.decisions && !this.decisions.state.pending) this.decisions.ask(`prepare-${kind}`);
+  }
+
+  prepare() {
+    this.state.prepared = true;
+  }
+
+  // ---- During the event ------------------------------------------------------------------
+
+  start(kind) {
+    const st = this.state;
+    const info = KINDS[kind];
+    const t = now(this.city);
+    // An unanswered "prepare?" question is settled as "ride it out" once the weather arrives.
+    const q = this.decisions?.state.pending;
+    if (q && q.id === `prepare-${kind}`) this.decisions.choose(1, { lapsed: true });
+    st.pending = null;
+    const a = { kind, started: t, ends: t + info.days * (0.8 + this.rng() * 0.4), timer: 0, report: { damaged: 0, destroyed: 0, roads: 0, trees: 0, places: [] } };
+    if (kind === 'flood' || kind === 'hurricane') a.flooded = this.floodZone(kind === 'flood' ? 2 : 1);
+    if (kind === 'tornado') a.path = this.tornadoPath();
+    if (kind === 'blizzard') {
+      for (const tile of this.city.tiles) {
+        const s = tile.structure;
+        if (s?.type === 'road' && this.rng() < 0.25) {
+          s.snowed = true;
+          this.city._changed(tile.x, tile.y);
+        }
+      }
+    }
+    st.active = a;
+    this.city.systems.weather = { kind, ends: a.ends, severe: true };
+    // Bad weather dents how people feel about the town while it lasts.
+    const dent = { storm: -0.02, heatwave: -0.05, blizzard: -0.04, flood: -0.06, tornado: -0.05, hurricane: -0.08 }[kind];
+    this.decisions?.state.effects.push({ amount: dent, until: a.ends + 0.3, id: `weather-${kind}` });
+    this.city.emit('extremeWeather', { kind, info, phase: 'start' });
+  }
+
+  run(a, dt) {
+    const kind = a.kind;
+    a.timer -= dt;
+    if (kind === 'storm') {
+      if (a.timer <= 0) {
+        a.timer = 4 + this.rng() * 7;
+        this.lightning(a);
+      }
+    } else if (kind === 'heatwave') {
+      if (a.timer <= 0) {
+        a.timer = 15 + this.rng() * 10;
+        const trees = this.city.tiles.filter((t) => t.structure?.type === 'tree');
+        if (trees.length && this.rng() < 0.4) this.hit(trees[Math.floor(this.rng() * trees.length)], 1, a, 'withered');
+        if (this.rng() < 0.18) {
+          const b = this.pickBuilding();
+          if (b) {
+            b.structure.burning = now(this.city) + 0.06;
+            this.hit(b, 0.5 + this.rng() * 0.6, a, 'fire');
+            this.city.emit('disasterHit', { kind: 'fire', x: b.x, y: b.y });
+          }
+        }
+      }
+    } else if (kind === 'blizzard') {
+      if (a.timer <= 0) {
+        a.timer = 20 + this.rng() * 15;
+        const weak = this.city.tiles.filter((t) => t.structure?.type === 'cottage' || t.structure?.type === 'house');
+        if (weak.length && this.rng() < 0.5) this.hit(weak[Math.floor(this.rng() * weak.length)], 0.2 + this.rng() * 0.25, a, 'roof');
+      }
+    } else if (kind === 'flood' || kind === 'hurricane') {
+      if (a.timer <= 0) {
+        a.timer = kind === 'flood' ? 1.2 + this.rng() * 1.3 : 2 + this.rng() * 2;
+        const zone = (a.flooded || []).map((i) => this.city.tiles[i]).filter((t) => t.structure && t.structure.type !== 'rubble' && t.structure.type !== 'tree');
+        if (zone.length) {
+          const tile = zone[Math.floor(this.rng() * zone.length)];
+          const levee = this.state.levee ? 0.3 : 1;
+          if (tile.structure?.type === 'road') this.hit(tile, 0.6 * levee, a, 'washed');
+          else this.hit(tile, (0.25 + this.rng() * 0.3) * levee, a, 'flood');
+        }
+        if (kind === 'hurricane') {
+          const b = this.pickBuilding(true);
+          if (b) this.hit(b, 0.3 + this.rng() * 0.4, a, 'wind');
+          if (this.rng() < 0.5) {
+            const trees = this.city.tiles.filter((t) => t.structure?.type === 'tree');
+            if (trees.length) this.hit(trees[Math.floor(this.rng() * trees.length)], 1, a, 'wind');
+          }
+        }
+      }
+    } else if (kind === 'tornado') {
+      this.twister(a);
+    }
+  }
+
+  lightning(a) {
+    const city = this.city;
+    const tall = city.tiles.filter((t) => t.structure && (STRUCTURES[t.structure.type].height || 0) >= 20 && t.structure.type !== 'rubble');
+    const target = pickWeighted(tall, (t) => (STRUCTURES[t.structure.type].height || 0) + (t.structure.floors || 0) * 8, this.rng);
+    if (!target) return;
+    city.emit('lightning', { x: target.x, y: target.y });
+    if (this.rng() < 0.55) this.hit(target, target.structure.type === 'tree' ? 1 : 0.3 + this.rng() * 0.35, a, 'lightning');
+  }
+
+  // A twister sweeps across the map along a path through town, flattening what it touches.
+  tornadoPath() {
+    const city = this.city;
+    let sx = 0;
+    let sy = 0;
+    let n = 0;
+    for (const t of city.tiles) {
+      if (isBuilding(t.structure)) {
+        sx += t.x;
+        sy += t.y;
+        n++;
+      }
+    }
+    const cx = n ? sx / n : city.width / 2;
+    const cy = n ? sy / n : city.height / 2;
+    const angle = this.rng() * Math.PI * 2;
+    const reach = Math.max(city.width, city.height) * 0.75;
+    const off = (this.rng() - 0.5) * 6; // not always straight through the middle
+    const px = Math.cos(angle + Math.PI / 2) * off;
+    const py = Math.sin(angle + Math.PI / 2) * off;
+    return { x0: cx + px - Math.cos(angle) * reach, y0: cy + py - Math.sin(angle) * reach, x1: cx + px + Math.cos(angle) * reach, y1: cy + py + Math.sin(angle) * reach, wobble: this.rng() * 10, hit: [] };
+  }
+
+  tornadoPos(a) {
+    const p = a.path;
+    const f = clamp((now(this.city) - a.started) / (a.ends - a.started), 0, 1);
+    const wob = Math.sin(f * 9 + p.wobble) * 1.4;
+    const dx = p.x1 - p.x0;
+    const dy = p.y1 - p.y0;
+    const len = Math.hypot(dx, dy) || 1;
+    return { x: p.x0 + dx * f + (-dy / len) * wob, y: p.y0 + dy * f + (dx / len) * wob, f };
+  }
+
+  // The edge of the funnel damages what it passes; the core, a little later, flattens it.
+  twister(a) {
+    const pos = this.tornadoPos(a);
+    a.pos = pos;
+    const W = this.city.width;
+    const edge = new Set(a.path.hit);
+    const core = new Set(a.path.core || (a.path.core = []));
+    const r = 1.4;
+    for (let y = Math.floor(pos.y - r); y <= Math.ceil(pos.y + r); y++) {
+      for (let x = Math.floor(pos.x - r); x <= Math.ceil(pos.x + r); x++) {
+        const tile = this.city.getTile(x, y);
+        if (!tile) continue;
+        const k = tile.y * W + tile.x;
+        const d = Math.hypot(x + 0.5 - pos.x, y + 0.5 - pos.y);
+        if (d <= 0.85 && !core.has(k)) {
+          core.add(k);
+          a.path.core.push(k);
+          if (tile.structure) this.hit(tile, 0.75 + this.rng() * 0.35, a, 'tornado');
+        } else if (d <= r && !edge.has(k)) {
+          edge.add(k);
+          a.path.hit.push(k);
+          if (tile.structure) this.hit(tile, 0.3 + this.rng() * 0.2, a, 'tornado');
+        }
+      }
+    }
+  }
+
+  floodZone(dist) {
+    const city = this.city;
+    const out = [];
+    for (const t of city.tiles) {
+      if (t.terrain === 'water') continue;
+      let near = false;
+      for (let dy = -dist; dy <= dist && !near; dy++) for (let dx = -dist; dx <= dist && !near; dx++) if (Math.abs(dx) + Math.abs(dy) <= dist && city.getTile(t.x + dx, t.y + dy)?.terrain === 'water') near = true;
+      if (near) out.push(t.y * city.width + t.x);
+    }
+    return out;
+  }
+
+  pickBuilding(anyKind = false) {
+    const list = this.city.tiles.filter((t) => isBuilding(t.structure) && (anyKind || STRUCTURES[t.structure.type].capacity || STRUCTURES[t.structure.type].jobs));
+    return list.length ? list[Math.floor(this.rng() * list.length)] : null;
+  }
+
+  // ---- Damage ----------------------------------------------------------------------------
+
+  // Damage one tile. Trees fall, roads wash out, buildings crack and at full damage become rubble.
+  hit(tile, amount, a, cause) {
+    const city = this.city;
+    const s = tile.structure;
+    if (!s || s.type === 'rubble') return;
+    const def = STRUCTURES[s.type];
+    const st = this.state;
+    const report = a?.report;
+    const name = tile.address || tile.street || null;
+    if (s.type === 'tree') {
+      if (amount >= 0.3) {
+        city.apply('bulldoze', tile.x, tile.y, { delay: 0.6 });
+        if (report) report.trees++;
+      }
+      return;
+    }
+    if (s.type === 'road') {
+      s.damage = clamp((s.damage || 0) + amount, 0, 1);
+      if (s.damage >= 0.5 && !s.broken) {
+        s.broken = true;
+        city._changed(tile.x, tile.y);
+        if (report) report.roads++;
+        city.emit('disasterHit', { kind: cause, x: tile.x, y: tile.y, road: true });
+      }
+      return;
+    }
+    if (def.walkable) return; // parks, playgrounds and fields shrug it off
+    const scale = (st.prepared && a?.kind && KINDS[a.kind].severity === 'extreme' ? 0.5 : 1) * (st.resilience ?? 1);
+    const before = s.damage || 0;
+    s.damage = clamp(before + amount * scale, 0, 1);
+    if (s.damage >= 1) {
+      const previous = s;
+      tile.structure = { id: city.nextId++, type: 'rubble', residents: 0, was: previous.type };
+      city._changed(tile.x, tile.y);
+      city.emit('removed', { x: tile.x, y: tile.y, previous, delay: 0.6, disaster: true });
+      if (report) {
+        report.destroyed++;
+        if (report.places.length < 8) report.places.push({ x: tile.x, y: tile.y, name, destroyed: true, type: previous.type });
+      }
+      city.emit('disasterHit', { kind: cause, x: tile.x, y: tile.y, destroyed: true });
+    } else {
+      // A home that lost half its rooms loses some residents straight away.
+      if (s.damage >= 0.34 && before < 0.34 && def.capacity) s.residents = Math.min(s.residents, Math.floor(def.capacity * 0.5));
+      city.dirty = true;
+      if (report && before < 0.15 && s.damage >= 0.15) {
+        report.damaged++;
+        if (report.places.length < 8) report.places.push({ x: tile.x, y: tile.y, name, type: s.type });
+      }
+      city.emit('disasterHit', { kind: cause, x: tile.x, y: tile.y });
+    }
+  }
+
+  finish() {
+    const st = this.state;
+    const a = st.active;
+    if (!a) return;
+    st.active = null;
+    st.prepared = false;
+    for (const tile of this.city.tiles) {
+      if (tile.structure?.snowed) {
+        delete tile.structure.snowed;
+        this.city._changed(tile.x, tile.y);
+      }
+      if (tile.structure?.burning) delete tile.structure.burning;
+    }
+    const info = KINDS[a.kind];
+    if (info.severity === 'extreme') st.cooldownUntil = now(this.city) + COOLDOWN_DAYS;
+    this.city.systems.weather = { kind: a.kind === 'blizzard' ? 'snow' : a.kind === 'heatwave' ? 'clear' : 'cloudy', ends: now(this.city) + 0.1 };
+    const r = a.report;
+    const total = r.damaged + r.destroyed + r.roads;
+    const entry = { kind: a.kind, year: yearOf(this.city), day: this.city.day, ...r, cost: this.repairCost().total };
+    st.log = [...(st.log || []), entry].slice(-20);
+    if (info.severity === 'extreme' || total >= 3) {
+      const bits = [];
+      if (r.destroyed) bits.push(`${r.destroyed} building${r.destroyed > 1 ? 's' : ''} destroyed`);
+      if (r.damaged) bits.push(`${r.damaged} damaged`);
+      if (r.roads) bits.push(`${r.roads} road${r.roads > 1 ? 's' : ''} washed out`);
+      if (r.trees) bits.push(`${r.trees} tree${r.trees > 1 ? 's' : ''} down`);
+      const place = r.places.find((p) => p.name)?.name;
+      addChronicle(this.city, `A ${info.label.toLowerCase()} hit the town${place ? ` around ${place.replace(/^\d+\s+/, '')}` : ''}: ${bits.length ? bits.join(', ') : 'luckily, little damage'}.`, r.places[0] || null, 'disaster');
+    }
+    this.city.emit('extremeWeather', { kind: a.kind, info, phase: 'end', report: r });
+  }
+
+  // ---- Repairs ----------------------------------------------------------------------------
+
+  // Everything that needs fixing, with what it costs. Roads first, then homes, then the rest.
+  repairList() {
+    const out = [];
+    for (const t of this.city.tiles) {
+      const s = t.structure;
+      if (!s) continue;
+      if (s.type === 'road' && (s.broken || (s.damage || 0) > 0)) out.push({ t, cost: Math.round((COSTS.road || 20) * 1.5), order: 0 });
+      else if (s.type === 'rubble') out.push({ t, cost: 40, order: 3 });
+      else if ((s.damage || 0) >= 0.15) out.push({ t, cost: Math.max(20, Math.round((COSTS[s.type] || 200) * 0.3 * s.damage)), order: STRUCTURES[s.type].capacity ? 1 : 2 });
+    }
+    return out.sort((a, b) => a.order - b.order);
+  }
+
+  repairCost() {
+    const list = this.repairList();
+    const free = this.economy?.sandbox;
+    return { count: list.length, total: free ? 0 : list.reduce((s, x) => s + x.cost, 0) };
+  }
+
+  fix(item) {
+    const { t } = item;
+    const s = t.structure;
+    if (s.type === 'rubble') {
+      t.structure = null;
+    } else {
+      delete s.damage;
+      delete s.broken;
+      delete s.burning;
+    }
+    this.city._changed(t.x, t.y);
+    this.city.emit('repaired', { x: t.x, y: t.y });
+  }
+
+  // Crews fix one thing at a time while the weather is calm and the budget allows.
+  repairOne() {
+    if (this.state.active) return null;
+    const item = this.repairList()[0];
+    if (!item) return null;
+    const eco = this.economy;
+    if (eco && !eco.sandbox) {
+      if (!eco.canAfford(item.cost)) return null;
+      eco.spend(item.cost);
+    }
+    this.fix(item);
+    return item;
+  }
+
+  // Pay to repair everything now. Returns what was done, or null if the town can't afford it.
+  repairAll() {
+    const list = this.repairList();
+    if (!list.length) return { count: 0, total: 0 };
+    const { total } = this.repairCost();
+    const eco = this.economy;
+    if (eco && !eco.sandbox) {
+      if (!eco.canAfford(total)) return null;
+      eco.spend(total);
+    }
+    for (const item of list) this.fix(item);
+    return { count: list.length, total };
+  }
+
+  // ---- Testing and the inspector -----------------------------------------------------------
+
+  // Start an event right away (skipping the warning), e.g. from tests.
+  trigger(kind) {
+    this.state.pending = null;
+    this.start(kind);
+  }
+
+  // Tiles that are flooded right now (for the renderer).
+  floodedTiles() {
+    const a = this.state.active;
+    return a?.flooded || null;
+  }
+}
+
+return { LEVELS, KINDS, soundness, Disasters };
+})();
+
 // ---- labor.js ----
 const __mod_labor = (() => {
 // Labor market and traffic. Residents look for the nearest jobs they can reach by road; each
 // commute then loads the road tiles along its route, and busy roads cost more to use. Adapted from Cimulity's aggregate
 // nearest-with-overflow matching (MIT, github.com/zeikar/cimulity).
 
+const { soundness } = __mod_disasters;
 const { STRUCTURES, WORKER_SHARE, ROAD_CAPACITY } = __mod_config;
 const NEIGHBOURS = [
   [0, -1],
@@ -3668,7 +4452,7 @@ function computeLaborMarket(city, { extraRoads = null, dryRun = false } = {}) {
   const destinations = new Map(); // access road index → workplace tiles
   let jobs = 0;
   for (const w of workplaces) {
-    const cap = STRUCTURES[w.structure.type].jobs;
+    const cap = Math.round(STRUCTURES[w.structure.type].jobs * soundness(w.structure)); // damaged workplaces employ fewer
     jobs += cap;
     filled.set(w, 0);
     const road = city.accessRoad(w.x, w.y);
@@ -3733,7 +4517,7 @@ function computeLaborMarket(city, { extraRoads = null, dryRun = false } = {}) {
         flows.push({ from: start, to: k, count: take, path });
         let remaining = take;
         for (const w of destinations.get(k)) {
-          const room = STRUCTURES[w.structure.type].jobs - filled.get(w);
+          const room = Math.round(STRUCTURES[w.structure.type].jobs * soundness(w.structure)) - filled.get(w);
           const add = Math.min(room, remaining);
           filled.set(w, filled.get(w) + add);
           remaining -= add;
@@ -6779,94 +7563,6 @@ function lifeStage(c) {
 return { YEAR_SECONDS, homePrice, familyAt, LifeSystem, summaryOf, lifeStage };
 })();
 
-// ---- weather.js ----
-const __mod_weather = (() => {
-// Seasons and weather. Seasons follow the day count; weather changes every few in-game hours with
-// odds that depend on the season. The current spell is saved in city.systems.weather; the smoothed
-// intensities the renderer and agents read live in city.derived.weather.
-
-const { clamp } = __mod_utils;
-const DAYS_PER_SEASON = 2;
-const SEASONS = [
-  { id: 'spring', label: 'Spring' },
-  { id: 'summer', label: 'Summer' },
-  { id: 'autumn', label: 'Autumn' },
-  { id: 'winter', label: 'Winter' },
-];
-
-// Odds of each kind of weather per season. Snow only falls in winter.
-const ODDS = {
-  spring: { clear: 0.5, cloudy: 0.2, rain: 0.25, fog: 0.05 },
-  summer: { clear: 0.72, cloudy: 0.13, rain: 0.15 },
-  autumn: { clear: 0.38, cloudy: 0.24, rain: 0.28, fog: 0.1 },
-  winter: { clear: 0.32, cloudy: 0.2, snow: 0.38, fog: 0.1 },
-};
-
-const WEATHER_LABELS = { clear: 'Clear', cloudy: 'Cloudy', rain: 'Rain', snow: 'Snow', fog: 'Fog' };
-
-function seasonFor(day) {
-  return SEASONS[Math.floor((Math.max(1, day) - 1) / DAYS_PER_SEASON) % SEASONS.length];
-}
-
-// How far through the current season we are, 0..1 (used to blend autumn into winter and so on).
-function seasonProgress(day, clock) {
-  return (((Math.max(1, day) - 1) % DAYS_PER_SEASON) + clock) / DAYS_PER_SEASON;
-}
-
-class WeatherSystem {
-  constructor(city, rng = Math.random) {
-    this.city = city;
-    this.rng = rng;
-    city.derived.weather = { kind: 'clear', rain: 0, snow: 0, fog: 0, cloud: 0, snowCover: 0 };
-  }
-
-  get spell() {
-    const s = this.city.systems;
-    if (!s.weather) s.weather = { kind: 'clear', ends: this.city.day + this.city.clock + 0.2 };
-    return s.weather;
-  }
-
-  // Pick the next spell of weather for the season.
-  roll() {
-    const season = seasonFor(this.city.day).id;
-    const odds = ODDS[season];
-    let r = this.rng();
-    let kind = 'clear';
-    for (const [k, p] of Object.entries(odds)) {
-      if ((r -= p) <= 0) {
-        kind = k;
-        break;
-      }
-    }
-    // Fog belongs to mornings; outside them it becomes a grey sky.
-    if (kind === 'fog' && (this.city.clock < 0.2 || this.city.clock > 0.45)) kind = 'cloudy';
-    const length = kind === 'clear' ? 0.25 + this.rng() * 0.35 : 0.1 + this.rng() * 0.2;
-    this.city.systems.weather = { kind, ends: this.city.day + this.city.clock + length };
-  }
-
-  update(dt) {
-    const now = this.city.day + this.city.clock;
-    if (now >= this.spell.ends) this.roll();
-    const kind = this.spell.kind;
-    const w = this.city.derived.weather;
-    const ease = (cur, target, rate) => cur + (target - cur) * Math.min(1, dt * rate);
-    w.kind = kind;
-    w.rain = ease(w.rain, kind === 'rain' ? 1 : 0, 0.25);
-    w.snow = ease(w.snow, kind === 'snow' ? 1 : 0, 0.25);
-    w.fog = ease(w.fog, kind === 'fog' ? 1 : 0, 0.2);
-    w.cloud = ease(w.cloud, kind === 'clear' ? 0 : kind === 'cloudy' || kind === 'fog' ? 0.6 : 1, 0.25);
-    // Snow settles through winter and melts away early in spring.
-    const season = seasonFor(this.city.day).id;
-    const p = seasonProgress(this.city.day, this.city.clock);
-    const coverTarget = season === 'winter' ? clamp(0.35 + p * 0.5 + w.snow * 0.3, 0, 1) : season === 'spring' ? clamp(0.4 - p * 2, 0, 1) : 0;
-    w.snowCover = ease(w.snowCover, coverTarget, 0.1);
-    w.season = season;
-  }
-}
-
-return { DAYS_PER_SEASON, SEASONS, WEATHER_LABELS, seasonFor, seasonProgress, WeatherSystem };
-})();
-
 // ---- milestones.js ----
 const __mod_milestones = (() => {
 // Milestones: the town's title follows its population, and reaching a new title unlocks buildings.
@@ -7885,193 +8581,6 @@ class Townsfolk {
 return { MAX_TOWNSFOLK, RESIDENTS_PER_TOWNSPERSON, NEEDS, NEED_LABELS, QUIRKS, quirkOf, activityOf, fullName, moodOf, moodWord, traitWords, chemistry, Townsfolk };
 })();
 
-// ---- eras.js ----
-const __mod_eras = (() => {
-// Eras and the town calendar. A town is founded in 1850 and a year passes each in-game day, the same
-// pace as a Life Story life, so a family's grandparents see dirt lanes and horse carts while their
-// grandchildren grow up with buses, asphalt and electric light.
-//
-// An era needs both people and time: enough residents, and enough years since the town was founded.
-// Town decisions can bring an era closer (`state.bonusYears`). Eras never go backwards.
-//
-// Saved in city.systems.era = { index, startYear, bonusYears, history: [{ index, year }] }.
-
-const FOUNDING_YEAR = 1850;
-
-const ERAS = [
-  {
-    id: 'pioneer',
-    label: 'Pioneer days',
-    pop: 0,
-    years: 0,
-    nominal: 1850,
-    blurb: 'Dirt lanes, timber cottages and horse carts.',
-    builds: ['cottage', 'house', 'shop', 'cafe', 'school', 'clinic', 'park', 'playground'],
-  },
-  {
-    id: 'railway',
-    label: 'Railway age',
-    pop: 60,
-    years: 15,
-    nominal: 1865,
-    blurb: 'Cobbled streets, brick houses and gas lamps. The first motor cars rattle by.',
-    builds: ['apartments', 'factory'],
-  },
-  {
-    id: 'motor',
-    label: 'Motor age',
-    pop: 180,
-    years: 35,
-    nominal: 1885,
-    blurb: 'Paved roads, electric street lights and cars for everyone.',
-    builds: ['office', 'mall', 'field'],
-  },
-  {
-    id: 'modern',
-    label: 'Modern times',
-    pop: 400,
-    years: 60,
-    nominal: 1910,
-    blurb: 'Towers rise downtown and the streets hum with traffic.',
-    builds: ['tower'],
-  },
-  {
-    id: 'future',
-    label: 'Bright future',
-    pop: 800,
-    years: 90,
-    nominal: 1940,
-    blurb: 'Solar roofs, quiet electric cars and gardens everywhere.',
-    builds: [],
-  },
-];
-
-// Every building the town can grow by itself in a given era (each era keeps the ones before).
-function buildsFor(index) {
-  return ERAS.slice(0, index + 1).flatMap((e) => e.builds);
-}
-
-// The highest era a town of this size could reach, ignoring the years needed (for older saves).
-function eraForPopulation(pop) {
-  let i = 0;
-  ERAS.forEach((e, k) => {
-    if (pop >= e.pop) i = k;
-  });
-  return i;
-}
-
-class Eras {
-  constructor(city) {
-    this.city = city;
-  }
-
-  get state() {
-    const s = this.city.systems;
-    if (!s.era) {
-      // A town from before eras existed starts in the era its size suggests, and the calendar is set so
-      // the year looks right for it. A brand-new town starts in 1850.
-      const index = eraForPopulation(this.city.stats?.population || 0);
-      const day = Math.max(1, this.city.day || 1);
-      s.era = { index, startYear: index ? ERAS[index].nominal - day : FOUNDING_YEAR - day, bonusYears: 0, foundedDay: index ? day - ERAS[index].years : day, history: [{ index, year: 0 }] };
-      s.era.history[0].year = this.year;
-    }
-    return s.era;
-  }
-
-  get index() {
-    return this.state.index;
-  }
-
-  get current() {
-    return ERAS[this.index];
-  }
-
-  get next() {
-    return ERAS[this.index + 1] || null;
-  }
-
-  // The calendar year right now.
-  get year() {
-    const s = this.city.systems.era;
-    return (s ? s.startYear : FOUNDING_YEAR - 1) + Math.max(1, this.city.day);
-  }
-
-  // Years since the town was founded, plus any head start from decisions.
-  get age() {
-    const st = this.state;
-    return Math.max(0, this.city.day - (st.foundedDay ?? 1)) + (st.bonusYears || 0);
-  }
-
-  // Start a brand-new town's calendar today.
-  found() {
-    const day = Math.max(1, this.city.day);
-    this.city.systems.era = { index: 0, startYear: FOUNDING_YEAR - day, bonusYears: 0, foundedDay: day, history: [{ index: 0, year: FOUNDING_YEAR }] };
-  }
-
-  // What the next era still needs: people and years.
-  progress() {
-    const next = this.next;
-    if (!next) return null;
-    const pop = this.city.stats?.population || 0;
-    return {
-      next,
-      pop,
-      needPop: next.pop,
-      years: this.age,
-      needYears: next.years,
-      fraction: Math.min(1, pop / next.pop) * 0.5 + Math.min(1, this.age / Math.max(1, next.years)) * 0.5,
-    };
-  }
-
-  // Called after stats update. Moves on one era at a time and announces it.
-  update() {
-    const st = this.state;
-    const next = this.next;
-    if (!next) return null;
-    const pop = this.city.stats?.population || 0;
-    if (pop < next.pop || this.age < next.years) return null;
-    st.index++;
-    st.history.push({ index: st.index, year: this.year });
-    this.city.revision++; // roads and lamps are redrawn in the new style
-    this.city.emit('era', { era: ERAS[st.index], index: st.index, year: this.year });
-    return ERAS[st.index];
-  }
-
-  // A decision can bring the next era closer.
-  hurry(years) {
-    this.state.bonusYears = (this.state.bonusYears || 0) + years;
-  }
-}
-
-// The calendar year for any city, without needing an Eras instance (for the UI and Life Story).
-function yearOf(city) {
-  const s = city.systems.era;
-  return (s ? s.startYear : FOUNDING_YEAR - 1) + Math.max(1, city.day);
-}
-
-return { FOUNDING_YEAR, ERAS, buildsFor, eraForPopulation, Eras, yearOf };
-})();
-
-// ---- chronicle.js ----
-const __mod_chronicle = (() => {
-// The town chronicle: a short history of firsts, new eras, decisions and family generations, with the
-// year each happened. Shown in the City panel. Saved in city.systems.chronicle (the latest 60 entries).
-
-const { yearOf } = __mod_eras;
-const KEEP = 60;
-
-function addChronicle(city, text, at = null, kind = 'note') {
-  const list = (city.systems.chronicle ||= []);
-  const item = { year: yearOf(city), day: city.day, text, kind, x: at?.x ?? null, y: at?.y ?? null };
-  list.push(item);
-  if (list.length > KEEP) list.splice(0, list.length - KEEP);
-  city.emit('chronicle', { item });
-  return item;
-}
-
-return { addChronicle };
-})();
-
 // ---- growth.js ----
 const __mod_growth = (() => {
 // Let it grow: the town builds itself from what its people need, like a seed becoming a plant.
@@ -8694,17 +9203,6 @@ const DECISIONS = [
       { label: 'Sell it', gain: 1000, growth: [1.2, 4], result: 'The land was sold for new houses.' },
     ],
   },
-  {
-    id: 'flood',
-    era: [0, 4],
-    title: 'Spring floods',
-    text: 'The river burst its banks and damaged homes along the water.',
-    when: (ctx) => nearWater(ctx) && ctx.season === 'spring',
-    choices: [
-      { label: 'Repair everything', cost: 900, result: 'The town repaired the flood damage quickly.' },
-      { label: 'Let families fix it', spirit: [-0.06, 5], growth: [0.85, 3], result: 'Families patched up the flood damage themselves.' },
-    ],
-  },
   // ---- Modern times ----
   {
     id: 'highway',
@@ -8760,17 +9258,47 @@ const DECISIONS = [
       { label: 'Keep the lots for building', growth: [1.15, 4], result: 'The empty lots were kept for building.' },
     ],
   },
-  // ---- Any time ----
+  // ---- Weather ----
   {
-    id: 'storm',
-    era: [0, 4],
-    title: 'A big storm',
-    text: 'A storm blew in overnight. Roofs are damaged and trees are down.',
+    id: 'buildingcode',
+    era: [1, 4],
+    once: true,
+    title: 'Storm-proof building rules?',
+    text: 'After the last bad weather, builders suggest stronger frames, roofs and foundations for every building.',
+    when: (ctx) => (ctx.city.systems.disasters?.log || []).length > 0,
     choices: [
-      { label: 'Repair now', cost: 600, result: 'Crews repaired the storm damage within days.' },
-      { label: 'Let residents fix it', spirit: [-0.04, 4], result: 'Residents cleaned up after the storm themselves.' },
+      { label: 'Adopt the rules', cost: 1500, resilience: 0.6, growth: [0.9, 4], result: 'The town adopted storm-proof building rules.' },
+      { label: 'Too expensive', result: 'The town kept its old building rules.' },
     ],
   },
+  {
+    id: 'levee',
+    era: [1, 4],
+    once: true,
+    title: 'A flood wall along the river?',
+    text: 'Families by the water ask for a wall to keep floods out.',
+    when: (ctx) => nearWater(ctx) && (ctx.city.systems.disasters?.log || []).some((e) => e.kind === 'flood' || e.kind === 'hurricane'),
+    choices: [
+      { label: 'Build the wall', cost: 2000, levee: true, spirit: [0.03, 6], result: 'A flood wall went up along the river.' },
+      { label: 'Not now', spirit: [-0.02, 4], result: 'The riverside stayed unprotected.' },
+    ],
+  },
+  ...['flood', 'tornado', 'hurricane'].map((kind) => ({
+    id: `prepare-${kind}`,
+    manual: true, // only asked when the disasters system warns of one
+    era: [0, 4],
+    title: { flood: 'Flood warning!', tornado: 'Tornado warning!', hurricane: 'Hurricane warning!' }[kind],
+    text: {
+      flood: 'The river is rising fast and will burst its banks within hours.',
+      tornado: 'A funnel cloud has been spotted heading for town.',
+      hurricane: 'A hurricane is heading straight for the town.',
+    }[kind],
+    choices: [
+      { label: { flood: 'Sandbag the riverbanks', tornado: 'Board up and take shelter', hurricane: 'Board up the town' }[kind], cost: { flood: 500, tornado: 400, hurricane: 800 }[kind], prepare: true, result: 'The town got ready for the storm. Damage should be halved.' },
+      { label: 'Ride it out', result: 'The town waited for the weather to pass.' },
+    ],
+  })),
+  // ---- Any time ----
 ];
 const decisionById = (id) => DECISIONS.find((d) => d.id === id);
 
@@ -8786,6 +9314,9 @@ function effectTags(c) {
   if (c.build) tags.push({ text: `New ${c.build[0] === 'factory' ? 'mill' : c.build[0]}`, tone: 'good' });
   if (c.trees) tags.push({ text: c.trees > 0 ? 'More trees' : 'Fewer trees', tone: c.trees > 0 ? 'good' : 'bad' });
   if (c.fun) tags.push({ text: 'Townsfolk cheer up', tone: 'good' });
+  if (c.prepare) tags.push({ text: 'Half the damage', tone: 'good' });
+  if (c.resilience) tags.push({ text: 'Storms do less damage', tone: 'good' });
+  if (c.levee) tags.push({ text: 'Floods kept out', tone: 'good' });
   return tags;
 }
 
@@ -8837,6 +9368,7 @@ class Decisions {
     const now = day(this.city);
     const fits = DECISIONS.filter((d) => {
       if (forceId) return d.id === forceId;
+      if (d.manual) return false;
       if (ctx.era < d.era[0] || ctx.era > d.era[1]) return false;
       const seen = st.seen[d.id];
       if (seen != null && (d.once || now - seen < 10)) return false;
@@ -8878,6 +9410,9 @@ class Decisions {
       if (c.trees < 0) this.growth.clearTrees(-c.trees);
       else this.growth.plantTrees(c.trees);
     }
+    if (c.prepare) this.disasters?.prepare();
+    if (c.resilience) this.city.systems.disasters && (this.city.systems.disasters.resilience = c.resilience);
+    if (c.levee && this.city.systems.disasters) this.city.systems.disasters.levee = true;
     if (c.fun && this.townsfolk) {
       for (const p of this.townsfolk.people) {
         p.needs.fun = clamp(p.needs.fun + c.fun, 0, 1);
@@ -9209,6 +9744,15 @@ function computeThoughts(city, milestones) {
   const homes = city.tiles.filter(isHome);
   const lived = homes.filter((h) => h.structure.residents > 0);
 
+  // Damage from extreme weather that still needs fixing.
+  const broken = city.tiles.filter((t) => t.structure && (t.structure.type === 'rubble' || t.structure.broken || (t.structure.damage || 0) >= 0.15));
+  if (broken.length) {
+    const roads = broken.filter((t) => t.structure.broken).length;
+    const rubble = broken.filter((t) => t.structure.type === 'rubble').length;
+    const what = [rubble && `${rubble} wrecked`, roads && `${roads} road${roads > 1 ? 's' : ''} washed out`, broken.length - roads - rubble && `${broken.length - roads - rubble} damaged`].filter(Boolean).join(', ');
+    add('repairs', rubble || roads >= 2 ? 'bad' : 'caution', 5.5, `Storm damage needs fixing: ${what}.`, 'Crews repair one thing at a time while there is money. Repair all fixes everything now', broken[0], broken, { repair: true });
+  }
+
   const cutOff = homes.filter((h) => !city.accessRoad(h.x, h.y));
   if (cutOff.length) {
     add('no-road', 'bad', 5, cutOff.length === 1 ? 'A home has no road. Nobody can get to work.' : `${cutOff.length} homes have no road. Nobody there can get to work.`, 'Connect them with a road', cutOff[0], cutOff);
@@ -9379,6 +9923,7 @@ const { Townsfolk } = __mod_townsfolk;
 const { Eras } = __mod_eras;
 const { Growth } = __mod_growth;
 const { Decisions } = __mod_decisions;
+const { Disasters, soundness } = __mod_disasters;
 const { computeThoughts } = __mod_advisor;
 const { daylightAt } = __mod_time;
 const { clamp, pickWeighted } = __mod_utils;
@@ -9398,6 +9943,8 @@ class Simulation {
     this.eras = new Eras(city);
     this.growth = new Growth(city, { eras: this.eras, economy: this.economy, milestones: this.milestones });
     this.decisions = new Decisions(city, { economy: this.economy, growth: this.growth, eras: this.eras, townsfolk: this.townsfolk });
+    this.disasters = new Disasters(city, { economy: this.economy, decisions: this.decisions, eras: this.eras });
+    this.decisions.disasters = this.disasters;
     this._notableRates = null;
     this._thoughtTimer = 0;
     this._streetsRev = -1;
@@ -9424,6 +9971,7 @@ class Simulation {
     this.growth.update(step);
     if (this._notableRates && this.notables.update(step / DAY_LENGTH_SECONDS, this._notableRates)) city.dirty = true; // their bonuses apply now
     this.weather.update(step);
+    this.disasters.update(step);
     this.agents.update(step, daylightAt(city.clock));
     this.life.update(step);
     // Townsfolk live hour by hour; the trips they make show up as walkers.
@@ -9513,7 +10061,7 @@ class Simulation {
 
   // Desirability maps to how full a home can get: a bare lot fills a little, a leafy one fills up.
   targetResidents(tile) {
-    const cap = STRUCTURES[tile.structure.type].capacity;
+    const cap = STRUCTURES[tile.structure.type].capacity * soundness(tile.structure); // storm damage halves it
     return Math.round(cap * clamp((tile.desirability - 0.15) / 0.7, 0, 1));
   }
 
@@ -10038,6 +10586,12 @@ class Renderer {
           else if (i < 120) this.ring(c.x, c.y, '#ffffff', d);
         });
         break;
+      case 'lightning':
+        this.bolt = { x: ev.x, y: ev.y, age: 0, seed: Math.random() };
+        break;
+      case 'disasterHit':
+        this.dust(ev.x, ev.y, ev.destroyed ? 18 : 6);
+        break;
       case 'movedIn':
         if (this.particles.filter((p) => p.kind === 'heart').length < 10) this.heart(ev.x, ev.y);
         break;
@@ -10171,6 +10725,7 @@ class Renderer {
       this.drawSlab(ctx, L);
       for (const t of tiles) this.drawGround(ctx, t, L);
     }
+    this.drawFlood(ctx, tiles, L);
     if (view.overlay && view.overlay !== 'none') for (const t of tiles) this.drawOverlay(ctx, t, view.overlay);
     if (view.issues?.length) this.drawIssues(ctx, view.issues);
     this.drawStreetNames(ctx, rect);
@@ -10194,6 +10749,8 @@ class Renderer {
       items.push({ d: pose.gx + pose.gy + 0.05, kind: 'car', c, pose });
     }
     for (const w of this.agents.walkers) items.push({ d: w.gx + w.gy + 0.05, kind: 'walker', w });
+    const twister = city.systems.disasters?.active;
+    if (twister?.kind === 'tornado' && twister.pos) items.push({ d: twister.pos.x + twister.pos.y + 0.5, kind: 'tornado', pos: twister.pos });
     if (view.ghost) items.push({ d: view.ghost.x + view.ghost.y + 1.01, kind: 'ghost', ghost: view.ghost });
     if (view.plan && STRUCTURES[view.plan.tool] && view.plan.tool !== 'road') {
       for (const c of view.plan.tiles) {
@@ -10214,6 +10771,7 @@ class Renderer {
 
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     this.drawPrecipitation(ctx, dt, w);
+    this.drawWeatherFx(ctx, dt, w);
     this.drawFog(ctx, w, L);
     this.drawVignette(ctx, L);
     this.drawThoughts(ctx);
@@ -10388,6 +10946,46 @@ class Renderer {
   }
 
   // Rain streaks and snowflakes, drawn in screen space over the city.
+  // Lightning (a flash and a bolt to the spot it hit) and the orange haze of a heatwave.
+  drawWeatherFx(ctx, dt, w) {
+    if ((w.heat || 0) > 0.02) {
+      ctx.save();
+      ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      ctx.fillStyle = `rgba(255,150,60,${(0.09 * w.heat).toFixed(3)})`;
+      ctx.fillRect(0, 0, this.w, this.h);
+      ctx.restore();
+    }
+    const b = this.bolt;
+    if (!b) return;
+    b.age += dt;
+    if (b.age > 0.9) {
+      this.bolt = null;
+      return;
+    }
+    const k = 1 - b.age / 0.9;
+    ctx.save();
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    if (!this.reduceMotion) {
+      ctx.fillStyle = `rgba(235,240,255,${(0.35 * k * k).toFixed(3)})`;
+      ctx.fillRect(0, 0, this.w, this.h);
+    }
+    const end = this.worldToScreen(gridToWorld(b.x + 0.5, b.y + 0.5, 20));
+    ctx.strokeStyle = `rgba(255,252,220,${k.toFixed(3)})`;
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    let px = end.x + (b.seed - 0.5) * 80;
+    ctx.moveTo(px, -10);
+    const steps = 7;
+    for (let i = 1; i <= steps; i++) {
+      const yy = -10 + ((end.y + 10) * i) / steps;
+      px = i === steps ? end.x : px + (end.x - px) / (steps - i + 1) + (hash2(i, b.seed * 100, 3) - 0.5) * 30;
+      ctx.lineTo(px, yy);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
   drawPrecipitation(ctx, dt, w) {
     const rain = w.rain || 0;
     const snow = w.snow || 0;
@@ -10407,10 +11005,10 @@ class Renderer {
     for (const d of this.drops) {
       if (snowy) {
         d.y += (38 + 30 * d.s) * dt;
-        d.x += Math.sin(this.time * 1.3 + d.p) * 14 * dt;
+        d.x += Math.sin(this.time * 1.3 + d.p) * 14 * dt - 220 * (w.wind || 0) * dt;
       } else {
         d.y += (620 + 260 * d.s) * dt;
-        d.x -= 140 * dt;
+        d.x -= (140 + 520 * (w.wind || 0)) * dt;
       }
       if (d.y > this.h + 10) {
         d.y = -10;
@@ -10423,7 +11021,7 @@ class Renderer {
         ctx.arc(d.x, d.y, r, 0, Math.PI * 2);
       } else {
         ctx.moveTo(d.x, d.y);
-        ctx.lineTo(d.x + 3 * d.s, d.y - 13 * d.s);
+        ctx.lineTo(d.x + (3 + 10 * (w.wind || 0)) * d.s, d.y - 13 * d.s);
       }
     }
     if (snowy) ctx.fill();
@@ -10786,7 +11384,16 @@ class Renderer {
   }
 
   drawRoad(ctx, t, L) {
-    if ((this.era ?? 3) < 2) return this.drawOldRoad(ctx, t, L);
+    if ((this.era ?? 3) < 2) {
+      this.drawOldRoad(ctx, t, L);
+      if (t.structure.broken || t.structure.snowed) this.drawRoadTrouble(ctx, t, L);
+      return;
+    }
+    this.drawModernRoad(ctx, t, L);
+    if (t.structure.broken || t.structure.snowed) this.drawRoadTrouble(ctx, t, L);
+  }
+
+  drawModernRoad(ctx, t, L) {
     const { x, y, roadMask: m } = t;
     ctx.fillStyle = lit(PALETTE.road, 0.98 + hash2(x, y, 2) * 0.03, L);
     tilePoly(ctx, x, y);
@@ -11192,6 +11799,7 @@ class Renderer {
     if (s.type === 'cafe') return { inset: 0.24, h: 14 };
     if (s.type === 'mall') return { inset: 0.06, h: 20 };
     if (s.type === 'factory') return { inset: 0.1, h: 22 };
+    if (s.type === 'rubble') return { inset: 0.18, h: 6 };
     return null;
   }
 
@@ -11239,6 +11847,7 @@ class Renderer {
     if (it.kind === 'car') return this.drawCar(ctx, it.c, it.pose, L);
     if (it.kind === 'walker') return this.drawWalker(ctx, it.w, L);
     if (it.kind === 'lamp') return this.drawLamp(ctx, it.lamp, L);
+    if (it.kind === 'tornado') return this.drawTornado(ctx, it.pos, L);
     if (it.kind === 'ghost') {
       ctx.save();
       ctx.globalAlpha = 0.5;
@@ -11258,6 +11867,186 @@ class Renderer {
       ctx.translate(-c.x, -c.y);
     }
     this.drawStructure(ctx, t.x, t.y, t.structure, L, false);
+    if ((t.structure.damage || 0) >= 0.15 && t.structure.type !== 'road') this.drawDamage(ctx, t, L);
+    ctx.restore();
+  }
+
+  // ---- Extreme weather ----------------------------------------------------------------------
+
+  // A heap of broken walls, planks and a lone chimney where a building stood.
+  drawRubble(ctx, x, y, L) {
+    const pile = [
+      [0.22, 0.3, 0.55, 0.62, 5, '#b7aa9a'],
+      [0.45, 0.4, 0.78, 0.72, 4, '#c9bcac'],
+      [0.3, 0.55, 0.6, 0.8, 3.5, '#a99c8c'],
+      [0.55, 0.22, 0.75, 0.42, 3, '#d3c6b4'],
+    ];
+    for (const [a, b, c, d, h, col] of pile) this.drawBox(ctx, L, x + a, y + b, x + c, y + d, 0, h + hash2(x, y, a * 10) * 2, col);
+    ctx.strokeStyle = lit('#8a6b4e', 1, L);
+    ctx.lineWidth = 1.4;
+    ctx.lineCap = 'round';
+    for (let k = 0; k < 3; k++) {
+      const p = gridToWorld(x + 0.3 + hash2(x, y, 60 + k) * 0.4, y + 0.3 + hash2(x, y, 70 + k) * 0.4, 6);
+      const ang = hash2(x, y, 80 + k) * Math.PI;
+      ctx.beginPath();
+      ctx.moveTo(p.x - Math.cos(ang) * 6, p.y - Math.sin(ang) * 2);
+      ctx.lineTo(p.x + Math.cos(ang) * 6, p.y + Math.sin(ang) * 2);
+      ctx.stroke();
+    }
+    this.drawBox(ctx, L, x + 0.62, y + 0.32, x + 0.7, y + 0.4, 0, 11, '#c08f7c');
+  }
+
+  // Cracks on a damaged building, a blue tarp once it is badly hit, and flames while it burns.
+  drawDamage(ctx, t, L) {
+    const s = t.structure;
+    const f = this.footprint(t) || { inset: 0.2, h: 16 };
+    const x0 = t.x + f.inset;
+    const x1 = t.x + 1 - f.inset;
+    const y1 = t.y + 1 - f.inset;
+    const h = f.h;
+    ctx.strokeStyle = litA('#4b4157', 1, L, 0.55);
+    ctx.lineWidth = 0.9;
+    const crack = (u, v) => {
+      const a = gridToWorld(x0 + (x1 - x0) * u, y1, h * v);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(a.x + 2, a.y + 3);
+      ctx.lineTo(a.x - 1, a.y + 6);
+      ctx.lineTo(a.x + 2.5, a.y + 9);
+      ctx.stroke();
+    };
+    crack(0.3, 0.85);
+    if (s.damage >= 0.34) {
+      crack(0.7, 0.6);
+      // A blue tarp over the broken roof.
+      const top = gridToWorld(t.x + 0.5, t.y + 0.5, h + 2);
+      ctx.fillStyle = lit('#5f8fd6', 1, L);
+      ctx.beginPath();
+      ctx.moveTo(top.x - 9, top.y);
+      ctx.lineTo(top.x, top.y - 4.5);
+      ctx.lineTo(top.x + 9, top.y);
+      ctx.lineTo(top.x, top.y + 4.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = litA('#ffffff', 1, L, 0.5);
+      ctx.stroke();
+    }
+    const nowDay = this.city.day + this.city.clock;
+    if (s.burning && s.burning > nowDay) {
+      const top = gridToWorld(t.x + 0.5, t.y + 0.5, h);
+      for (let k = 0; k < 3; k++) {
+        const fl = 0.6 + 0.4 * Math.sin(this.time * 14 + k * 2);
+        ctx.fillStyle = `rgba(255,${140 + k * 30},60,${(0.8 * fl).toFixed(3)})`;
+        ctx.beginPath();
+        ctx.ellipse(top.x - 5 + k * 5, top.y - 4 * fl, 2.6, 6 * fl, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      this.glows.push({ x: top.x, y: top.y - 4, r: 26, a: 0.55, rgb: '255,150,70' });
+      if (Math.random() < 0.3) this.particles.push({ kind: 'smoke', x: top.x, y: top.y - 8, vx: 6 + Math.random() * 8, vy: -16, r: 3, age: 0, life: 1.8 });
+    }
+  }
+
+  // Washed-out roads: mud, cracks and a warning cone. Snowed-in roads: a white drift.
+  drawRoadTrouble(ctx, t, L) {
+    const s = t.structure;
+    const { x, y } = t;
+    if (s.broken) {
+      ctx.fillStyle = litA('#9b7a58', 1, L, 0.85);
+      poly(ctx, [
+        [x + 0.2, y + 0.25],
+        [x + 0.78, y + 0.2],
+        [x + 0.82, y + 0.72],
+        [x + 0.28, y + 0.8],
+      ]);
+      ctx.fill();
+      ctx.fillStyle = litA('#8ec1dc', 1, L, 0.7);
+      gridEllipse(ctx, x + 0.5, y + 0.5, 0, 0.18);
+      ctx.fill();
+      ctx.strokeStyle = litA('#5d4a3a', 1, L, 0.8);
+      ctx.lineWidth = 1;
+      const a = gridToWorld(x + 0.25, y + 0.3);
+      const b = gridToWorld(x + 0.75, y + 0.7);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo((a.x + b.x) / 2 + 3, (a.y + b.y) / 2 - 2);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+      // Orange traffic cone.
+      const c = gridToWorld(x + 0.3, y + 0.62);
+      ctx.fillStyle = '#f08a3c';
+      ctx.beginPath();
+      ctx.moveTo(c.x - 2.2, c.y);
+      ctx.lineTo(c.x, c.y - 6.5);
+      ctx.lineTo(c.x + 2.2, c.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(c.x - 1.2, c.y - 3.6, 2.4, 1);
+    } else if (s.snowed) {
+      ctx.fillStyle = litA('#f7f9fc', 1, L, 0.92);
+      tilePoly(ctx, x, y, 0.04);
+      ctx.fill();
+    }
+  }
+
+  // Flood water spreading over the land near rivers and lakes.
+  drawFlood(ctx, tiles, L) {
+    const a = this.city.systems.disasters?.active;
+    if (!a?.flooded) return;
+    const nowDay = this.city.day + this.city.clock;
+    const f = (nowDay - a.started) / Math.max(0.01, a.ends - a.started);
+    const level = clamp(Math.min(f / 0.2, (1 - f) / 0.2, 1), 0, 1);
+    if (level <= 0) return;
+    const set = this._floodSet && this._floodSet.src === a.flooded ? this._floodSet : (this._floodSet = { src: a.flooded, has: new Set(a.flooded) });
+    const W = this.city.width;
+    ctx.save();
+    for (const t of tiles) {
+      if (!set.has.has(t.y * W + t.x)) continue;
+      ctx.fillStyle = litA(PALETTE.water, 0.95, L, (0.62 * level).toFixed(3));
+      tilePoly(ctx, t.x, t.y, 0.02);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(255,255,255,${(0.35 * level).toFixed(3)})`;
+      ctx.lineWidth = 0.8;
+      const r = 0.12 + ((this.time * 0.25 + hash2(t.x, t.y, 9)) % 1) * 0.25;
+      gridEllipse(ctx, t.x + 0.5, t.y + 0.5, 0, r);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // A grey, spinning funnel with debris swirling round its base.
+  drawTornado(ctx, pos, L) {
+    const base = gridToWorld(pos.x, pos.y);
+    const spin = this.time * 7;
+    ctx.save();
+    ctx.fillStyle = 'rgba(52,44,96,0.18)';
+    ctx.beginPath();
+    ctx.ellipse(base.x, base.y, 26, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    for (let i = 0; i < 34; i++) {
+      const k = i / 33;
+      const y = base.y - k * 150;
+      const rx = 5 + k * k * 44;
+      const sway = Math.sin(this.time * 2 + k * 3) * k * 9;
+      ctx.fillStyle = litA(mixHex('#4e4a5e', '#8f8aa3', k), 1, L, (0.7 + 0.15 * Math.sin(spin + i * 0.7)).toFixed(3));
+      ctx.beginPath();
+      ctx.ellipse(base.x + sway, y, rx, Math.max(4, rx * 0.42), 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // The storm cloud it hangs from.
+    ctx.fillStyle = litA('#6c6880', 1, L, 0.85);
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      ctx.ellipse(base.x + (i - 2) * 22 + Math.sin(this.time * 2) * 9, base.y - 156 + (i % 2) * 6, 30, 13, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = litA('#6d5a48', 1, L, 0.85);
+    for (let i = 0; i < 10; i++) {
+      const a = spin * 1.3 + i * 0.63;
+      const r = 14 + (i % 3) * 7;
+      const h = 8 + ((i * 7) % 30);
+      ctx.fillRect(base.x + Math.cos(a) * r - 1, base.y - h + Math.sin(a) * r * 0.35 - 1, 2.4, 2.4);
+    }
     ctx.restore();
   }
 
@@ -11287,6 +12076,8 @@ class Renderer {
         return this.drawClinic(ctx, x, y, s, L, ghost);
       case 'tree':
         return this.drawTree(ctx, x + 0.5, y + 0.5, s.shape || 0, L, hash2(x, y, 12) * 6.28, 1, x, y);
+      case 'rubble':
+        return this.drawRubble(ctx, x, y, L);
       case 'park':
         return this.drawParkProps(ctx, x, y, L);
       case 'playground':
@@ -12648,6 +13439,13 @@ class Renderer {
         ctx.fillStyle = litA('#f3ebdf', 1, L, (0.85 * (1 - t)).toFixed(3));
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r * (1 + t * 1.4), 0, Math.PI * 2);
+        ctx.fill();
+      } else if (p.kind === 'smoke') {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        ctx.fillStyle = `rgba(90,86,100,${(0.45 * (1 - t)).toFixed(3)})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * (1 + t * 2.5), 0, Math.PI * 2);
         ctx.fill();
       } else if (p.kind === 'ring') {
         const r = 0.2 + t * 0.55;
@@ -14051,7 +14849,8 @@ const pct = (v) => `${Math.round(v * 100)}%`;
 const SPEEDS = [1, 3, 10];
 
 class Interface {
-  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect, sound, locks, onShare, onBackHome, hasBackup, display, costOf, budget, growth, onSlots }) {
+  constructor({ onTool, onRandom, onFit, onSpeed, onView, onCloseInspect, sound, locks, onShare, onBackHome, hasBackup, display, costOf, budget, growth, onSlots, extremeWeather }) {
+    this.extremeWeather = extremeWeather; // { get(), set(level) }: off, gentle or wild
     this.growth = growth; // { get(), set(on) }: the town building itself
     this.onSlots = onSlots; // () → open the save slots sheet
     this.sound = sound;
@@ -14272,6 +15071,15 @@ class Interface {
         ? `<span class="sheet-label">Town grows by itself</span><div class="seg big"><button type="button" data-growth="1" aria-pressed="${this.growth.get()}">On</button><button type="button" data-growth="0" aria-pressed="${!this.growth.get()}">Off</button></div>` +
           '<p class="sheet-hint">Homes, shops, streets and parks appear where your people need them. You can keep building too.</p>'
         : '') +
+      (this.extremeWeather
+        ? `<span class="sheet-label">Extreme weather</span><div class="seg big">${[
+            ['off', 'Off'],
+            ['gentle', 'Gentle'],
+            ['wild', 'Wild'],
+          ]
+            .map(([v, l]) => `<button type="button" data-extreme="${v}" aria-pressed="${this.extremeWeather.get() === v}">${l}</button>`)
+            .join('')}</div><p class="sheet-hint">Thunderstorms, heatwaves and blizzards, and now and then a flood, tornado or hurricane that can damage buildings and wash out roads.</p>`
+        : '') +
       `<span class="sheet-label">Map view</span><div class="seg big views">${VIEWS.map(
         (v) => `<button type="button" data-view="${v.id}" aria-pressed="${this.view === v.id}">${v.label}</button>`
       ).join('')}</div>` +
@@ -14307,6 +15115,7 @@ class Interface {
     }
     else if (t.dataset.display) this.display.set(t.dataset.display, t.dataset.value === '1');
     else if (t.dataset.growth) this.growth.set(t.dataset.growth === '1');
+    else if (t.dataset.extreme) this.extremeWeather.set(t.dataset.extreme);
     else if (t.dataset.more === 'slots') {
       this.toggleMore(false);
       return this.onSlots?.();
@@ -14380,7 +15189,7 @@ class Interface {
     }
     const work = s.jobs ? ` · ${pct(s.employment ?? 1)} employed` : '';
     const w = city.derived.weather;
-    const sky = w && w.kind !== 'clear' ? ` · ${WEATHER_LABELS[w.kind]}` : '';
+    const sky = w && w.kind !== 'clear' ? ` · ${w.severe ? '⚠ ' : ''}${WEATHER_LABELS[w.kind]}` : '';
     if (this.budget) {
       const b = this.budget();
       set('money', document.getElementById('stat-money'), b.sandbox ? `${money(b.money)} · Sandbox` : money(b.money));
@@ -14422,6 +15231,10 @@ class Interface {
     }
     const visitors = (city.systems.townsfolk?.people || []).filter((p) => p.at.x === t.x && p.at.y === t.y && !(p.home.x === t.x && p.home.y === t.y));
     if (visitors.length) facts.push(['Here now', visitors.slice(0, 3).map((p) => p.first).join(', ') + (visitors.length > 3 ? ` +${visitors.length - 3}` : '')]);
+    if (s?.type === 'rubble') facts.push(['Condition', `Destroyed${s.was ? ` (was a ${(STRUCTURES[s.was]?.label || s.was).toLowerCase()})` : ''}. Crews will clear it, or bulldoze it`]);
+    else if (s?.broken) facts.push(['Condition', 'Washed out: no traffic until it is repaired (or build a road over it)']);
+    else if (s?.snowed) facts.push(['Condition', 'Snowed in until the blizzard passes']);
+    else if ((s?.damage || 0) >= 0.15) facts.push(['Condition', `${s.damage >= 0.34 ? 'Badly damaged' : 'Damaged'} (${Math.round(s.damage * 100)}%)${s.damage >= 0.34 ? ': half its space is unusable' : ''}`]);
     if (t.earning) facts.push([t.earning > 0 ? 'Pays in taxes' : 'Upkeep', `${money(Math.abs(t.earning))}/day`]);
     if (s?.type === 'road') facts.push(['Traffic', t.congestion < 0.02 ? 'Clear' : `${pct(t.congestion)} busy`]);
     if (!city.accessRoad(t.x, t.y) && def && !def.walkable) facts.push(['Road access', 'None nearby']);
@@ -15270,7 +16083,8 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const CLOSE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
 
 class CityPanel {
-  constructor({ milestones, onShow, onOpen, onBuild, economy, onShowTile, notables, townsfolk, eras, growth }) {
+  constructor({ milestones, onShow, onOpen, onBuild, economy, onShowTile, notables, townsfolk, eras, growth, onRepair }) {
+    this.onRepair = onRepair; // () → repair all storm damage now
     this.eras = eras; // () → Eras
     this.growth = growth; // () → Growth
     this.townsfolk = townsfolk; // () → Townsfolk
@@ -15318,6 +16132,8 @@ class CityPanel {
       else if (b.dataset.showtile) {
         const [x, y] = b.dataset.showtile.split(',').map(Number);
         this.onShowTile?.(x, y);
+      } else if (b.dataset.repair != null) {
+        this.onRepair?.();
       } else if (b.dataset.build != null) {
         const th = this.thoughts[Number(b.dataset.build)];
         if (th?.plan) this.onBuild?.(th);
@@ -15460,6 +16276,7 @@ class CityPanel {
               `<span class="th-actions">` +
               (t.x != null ? `<button type="button" class="ghost-btn small" data-show="${i}">Show me</button>` : '') +
               (t.plan ? `<button type="button" class="primary-btn small" data-build="${i}">Build it</button>` : '') +
+              (t.repair ? '<button type="button" class="primary-btn small" data-repair>Repair all</button>' : '') +
               '</span>' +
               '</li>'
           )
@@ -15747,6 +16564,8 @@ const SOUNDS = {
   undo: [0.35, 0, 560, 0.005, 0.03, 0.1, 0, 1, -14],
   fanfare: [0.45, 0, 523, 0.02, 0.18, 0.5, 0, 1.6, 0, 0, 262, 0.12, 0.24, 0, 0, 0, 0.1, 0.6],
   bird: [0.12, 0.35, 2600, 0.01, 0.03, 0.06, 0, 1.5, 40, -90, 0, 0, 0.05],
+  thunder: [0.75, 0.15, 48, 0.03, 0.35, 1.7, 4, 1.6, 0, 0, 0, 0, 0, 2, 0, 0.1, 0, 0.55, 0.25, 0.2, 380],
+  warning: [0.32, 0, 640, 0.06, 0.55, 0.3, 0, 1.3, 0, 0, -160, 0.28, 0.28, 0, 0, 0, 0, 0.7],
   cricket: [0.05, 0.1, 4300, 0, 0.012, 0.02, 5, 0.5, 0, 0, 0, 0, 0.026, 0, 0, 0, 0, 1, 0, 0.6],
 };
 
@@ -15989,6 +16808,13 @@ function start(hotData = {}) {
     onShare: () => shareTown(),
     onBackHome: () => backHome(),
     onSlots: () => slotsSheet.toggle(true),
+    extremeWeather: {
+      get: () => sim.disasters.level,
+      set: (v) => {
+        sim.disasters.level = v;
+        ui.toast(v === 'off' ? 'Extreme weather is off for this town' : v === 'wild' ? 'Wild weather: storms and disasters come often' : 'Gentle weather: the odd storm, and a rare disaster', 3200);
+      },
+    },
     growth: {
       get: () => sim.growth.on,
       set: (on) => {
@@ -16100,6 +16926,7 @@ function start(hotData = {}) {
       focusTile(x, y);
       if (window.innerWidth < 560) cityPanel.toggle(false);
     },
+    onRepair: () => repairAll(),
     onOpen: () => {
       lifeUI.toggle(false);
       ui.toggleMore(false);
@@ -16164,6 +16991,7 @@ function start(hotData = {}) {
           const [x, y] = b.dataset.notableShow.split(',').map(Number);
           focusTile(x, y);
         }
+        if (e.target.closest('[data-repair-all]')) repairAll();
         card.hidden = true;
       });
     }
@@ -16603,6 +17431,40 @@ function start(hotData = {}) {
     onOpen: () => ui.closeTray(),
   });
 
+  // ---- Extreme weather ------------------------------------------------------------------------
+  function repairAll() {
+    const r = sim.disasters.repairAll();
+    if (!r) return ui.toast(`Not enough money to repair everything (${money(sim.disasters.repairCost().total)}). Crews will keep working as money comes in`, 4200);
+    if (!r.count) return ui.toast('Nothing needs repairing', 2000);
+    sim.refresh();
+    audio.play('fanfare', { gap: 1 });
+    ui.toast(`Repaired ${r.count} place${r.count > 1 ? 's' : ''}${r.total ? ` for ${money(r.total)}` : ''}`, 3200);
+  }
+  function weatherReport({ kind, info, report: r }) {
+    const lost = r.destroyed + r.damaged + r.roads;
+    if (!lost && !r.trees) return ui.toast(`The ${info.label.toLowerCase()} has passed. No real damage`, 3200);
+    const cost = sim.disasters.repairCost();
+    const card = cardEl();
+    card.classList.add('notable-card');
+    const lines = [
+      r.destroyed && `<b>${r.destroyed}</b> building${r.destroyed > 1 ? 's' : ''} destroyed`,
+      r.damaged && `<b>${r.damaged}</b> damaged`,
+      r.roads && `<b>${r.roads}</b> road${r.roads > 1 ? 's' : ''} washed out`,
+      r.trees && `<b>${r.trees}</b> tree${r.trees > 1 ? 's' : ''} down`,
+    ].filter(Boolean);
+    const first = r.places[0];
+    card.innerHTML =
+      `<span class="insp-kicker">${info.icon} After the ${info.label.toLowerCase()}</span><h2>${lost ? 'Damage report' : 'Trees down'}</h2>` +
+      `<p>${lines.join(' · ')}</p>` +
+      (cost.count ? `<p class="np-bonus">Crews will repair things one by one as money allows.</p>` : '') +
+      '<div class="decision-foot">' +
+      (first ? `<button type="button" class="ghost-btn small" data-notable-show="${first.x},${first.y}">Show me</button>` : '<span></span>') +
+      (cost.count ? `<button type="button" class="primary-btn small" data-repair-all>Repair everything · ${cost.total ? money(cost.total) : 'free'}</button>` : '') +
+      '</div>';
+    showCard(card, 12000);
+    void kind;
+  }
+
   // After a move, fly to the new home and say its address.
   const homeKey = () => {
     const h = sim.life.char?.home;
@@ -16626,6 +17488,24 @@ function start(hotData = {}) {
     else if (ev.type === 'lifeEvent') audio.play('chime');
     if (ev.type === 'milestone') celebrate(ev.milestone);
     if (ev.type === 'era') newEra(ev);
+    if (ev.type === 'weatherWarning') {
+      audio.play('warning');
+      ui.toast(`⚠ ${ev.info.label} warning! ${ev.info.warn} It will hit in a few hours`, 6000);
+    }
+    if (ev.type === 'extremeWeather' && ev.phase === 'start') {
+      audio.play(ev.info.severity === 'extreme' ? 'warning' : 'thunder');
+      const say = {
+        storm: 'A thunderstorm is rolling in. Lightning may strike tall buildings',
+        heatwave: 'A heatwave! Trees are wilting and fires can break out',
+        blizzard: 'A blizzard! Some roads are snowed in until it passes',
+        flood: 'The river has burst its banks!',
+        tornado: 'A tornado is tearing across the map!',
+        hurricane: 'The hurricane has arrived!',
+      }[ev.kind];
+      ui.toast(`${ev.info.icon} ${say}`, 5200);
+    }
+    if (ev.type === 'extremeWeather' && ev.phase === 'end') weatherReport(ev);
+    if (ev.type === 'lightning') audio.play('thunder', { delay: 0.25, gap: 0.8 });
     if (ev.type === 'decision') {
       audio.play('chime');
       decisionCard.show({ auto: true });

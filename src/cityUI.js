@@ -15,7 +15,8 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const CLOSE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
 
 export class CityPanel {
-  constructor({ milestones, onShow, onOpen, onBuild, economy, onShowTile, notables, townsfolk, eras, growth }) {
+  constructor({ milestones, onShow, onOpen, onBuild, economy, onShowTile, notables, townsfolk, eras, growth, onRepair }) {
+    this.onRepair = onRepair; // () → repair all storm damage now
     this.eras = eras; // () → Eras
     this.growth = growth; // () → Growth
     this.townsfolk = townsfolk; // () → Townsfolk
@@ -63,6 +64,8 @@ export class CityPanel {
       else if (b.dataset.showtile) {
         const [x, y] = b.dataset.showtile.split(',').map(Number);
         this.onShowTile?.(x, y);
+      } else if (b.dataset.repair != null) {
+        this.onRepair?.();
       } else if (b.dataset.build != null) {
         const th = this.thoughts[Number(b.dataset.build)];
         if (th?.plan) this.onBuild?.(th);
@@ -205,6 +208,7 @@ export class CityPanel {
               `<span class="th-actions">` +
               (t.x != null ? `<button type="button" class="ghost-btn small" data-show="${i}">Show me</button>` : '') +
               (t.plan ? `<button type="button" class="primary-btn small" data-build="${i}">Build it</button>` : '') +
+              (t.repair ? '<button type="button" class="primary-btn small" data-repair>Repair all</button>' : '') +
               '</span>' +
               '</li>'
           )
